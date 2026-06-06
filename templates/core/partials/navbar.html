@@ -9,7 +9,7 @@
     <li><a href="{% url 'services' %}" class="{% if request.resolver_match.url_name == 'services' %}active{% endif %}">Services</a></li>
     <li><a href="#">Track Shipment</a></li>
     <li><a href="#">Find Location</a></li>
-    <li><a href="#">Contact</a></li>
+    <li><a href="{% url 'contact' %}" class="{% if request.resolver_match.url_name == 'contact' %}active{% endif %}">Contact</a></li>
   </ul>
   <button class="nav-cta">Customer Login</button>
   <button class="nav-hamburger" id="hamburger">
