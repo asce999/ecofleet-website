@@ -6,7 +6,7 @@
   <ul class="nav-links">
     <li><a href="{% url 'home' %}" class="{% if request.resolver_match.url_name == 'home' %}active{% endif %}">Home</a></li>
     <li><a href="#">About Us</a></li>
-    <li><a href="#">Services</a></li>
+    <li><a href="{% url 'services' %}" class="{% if request.resolver_match.url_name == 'services' %}active{% endif %}">Services</a></li>
     <li><a href="#">Track Shipment</a></li>
     <li><a href="#">Find Location</a></li>
     <li><a href="#">Contact</a></li>

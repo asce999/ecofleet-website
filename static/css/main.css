@@ -585,3 +585,297 @@ h1 {
   font-family: inherit;
   white-space: nowrap;
 }
+
+/* ── PAGE HERO ── */
+.page-hero {
+  position: relative;
+  z-index: 5;
+  padding: 100px 72px 80px;
+  display: flex;
+  justify-content: center;
+  text-align: center;
+}
+
+.page-hero-inner {
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.page-hero-inner h1 {
+  font-size: 56px;
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+  margin-bottom: 20px;
+  max-width: 900px;
+  white-space: nowrap;
+}
+
+.page-hero-inner .hero-sub {
+  font-size: 16px;
+  color: var(--muted);
+  max-width: 560px;
+  line-height: 1.75;
+  margin-bottom: 0;
+}
+
+/* ── SERVICE BLOCKS ── */
+.service-block {
+  position: relative;
+  z-index: 5;
+  padding: 0 72px 100px;
+}
+
+.service-block-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+}
+
+.service-block.alt .service-block-inner {
+  direction: rtl;
+}
+
+.service-block.alt .service-block-inner > * {
+  direction: ltr;
+}
+
+.service-block-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.service-title {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 10px 0 16px;
+  line-height: 1.2;
+}
+
+.service-desc {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.8;
+  margin-bottom: 28px;
+}
+
+.service-features {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.service-features li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.service-features li i {
+  color: var(--cyan);
+  font-size: 17px;
+  flex-shrink: 0;
+}
+
+/* ── SERVICE CARD ── */
+.service-block-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 44px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  min-height: unset;
+}
+
+.service-card-top {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+.service-card-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+}
+
+.service-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.service-stat-num {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+
+.service-stat-label {
+  font-size: 11px;
+  color: var(--hint);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 500;
+}
+
+/* ── PROCESS FLOW ── */
+.process-flow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  position: relative;
+}
+
+.process-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0 24px;
+  position: relative;
+}
+
+.process-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 2;
+}
+
+.process-line {
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, var(--border), var(--cyan), var(--border));
+  z-index: 1;
+}
+
+.process-line.hide { display: none; }
+
+.process-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--hint);
+  letter-spacing: 0.12em;
+  margin-bottom: 10px;
+}
+
+.process-step-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.process-step-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+/* ── STATS STRIP ── */
+.stats-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+}
+
+.stat-item {
+  padding: 32px 24px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+
+.stat-item:last-child { border-right: none; }
+
+.stat-num {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, var(--cyan), var(--purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--hint);
+  font-weight: 500;
+  margin-top: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── PROCESS STEP HOVER ── */
+.process-step {
+  transition: transform 0.3s ease;
+  cursor: default;
+}
+
+.process-step:hover {
+  transform: translateY(-6px);
+}
+
+.process-step:hover .process-icon {
+  box-shadow: 0 0 24px rgba(0,174,239,0.25);
+  transition: box-shadow 0.3s ease;
+}
+
+.process-step:hover .process-step-title {
+  color: var(--cyan);
+  transition: color 0.3s ease;
+}
+
+.process-icon {
+  transition: box-shadow 0.3s ease;
+}
+
+.process-step-title {
+  transition: color 0.3s ease;
+}
+
+/* ── SERVICE CARD TILT HOVER ── */
+.service-block-card {
+  transition: transform 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
+}
+
+.service-block-card:hover {
+  transform: perspective(800px) rotateY(-4deg) rotateX(2deg) translateY(-6px);
+  box-shadow: 8px 16px 40px rgba(0, 0, 0, 0.4);
+  border-color: rgba(255,255,255,0.15);
+}
+
+.service-block.alt .service-block-card:hover {
+  transform: perspective(800px) rotateY(4deg) rotateX(2deg) translateY(-6px);
+}
