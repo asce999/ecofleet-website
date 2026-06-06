@@ -1,0 +1,141 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}EcoFleet Express — Surface Cargo & Logistics{% endblock %}
+
+{% block content %}
+
+<!-- Ambient Orbs -->
+<div class="orbs">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+  <div class="orb orb4"></div>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">
+    <div class="badge-dot"></div>
+    Pan-India surface cargo & last-mile ODA delivery
+  </div>
+  <h1>
+    Logistics that moves<br>
+    <span class="gradient-text">at the speed of tomorrow</span>
+  </h1>
+  <p class="hero-sub">
+    EcoFleet Express delivers smarter, faster, and greener — across India's toughest routes.
+    Real-time tracking, zero surprises, every shipment.
+  </p>
+  <div class="hero-btns">
+    <button class="btn-primary">
+      <i class="ti ti-package"></i>
+      Track your shipment
+    </button>
+    <button class="btn-secondary">Explore our services →</button>
+  </div>
+  <div class="stats-strip">
+    <div class="stat-item">
+      <div class="stat-num">3,000+</div>
+      <div class="stat-label">Tonnes Delivered</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">2 Lakh+</div>
+      <div class="stat-label">Boxes Shipped</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">12,000+</div>
+      <div class="stat-label">Non-ODA Pincodes</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">10,000+</div>
+      <div class="stat-label">ODA Pincodes</div>
+    </div>
+  </div>
+</section>
+
+<!-- TRACK SHIPMENT -->
+<div class="track-section">
+  <div class="section-eyebrow eyebrow-cyan">Live Tracking</div>
+  <div class="track-title">Where is your shipment right now?</div>
+  <div class="track-sub">Enter your LR number or AWB number to get real-time status updates</div>
+  <div class="track-row">
+    <input class="track-input" type="text" placeholder="Enter LR / AWB number (e.g. DEL-2024-00123)" />
+    <button class="track-btn">
+      <i class="ti ti-search"></i>
+      Track Now
+    </button>
+  </div>
+</div>
+
+<!-- SERVICES -->
+<section class="ef-section">
+  <div class="section-header">
+    <div class="section-eyebrow eyebrow-purple">What We Offer</div>
+    <div class="section-title">Built for every cargo need</div>
+  </div>
+  <div class="cards-grid">
+    <div class="card">
+      <div class="card-top-bar bar-cyan"></div>
+      <div class="card-icon icon-cyan"><i class="ti ti-truck"></i></div>
+      <div class="card-title">Surface Cargo</div>
+      <div class="card-desc">Pan-India road freight for B2B and B2C consignments. Scalable from small parcels to full truckloads.</div>
+      <a href="#" class="card-link link-cyan">Learn more <i class="ti ti-arrow-right"></i></a>
+    </div>
+    <div class="card">
+      <div class="card-top-bar bar-purple"></div>
+      <div class="card-icon icon-purple"><i class="ti ti-map-pin"></i></div>
+      <div class="card-title">ODA Delivery</div>
+      <div class="card-desc">Specialised last-mile delivery to 10,000+ Out of Delivery Area pincodes other carriers skip.</div>
+      <a href="#" class="card-link link-purple">Learn more <i class="ti ti-arrow-right"></i></a>
+    </div>
+    <div class="card">
+      <div class="card-top-bar bar-orange"></div>
+      <div class="card-icon icon-orange"><i class="ti ti-building-warehouse"></i></div>
+      <div class="card-title">FTL</div>
+      <div class="card-desc">Dedicated full truck load solutions for high-volume consignments — guaranteed capacity, faster transit, and no co-loading delays.</div>
+      <a href="#" class="card-link link-orange">Learn more <i class="ti ti-arrow-right"></i></a>
+    </div>
+  </div>
+</section>
+
+<!-- WHY ECOFLEET -->
+<section class="ef-section">
+  <div class="section-header">
+    <div class="section-eyebrow eyebrow-cyan">Why EcoFleet</div>
+    <div class="section-title">The EcoFleet difference</div>
+  </div>
+  <div class="why-grid">
+    <div class="why-card">
+      <div class="why-icon"><i class="ti ti-map-pin"></i></div>
+      <div class="why-title">22,000+ Pincodes</div>
+      <div class="why-desc">One of the widest surface cargo coverage networks — Non-ODA and ODA both covered.</div>
+    </div>
+    <div class="why-card">
+      <div class="why-icon"><i class="ti ti-shield-check"></i></div>
+      <div class="why-title">Secure Handling</div>
+      <div class="why-desc">Trained logistics staff with strict handling protocols for every consignment type.</div>
+    </div>
+    <div class="why-card">
+      <div class="why-icon"><i class="ti ti-clock"></i></div>
+      <div class="why-title">On-Time Delivery</div>
+      <div class="why-desc">Consistent transit times backed by strong carrier partnerships across India.</div>
+    </div>
+    <div class="why-card">
+      <div class="why-icon"><i class="ti ti-leaf"></i></div>
+      <div class="why-title">Eco Conscious</div>
+      <div class="why-desc">Optimised route planning and responsible freight practices to reduce carbon footprint.</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA BAND -->
+<div class="cta-band">
+  <div class="cta-text">
+    <h2>Ready to ship with EcoFleet?</h2>
+    <p>Join businesses that trust EcoFleet Express for reliable, fast, and transparent logistics across India.</p>
+  </div>
+  <button class="cta-btn">Get in touch today →</button>
+</div>
+
+{% endblock %}

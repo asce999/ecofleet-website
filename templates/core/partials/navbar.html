@@ -1,0 +1,18 @@
+{% load static %}
+<nav class="ef-nav">
+  <a class="logo-wrap" href="{% url 'home' %}">
+    <img src="{% static 'images/logo.png' %}" alt="EcoFleet Express" class="nav-logo" />
+  </a>
+  <ul class="nav-links">
+    <li><a href="{% url 'home' %}" class="{% if request.resolver_match.url_name == 'home' %}active{% endif %}">Home</a></li>
+    <li><a href="#">About Us</a></li>
+    <li><a href="#">Services</a></li>
+    <li><a href="#">Track Shipment</a></li>
+    <li><a href="#">Find Location</a></li>
+    <li><a href="#">Contact</a></li>
+  </ul>
+  <button class="nav-cta">Customer Login</button>
+  <button class="nav-hamburger" id="hamburger">
+    <i class="ti ti-menu-2"></i>
+  </button>
+</nav>
