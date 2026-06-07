@@ -193,7 +193,7 @@
       <h2>Ready to move freight with <span class="gradient-text"> EcoFleet Express? </span></h2>
     <p>Get in touch with our operations team to discuss your B2B logistics requirements.</p>
   </div>
-  <button class="cta-btn">Contact us today →</button>
+    <a href="{% url 'contact' %}" class="{% if request.resolver_match.url_name == 'contact' %}active{% endif %}"><button class="cta-btn">Contact us today →</button></a>
 </div>
 
 {% endblock %}

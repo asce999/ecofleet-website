@@ -1,0 +1,121 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}About Us — EcoFleet Express{% endblock %}
+
+{% block content %}
+
+<!-- Ambient Orbs -->
+<div class="orbs">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+  <div class="orb orb4"></div>
+</div>
+
+<!-- PAGE HERO -->
+<section class="page-hero">
+  <div class="page-hero-inner">
+    <div class="hero-badge">
+      <div class="badge-dot"></div>
+      Who we are
+    </div>
+    <h1>Moving what matters, <span class="gradient-text">reliably</span></h1>
+    <p class="hero-sub">Pune-based. Pan-India reach. Built on transparency, accountability, and a commitment to getting your freight there.</p>
+  </div>
+</section>
+
+<!-- ABOUT SECTION -->
+<section class="about-section">
+  <div class="about-grid">
+
+    <!-- LEFT: TEXT CONTENT -->
+    <div class="about-content">
+      <div class="section-eyebrow eyebrow-cyan">About Us</div>
+      <h2 class="about-title">Surface cargo specialists with a pan-India network</h2>
+
+      <div class="about-body">
+        <p>We are a Pune-based surface cargo and logistics company committed to moving what matters — reliably, efficiently, and on time. Founded with a clear mission to bridge the gap between businesses and their customers across India, we specialise in full-scale surface freight solutions covering both high-density urban corridors and deep last-mile ODA (Out of Delivery Area) pincodes.</p>
+        <p>Headquartered in Kothrud, Pune, our network spans over 22,000 pincodes across India — from metro fulfilment hubs to remote district towns. We partner with leading logistics carriers to ensure every consignment, regardless of size or destination, is handled with transparency, care, and accountability. Trusted by clients including Piaggio Vehicles Pvt. Ltd., we bring the same operational discipline to every shipment.</p>
+      </div>
+    </div>
+
+    <!-- RIGHT: VALUE CARDS -->
+    <div class="about-values">
+      <div class="value-card">
+        <div class="value-card-top bar-cyan"></div>
+        <div class="value-icon icon-cyan"><i class="ti ti-shield-check"></i></div>
+        <div class="value-title">Reliability</div>
+        <div class="value-desc">Every consignment treated with the same discipline — from pickup to proof of delivery.</div>
+      </div>
+      <div class="value-card">
+        <div class="value-card-top bar-purple"></div>
+        <div class="value-icon icon-purple"><i class="ti ti-eye"></i></div>
+        <div class="value-title">Transparency</div>
+        <div class="value-desc">Full visibility at every stage. No surprises, no excuses — just clear communication.</div>
+      </div>
+      <div class="value-card">
+        <div class="value-card-top bar-orange"></div>
+        <div class="value-icon icon-orange"><i class="ti ti-map-pin"></i></div>
+        <div class="value-title">Reach</div>
+        <div class="value-desc">22,000+ pincodes covered — from metro hubs to the remotest ODA districts in India.</div>
+      </div>
+      <div class="value-card">
+        <div class="value-card-top bar-cyan"></div>
+        <div class="value-icon icon-cyan"><i class="ti ti-users"></i></div>
+        <div class="value-title">Accountability</div>
+        <div class="value-desc">A dedicated operations team that owns every query, ticket, and escalation end to end.</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- WHAT SETS US APART -->
+<section class="ef-section">
+  <div class="section-header">
+    <div class="section-eyebrow eyebrow-purple">Our Edge</div>
+    <div class="section-title">What sets EcoFleet apart</div>
+  </div>
+  <div class="apart-grid">
+    <div class="apart-item">
+      <div class="apart-icon icon-cyan"><i class="ti ti-truck"></i></div>
+      <div class="apart-text">
+        <div class="apart-title">Surface Cargo Specialists</div>
+        <div class="apart-desc">We focus exclusively on surface freight — no distractions, just deep expertise in road logistics across India.</div>
+      </div>
+    </div>
+    <div class="apart-item">
+      <div class="apart-icon icon-purple"><i class="ti ti-map-pin"></i></div>
+      <div class="apart-text">
+        <div class="apart-title">ODA Coverage</div>
+        <div class="apart-desc">10,000+ ODA pincodes served — we reach where most logistics providers draw the line.</div>
+      </div>
+    </div>
+    <div class="apart-item">
+      <div class="apart-icon icon-orange"><i class="ti ti-building-factory"></i></div>
+      <div class="apart-text">
+        <div class="apart-title">Piaggio Trusted</div>
+        <div class="apart-desc">Chosen as a logistics partner by Piaggio Vehicles Pvt. Ltd. — a testament to our operational standards.</div>
+      </div>
+    </div>
+    <div class="apart-item">
+      <div class="apart-icon icon-cyan"><i class="ti ti-network"></i></div>
+      <div class="apart-text">
+        <div class="apart-title">Carrier Partnerships</div>
+        <div class="apart-desc">We work with India's leading logistics carriers to combine reach, speed, and reliability across every route.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA BAND -->
+<div class="cta-band">
+  <div class="cta-text">
+      <h2>Ready to move freight with <span class="gradient-text"> EcoFleet? </span></h2>
+    <p>Get in touch with our operations team to discuss your B2B logistics requirements.</p>
+  </div>
+  <a href="{% url 'contact' %}"><button class="cta-btn">Contact us today →</button></a>
+</div>
+
+{% endblock %}
