@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 from . import views
 
 urlpatterns = [
@@ -7,4 +7,5 @@ urlpatterns = [
     path('contact/', views.contact, name='contact'),
     path('about/', views.about, name='about'),
     path('privacy/', views.privacy, name='privacy'),
+    re_path(r'^sitemap\.xml/?$', views.sitemap, name='sitemap'),
 ]
