@@ -1430,3 +1430,212 @@ h1 {
   border-color: var(--cyan);
   color: var(--cyan);
 }
+
+/* ── FIND LOCATION ── */
+.location-section {
+  position: relative;
+  z-index: 5;
+  padding: 0 72px 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+}
+
+.location-search-wrap {
+  width: 100%;
+  max-width: 680px;
+}
+
+.location-form {
+  width: 100%;
+}
+
+.location-input-row {
+  display: flex;
+  gap: 12px;
+}
+
+.location-input {
+  flex: 1;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  color: var(--text);
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.location-input:focus { border-color: var(--cyan); }
+.location-input::placeholder { color: var(--hint); }
+
+.location-btn {
+  background: linear-gradient(135deg, var(--cyan), var(--purple));
+  border: none;
+  border-radius: 12px;
+  padding: 16px 32px;
+  color: #fff;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+/* ── RESULT CARD ── */
+.location-result {
+  width: 100%;
+  max-width: 680px;
+  border-radius: 20px;
+  padding: 36px;
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  border: 1px solid var(--border);
+}
+
+.location-result.available {
+  background: rgba(0,174,239,0.05);
+  border-color: rgba(0,174,239,0.2);
+}
+
+.location-result.unavailable {
+  background: rgba(237,28,36,0.05);
+  border-color: rgba(237,28,36,0.2);
+}
+
+.result-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  flex-shrink: 0;
+}
+
+.icon-red {
+  background: rgba(237,28,36,0.12);
+  color: var(--red);
+}
+
+.result-content {
+  flex: 1;
+}
+
+.result-status {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+}
+
+.available-text { color: var(--cyan); }
+.unavailable-text { color: var(--red); }
+
+.result-details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.result-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.result-detail-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--hint);
+}
+
+.result-detail-value {
+  font-size: 14.5px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.type-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-oda {
+  background: rgba(168,85,247,0.15);
+  color: var(--purple);
+  border: 1px solid rgba(168,85,247,0.3);
+}
+
+.badge-nonoda {
+  background: rgba(0,174,239,0.15);
+  color: var(--cyan);
+  border: 1px solid rgba(0,174,239,0.3);
+}
+
+.result-note {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.result-unavailable-desc {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.result-unavailable-desc strong {
+  color: var(--text);
+}
+
+/* ── LOCATION STATS ── */
+.location-stats {
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 48px;
+  backdrop-filter: blur(12px);
+}
+
+.location-stat-item {
+  text-align: center;
+}
+
+.location-stat-num {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+
+.location-stat-label {
+  font-size: 11px;
+  color: var(--hint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+
+.location-stat-divider {
+  width: 1px;
+  height: 40px;
+  background: var(--border);
+}

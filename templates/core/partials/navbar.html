@@ -8,7 +8,7 @@
     <li><a href="{% url 'about' %}" class="{% if request.resolver_match.url_name == 'about' %}active{% endif %}">About Us</a></li>
     <li><a href="{% url 'services' %}" class="{% if request.resolver_match.url_name == 'services' %}active{% endif %}">Services</a></li>
     <li><a href="#">Track Shipment</a></li>
-    <li><a href="#">Find Location</a></li>
+    <li><a href="{% url 'find_location' %}" class="{% if request.resolver_match.url_name == 'find_location' %}active{% endif %}">Find Location</a></li>
     <li><a href="{% url 'contact' %}" class="{% if request.resolver_match.url_name == 'contact' %}active{% endif %}">Contact</a></li>
   </ul>
   <button class="nav-cta">Customer Login</button>

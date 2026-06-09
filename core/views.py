@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.http import HttpResponse
+from .models import Pincode
 from django.template import loader
 
 def home(request):
@@ -52,3 +53,22 @@ def sitemap(request):
   </url>
 </urlset>'''
     return HttpResponse(xml_content, content_type='application/xml')
+
+def find_location(request):
+    result = None
+    pincode = request.GET.get('pincode', '').strip()
+
+    if pincode:
+        try:
+            pin_obj = Pincode.objects.get(pin=pincode)
+            result = {
+                'found': True,
+                'pin': pin_obj.pin,
+                'city': pin_obj.city,
+                'state': pin_obj.state,
+                'location_type': pin_obj.location_type,
+            }
+        except Pincode.DoesNotExist:
+            result = {'found': False}
+
+    return render(request, 'core/find_location.html', {'result': result, 'pincode': pincode})

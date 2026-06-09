@@ -8,4 +8,5 @@ urlpatterns = [
     path('about/', views.about, name='about'),
     path('privacy/', views.privacy, name='privacy'),
     re_path(r'^sitemap\.xml/?$', views.sitemap, name='sitemap'),
+    path('find-location/', views.find_location, name='find_location'),
 ]

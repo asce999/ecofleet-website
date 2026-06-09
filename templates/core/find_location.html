@@ -1,0 +1,128 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Find Location — EcoFleet Express{% endblock %}
+{% block meta_description %}Check if EcoFleet Express delivers to your pincode. Search our 22,000+ pincode network across India.{% endblock %}
+
+{% block content %}
+
+<!-- Ambient Orbs -->
+<div class="orbs">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+  <div class="orb orb4"></div>
+</div>
+
+<!-- PAGE HERO -->
+<section class="page-hero">
+  <div class="page-hero-inner">
+    <div class="hero-badge">
+      <div class="badge-dot"></div>
+      22,000+ Pincodes Covered
+    </div>
+    <h1>Do we deliver to <span class="gradient-text">your location?</span></h1>
+    <p class="hero-sub">Enter a pincode to instantly check if EcoFleet Express covers your area — ODA and Non-ODA both included.</p>
+  </div>
+</section>
+
+<!-- SEARCH SECTION -->
+<section class="location-section">
+
+  <!-- SEARCH BOX -->
+  <div class="location-search-wrap">
+    <form method="GET" action="{% url 'find_location' %}" class="location-form">
+      <div class="location-input-row">
+        <input
+          type="text"
+          name="pincode"
+          class="location-input"
+          placeholder="Enter a 6-digit pincode (e.g. 411038)"
+          value="{{ pincode }}"
+          maxlength="6"
+          pattern="[0-9]{6}"
+          required
+        />
+        <button type="submit" class="location-btn">
+          <i class="ti ti-search"></i>
+          Check Availability
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- RESULT -->
+  {% if result %}
+    {% if result.found %}
+    <div class="location-result available">
+      <div class="result-icon-wrap">
+        <div class="result-icon icon-cyan">
+          <i class="ti ti-circle-check"></i>
+        </div>
+      </div>
+      <div class="result-content">
+        <div class="result-status available-text">Service Available</div>
+        <div class="result-details">
+          <div class="result-detail-item">
+            <span class="result-detail-label">Pincode</span>
+            <span class="result-detail-value">{{ result.pin }}</span>
+          </div>
+          <div class="result-detail-item">
+            <span class="result-detail-label">City</span>
+            <span class="result-detail-value">{{ result.city }}</span>
+          </div>
+          <div class="result-detail-item">
+            <span class="result-detail-label">State</span>
+            <span class="result-detail-value">{{ result.state }}</span>
+          </div>
+          <div class="result-detail-item">
+            <span class="result-detail-label">Coverage Type</span>
+            <span class="result-detail-value type-badge {% if result.location_type == 'ODA' %}badge-oda{% else %}badge-nonoda{% endif %}">
+              {{ result.location_type }}
+            </span>
+          </div>
+        </div>
+        {% if result.location_type == 'ODA' %}
+        <p class="result-note">This is an ODA (Out of Delivery Area) location. Additional transit time and surcharges may apply.</p>
+        {% else %}
+        <p class="result-note">This is a standard Non-ODA location. Regular transit times and rates apply.</p>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div class="location-result unavailable">
+      <div class="result-icon-wrap">
+        <div class="result-icon icon-red">
+          <i class="ti ti-circle-x"></i>
+        </div>
+      </div>
+      <div class="result-content">
+        <div class="result-status unavailable-text">Service Unavailable</div>
+        <p class="result-unavailable-desc">We currently don't cover pincode <strong>{{ pincode }}</strong>. Our network is expanding — contact us to check for updates or alternative arrangements.</p>
+        <a href="{% url 'contact' %}"><button class="btn-primary" style="margin-top: 16px;"><i class="ti ti-phone"></i> Contact Us</button></a>
+      </div>
+    </div>
+    {% endif %}
+  {% endif %}
+
+  <!-- STATS ROW -->
+  <div class="location-stats">
+    <div class="location-stat-item">
+      <div class="location-stat-num" style="color: var(--cyan)">12,000+</div>
+      <div class="location-stat-label">Non-ODA Pincodes</div>
+    </div>
+    <div class="location-stat-divider"></div>
+    <div class="location-stat-item">
+      <div class="location-stat-num" style="color: var(--purple)">10,000+</div>
+      <div class="location-stat-label">ODA Pincodes</div>
+    </div>
+    <div class="location-stat-divider"></div>
+    <div class="location-stat-item">
+      <div class="location-stat-num" style="color: var(--orange)">22,000+</div>
+      <div class="location-stat-label">Total Pincodes</div>
+    </div>
+  </div>
+
+</section>
+
+{% endblock %}
