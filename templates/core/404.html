@@ -1,0 +1,30 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}404 — Page Not Found | EcoFleet Express{% endblock %}
+
+{% block content %}
+
+<!-- Ambient Orbs -->
+<div class="orbs">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+  <div class="orb orb4"></div>
+</div>
+
+<section class="error-section">
+  <div class="error-inner">
+    <div class="error-code">
+      <span class="gradient-text">404</span>
+    </div>
+    <h1 class="error-title">This shipment got lost</h1>
+    <p class="error-sub">The page you're looking for doesn't exist or has been moved. Let's get you back on track.</p>
+    <div class="error-btns">
+      <a href="{% url 'home' %}"><button class="btn-primary"><i class="ti ti-home"></i> Back to Home</button></a>
+      <a href="{% url 'contact' %}"><button class="btn-secondary">Contact Us</button></a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
