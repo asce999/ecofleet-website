@@ -4,11 +4,35 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Primary SEO -->
+  <meta name="description" content="{% block meta_description %}EcoFleet Express is a Pune-based B2B surface cargo and logistics company covering 22,000+ pincodes across India. Reliable freight, ODA delivery, and FTL solutions.{% endblock %}" />
+  <meta name="keywords" content="{% block meta_keywords %}surface cargo, logistics, B2B freight, ODA delivery, FTL, Pune logistics, pan-India cargo, EcoFleet Express{% endblock %}" />
+  <meta name="author" content="EcoFleet Express Pvt. Ltd." />
+  <meta name="robots" content="index, follow" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="EcoFleet Express" />
+  <meta property="og:title" content="{% block og_title %}EcoFleet Express — Surface Cargo & Logistics{% endblock %}" />
+  <meta property="og:description" content="{% block og_description %}Pan-India B2B surface cargo and logistics. 22,000+ pincodes, ODA delivery specialists, FTL solutions from Kothrud, Pune.{% endblock %}" />
+  <meta property="og:image" content="{% block og_image %}{% static 'images/logo.png' %}{% endblock %}" />
+  <meta property="og:url" content="{% block og_url %}http://ecofleetexpress.com{% endblock %}" />
+
+  <!-- Canonical -->
+  <link rel="canonical" href="{% block canonical %}http://ecofleetexpress.com{% endblock %}" />
+
   <title>{% block title %}EcoFleet Express{% endblock %}</title>
+
+  <!-- Favicons -->
+
   <link rel="apple-touch-icon" sizes="180x180" href="{% static '/images/favicons/apple-touch-icon.png' %}">
   <link rel="icon" type="image/png" sizes="32x32" href="{% static '/images/favicons/favicon-32x32.png' %}">
   <link rel="icon" type="image/png" sizes="16x16" href="{% static '/images/favicons/favicon-16x16.png' %}">
   <link rel="manifest" href="{% static '/images/favicons/site.webmanifest' %}">
+
+  <!-- Font and Static Files link -->
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
@@ -28,6 +52,18 @@
 
   <script src="{% static 'js/main.js' %}"></script>
   {% block extra_js %}{% endblock %}
+
+  <!-- Cookie Notice -->
+  <div class="cookie-banner" id="cookieBanner">
+    <div class="cookie-content">
+      <i class="ti ti-cookie"></i>
+      <p>We use cookies to improve your experience on our site. By continuing to browse, you agree to our <a href="{% url 'privacy' %}">Privacy Policy</a>.</p>
+    </div>
+    <div class="cookie-actions">
+      <button class="cookie-accept" id="cookieAccept">Accept</button>
+      <button class="cookie-decline" id="cookieDecline">Decline</button>
+    </div>
+  </div>
 
 </body>
 </html>

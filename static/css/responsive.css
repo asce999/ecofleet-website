@@ -325,3 +325,23 @@
   border-bottom: 1px solid var(--border);
   z-index: 99;
 }
+
+@media (max-width: 768px) {
+  .cookie-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    bottom: 16px;
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .cookie-actions {
+    width: 100%;
+  }
+
+  .cookie-accept,
+  .cookie-decline {
+    flex: 1;
+    text-align: center;
+  }
+}
