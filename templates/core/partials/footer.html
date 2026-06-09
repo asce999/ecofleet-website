@@ -11,8 +11,8 @@
       <h4>Company</h4>
       <ul>
         <li><a href="{% url 'about' %}">About Us</a></li>
-        <li><a href="{% url 'services' %}" class="{% if request.resolver_match.url_name == 'services' %}active{% endif %}">Services</a></li>
-        <li><a href="{% url 'contact' %}" class="{% if request.resolver_match.url_name == 'contact' %}active{% endif %}">Contact</a></li>
+        <li><a href="{% url 'services' %}">Services</a></li>
+        <li><a href="{% url 'contact' %}">Contact</a></li>
       </ul>
     </div>
     <div class="footer-col">
@@ -27,7 +27,7 @@
     <div class="footer-col">
       <h4>Support</h4>
       <ul>
-        <li><a href="#">Find Location</a></li>
+        <li><a href="{% url 'find_location' %}">Find Location</a></li>
         <li><a href="#">Customer Login</a></li>
         <li><a href="#">Track Shipment</a></li>
         <li><a href="{% url 'privacy' %}">Privacy Policy</a></li>
@@ -38,8 +38,6 @@
     <span class="footer-copy">© 2026 EcoFleet Express Pvt. Ltd., Kothrud, Pune — All rights reserved</span>
     <div class="footer-socials">
       <div class="social-btn"><i class="ti ti-brand-linkedin"></i></div>
-      <div class="social-btn"><i class="ti ti-brand-twitter"></i></div>
-      <div class="social-btn"><i class="ti ti-brand-instagram"></i></div>
     </div>
   </div>
 </footer>
