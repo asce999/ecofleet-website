@@ -118,3 +118,20 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+
+# ── Media: uploaded + generated files ──
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# ── Employee portal auth ──
+LOGIN_URL = 'portal_login'
+LOGIN_REDIRECT_URL = 'dashboard'
+LOGOUT_REDIRECT_URL = 'portal_login'
+
+# ── EcoFleet automation data (server-side files used by the portal) ──
+# (COF tool keeps the Excel workbook as the source of truth — see Phase 3)
+EFE_DATA_DIR        = BASE_DIR / 'efe_data'
+COF_EXCEL_PATH      = EFE_DATA_DIR / 'COF' / 'Copy_of_COF_Tracking_Effective_1Apr25.xlsx'
+COF_LETTERHEAD_PATH = EFE_DATA_DIR / 'COF' / 'COF_LetterHead.docx'
+COF_OUTPUT_DIR      = EFE_DATA_DIR / 'COF' / 'Final COF'
+COF_TEMPLATE_SHEET  = 'PERFECT AUTO AGENCY,'

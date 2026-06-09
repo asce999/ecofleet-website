@@ -1,0 +1,237 @@
+{% extends 'core/portal/base.html' %}
+{% load static %}
+{% block title %}Dashboard — EcoFleet Portal{% endblock %}
+{% block heading %}Dashboard{% endblock %}
+{% block content %}
+
+  <div class="dash-greeting">
+    <h2>Welcome back, {{ request.user.get_full_name|default:request.user.username }} 👋</h2>
+    <p>{{ today }} · Here's what's happening across EcoFleet operations.</p>
+  </div>
+
+  <!-- Coverage stats -->
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-ico ico-cyan"><i class="ti ti-map-pin"></i></div>
+      <div class="stat-val">{{ total_pincodes }}</div>
+      <div class="stat-label">Total Pincodes</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-ico ico-green"><i class="ti ti-circle-check"></i></div>
+      <div class="stat-val">{{ non_oda }}</div>
+      <div class="stat-label">Non-ODA Pincodes</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-ico ico-purple"><i class="ti ti-route"></i></div>
+      <div class="stat-val">{{ oda }}</div>
+      <div class="stat-label">ODA Pincodes</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-ico ico-orange"><i class="ti ti-building-warehouse"></i></div>
+      <div class="stat-val">{{ states_served }}</div>
+      <div class="stat-label">States Served</div>
+    </div>
+  </div>
+
+  <!-- Operational stats -->
+  <div class="stat-grid" style="margin-top: 18px;">
+    <div class="stat-card">
+      <div class="stat-ico ico-cyan"><i class="ti ti-file-certificate"></i></div>
+      <div class="stat-val">{{ cofs_month }}</div>
+      <div class="stat-label">COFs This Month</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-ico ico-orange"><i class="ti ti-report"></i></div>
+      <div class="stat-val">{{ reports_month }}</div>
+      <div class="stat-label">Reports This Month</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-ico ico-purple"><i class="ti ti-history"></i></div>
+      <div class="stat-val">{{ total_runs }}</div>
+      <div class="stat-label">Total Tool Runs</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-ico ico-green"><i class="ti ti-users"></i></div>
+      <div class="stat-val">{{ team_members }}</div>
+      <div class="stat-label">Team Members</div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="section-title">Insights</div>
+  <div class="chart-grid">
+    <div class="chart-card">
+      <h3>Network Coverage</h3>
+      <div class="chart-sub">ODA vs Non-ODA pincodes</div>
+      <div class="chart-box"><canvas id="coverageChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Tool Activity</h3>
+      <div class="chart-sub">Runs over the last 14 days</div>
+      <div class="chart-box"><canvas id="activityChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Top States by Coverage</h3>
+      <div class="chart-sub">Pincodes served per state (top 8)</div>
+      <div class="chart-box"><canvas id="statesChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Tool Usage</h3>
+      <div class="chart-sub">Total runs by tool</div>
+      <div class="chart-box"><canvas id="toolsChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Quick actions -->
+  <div class="section-title">Quick Actions</div>
+  <div class="action-grid">
+    <a href="{% url 'cof_generator' %}" class="action-card">
+      <div class="action-ico ico-cyan"><i class="ti ti-file-certificate"></i></div>
+      <h3>Generate COF</h3>
+      <p>Create a Certificate of Facts and update the tracking sheet.</p>
+    </a>
+    <a href="{% url 'morning_report' %}" class="action-card">
+      <div class="action-ico ico-orange"><i class="ti ti-sun"></i></div>
+      <h3>Morning Report</h3>
+      <p>Process Delhivery &amp; DTDC files into 2W and CV masters.</p>
+    </a>
+    <a href="{% url 'pendency_report' %}" class="action-card">
+      <div class="action-ico ico-purple"><i class="ti ti-clock-exclamation"></i></div>
+      <h3>Pendency Report</h3>
+      <p>Pull delayed shipments from the latest master files.</p>
+    </a>
+  </div>
+
+  <!-- Recent activity -->
+  <div class="section-title">Recent Activity</div>
+  <div class="portal-card" style="padding: 6px;">
+    {% if recent_runs %}
+    <table class="activity-table">
+      <thead>
+        <tr><th>Tool</th><th>Reference</th><th>By</th><th>When</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for run in recent_runs %}
+        <tr>
+          <td>{{ run.get_tool_display }}</td>
+          <td>{{ run.reference|default:"—" }}</td>
+          <td>{{ run.user.get_full_name|default:run.user.username|default:"—" }}</td>
+          <td>{{ run.created_at|date:"d M Y, H:i" }}</td>
+          <td>
+            {% if run.status == 'SUCCESS' %}
+              <span class="pill pill-success">Success</span>
+            {% else %}
+              <span class="pill pill-failed">Failed</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="activity-empty">No tool activity yet. Generate a COF or run a report to see it here.</div>
+    {% endif %}
+  </div>
+
+  {{ chart_data|json_script:"chartData" }}
+{% endblock %}
+
+{% block extra_js %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    const D = JSON.parse(document.getElementById('chartData').textContent);
+
+    const CY = '#00AEEF', PU = '#a855f7', OR = '#F7941D';
+    const MUTED = 'rgba(232,234,246,0.55)', GRID = 'rgba(255,255,255,0.06)';
+
+    Chart.defaults.color = MUTED;
+    Chart.defaults.font.family = "Inter, sans-serif";
+    Chart.defaults.font.size = 12;
+
+    // Network coverage — doughnut (Non-ODA cyan, ODA purple to match Find Location)
+    new Chart(document.getElementById('coverageChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Non-ODA', 'ODA'],
+        datasets: [{
+          data: [D.coverage.non_oda, D.coverage.oda],
+          backgroundColor: [CY, PU], borderColor: 'rgba(0,0,0,0)',
+          borderWidth: 2, hoverOffset: 6
+        }]
+      },
+      options: {
+        maintainAspectRatio: false, cutout: '62%',
+        plugins: { legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true } } }
+      }
+    });
+
+    // Tool activity — line with gradient fill
+    const actx = document.getElementById('activityChart').getContext('2d');
+    const grad = actx.createLinearGradient(0, 0, 0, 260);
+    grad.addColorStop(0, 'rgba(0,174,239,0.35)');
+    grad.addColorStop(1, 'rgba(0,174,239,0)');
+    new Chart(actx, {
+      type: 'line',
+      data: {
+        labels: D.activity.labels,
+        datasets: [{
+          label: 'Runs', data: D.activity.data,
+          borderColor: CY, backgroundColor: grad, fill: true,
+          tension: 0.35, pointRadius: 3, pointBackgroundColor: CY, borderWidth: 2
+        }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: GRID }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 } },
+          y: { grid: { color: GRID }, beginAtZero: true, ticks: { precision: 0 } }
+        }
+      }
+    });
+
+    // Top states — horizontal bar
+    new Chart(document.getElementById('statesChart'), {
+      type: 'bar',
+      data: {
+        labels: D.states.labels,
+        datasets: [{
+          data: D.states.data, backgroundColor: 'rgba(0,174,239,0.65)',
+          borderRadius: 6, borderSkipped: false
+        }]
+      },
+      options: {
+        indexAxis: 'y', maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: GRID }, beginAtZero: true, ticks: { precision: 0 } },
+          y: { grid: { display: false } }
+        }
+      }
+    });
+
+    // Tool usage — doughnut (faint placeholder ring until tools are used)
+    const toolsTotal = D.tools.data.reduce((a, b) => a + b, 0);
+    const empty = toolsTotal === 0;
+    new Chart(document.getElementById('toolsChart'), {
+      type: 'doughnut',
+      data: {
+        labels: D.tools.labels,
+        datasets: [{
+          data: empty ? [1, 1, 1] : D.tools.data,
+          backgroundColor: empty
+            ? ['rgba(255,255,255,0.07)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.07)']
+            : [CY, OR, PU],
+          borderColor: 'rgba(0,0,0,0)', borderWidth: 2, hoverOffset: 6
+        }]
+      },
+      options: {
+        maintainAspectRatio: false, cutout: '62%',
+        plugins: {
+          legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true } },
+          tooltip: { enabled: !empty }
+        }
+      }
+    });
+  </script>
+{% endblock %}

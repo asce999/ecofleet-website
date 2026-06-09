@@ -1,0 +1,76 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{% block title %}Employee Portal — EcoFleet Express{% endblock %}</title>
+
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicons/favicon-32x32.png' %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+    <link rel="stylesheet" href="{% static 'css/main.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/portal.css' %}" />
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="portal-body">
+
+<div class="orbs">
+    <div class="orb orb1"></div><div class="orb orb2"></div>
+    <div class="orb orb3"></div><div class="orb orb4"></div>
+</div>
+
+<aside class="portal-sidebar" id="portalSidebar">
+    <a href="{% url 'home' %}" class="portal-logo">
+        <img src="{% static 'images/logo.png' %}" alt="EcoFleet Express" />
+    </a>
+
+    <nav class="portal-nav">
+        <a href="{% url 'dashboard' %}" class="{% if active == 'dashboard' %}active{% endif %}"><i class="ti ti-layout-dashboard"></i> Dashboard</a>
+        <a href="{% url 'cof_generator' %}" class="{% if active == 'cof' %}active{% endif %}"><i class="ti ti-file-certificate"></i> COF Generator</a>
+        <a href="{% url 'morning_report' %}" class="{% if active == 'morning' %}active{% endif %}"><i class="ti ti-sun"></i> Morning Report</a>
+        <a href="{% url 'pendency_report' %}" class="{% if active == 'pendency' %}active{% endif %}"><i class="ti ti-clock-exclamation"></i> Pendency
+  Report</a>
+    </nav>
+
+    <div class="portal-sidebar-foot">
+        <a href="{% url 'portal_logout' %}" class="portal-logout"><i class="ti ti-logout"></i> Log Out</a>
+    </div>
+</aside>
+
+<div class="portal-main">
+    <header class="portal-topbar">
+        <button class="portal-burger" id="portalBurger"><i class="ti ti-menu-2"></i></button>
+        <div class="portal-topbar-title">{% block heading %}{% endblock %}</div>
+        <div class="portal-user">
+            <div class="portal-user-meta">
+            <span class="portal-user-name">{{ request.user.get_full_name|default:request.user.username }}</span>
+            <span class="portal-user-role">Employee</span>
+          </div>
+          <div class="portal-avatar">{{ request.user.username|slice:":1"|upper }}</div>
+        </div>
+    </header>
+
+      {% if messages %}
+      <div class="portal-messages">
+        {% for m in messages %}
+        <div class="portal-msg portal-msg-{{ m.tags }}"><i class="ti ti-info-circle"></i> {{ m }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <main class="portal-content">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+
+<script>
+    document.getElementById('portalBurger')?.addEventListener('click', function () {
+        document.getElementById('portalSidebar').classList.toggle('open');
+    });
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>
