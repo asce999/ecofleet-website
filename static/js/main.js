@@ -43,4 +43,21 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  // Scroll to top
+  const scrollTop = document.getElementById('scrollTop');
+
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 400) {
+      scrollTop.classList.add('visible');
+    } else {
+      scrollTop.classList.remove('visible');
+    }
+  });
+
+  if (scrollTop) {
+    scrollTop.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
 });
