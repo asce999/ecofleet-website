@@ -1,12 +1,12 @@
 {% extends 'core/portal/base.html' %}
 {% load static %}
-{% block title %}Dashboard — EcoFleet Portal{% endblock %}
+{% block title %}Dashboard — EcoFleet Express Portal{% endblock %}
 {% block heading %}Dashboard{% endblock %}
 {% block content %}
 
   <div class="dash-greeting">
     <h2>Welcome back, {{ request.user.get_full_name|default:request.user.username }} 👋</h2>
-    <p>{{ today }} · Here's what's happening across EcoFleet operations.</p>
+    <p>{{ today }} · Here's what's happening across EcoFleet Express operations.</p>
   </div>
 
   <!-- Coverage stats -->
