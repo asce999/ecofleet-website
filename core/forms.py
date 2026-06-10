@@ -1,3 +1,5 @@
+import re
+
 from django import forms
 
 from . import cof
@@ -102,3 +104,74 @@ class CofForm(forms.Form):
             "status_delhivery": g("status_delhivery") or "Not Sent",
             "ref_delhivery": g("ref_delhivery") or "Not Sent",
         }
+
+
+class PendencyForm(forms.Form):
+    file_2w = forms.FileField(label="2W Master Report (.xlsx)")
+    file_cv = forms.FileField(label="CV Master Report (.xlsx)")
+    report_name = forms.CharField(
+        label="Report Name",
+        help_text="The generated file is saved with this name.")
+    min_delay_days = forms.IntegerField(
+        label="Delayed by (days or more)", min_value=1, required=False, initial=1)
+    all_in_transit = forms.BooleanField(
+        label="Include everything in transit (ignore the delay threshold)",
+        required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name, field in self.fields.items():
+            w = field.widget
+            if isinstance(w, forms.CheckboxInput):
+                w.attrs.setdefault('class', 'portal-check')
+            elif isinstance(w, forms.ClearableFileInput):
+                w.attrs.setdefault('class', 'portal-file')
+            else:
+                w.attrs.setdefault('class', 'portal-input')
+
+    def _check_xlsx(self, f):
+        if not f.name.lower().endswith('.xlsx'):
+            raise forms.ValidationError("Please upload an .xlsx file.")
+        return f
+
+    def clean_file_2w(self):
+        return self._check_xlsx(self.cleaned_data['file_2w'])
+
+    def clean_file_cv(self):
+        return self._check_xlsx(self.cleaned_data['file_cv'])
+
+    def clean_report_name(self):
+        raw = (self.cleaned_data['report_name'] or '').strip()
+        safe = re.sub(r'[^\w\s\-.]', '', raw).strip()
+        if not safe:
+            raise forms.ValidationError("Enter a valid report name.")
+        if safe.lower().endswith('.xlsx'):
+            safe = safe[:-5].strip()
+        return safe
+
+    def clean(self):
+        cleaned = super().clean()
+        if not cleaned.get('all_in_transit') and not cleaned.get('min_delay_days'):
+            cleaned['min_delay_days'] = 1
+        return cleaned
+
+
+class MorningForm(forms.Form):
+    file_2w = forms.FileField(label="Yesterday's 2W Report (.xlsx)")
+    file_cv = forms.FileField(label="Yesterday's CV Report (.xlsx)")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.setdefault('class', 'portal-file')
+
+    def _check_xlsx(self, f):
+        if not f.name.lower().endswith('.xlsx'):
+            raise forms.ValidationError("Please upload an .xlsx file.")
+        return f
+
+    def clean_file_2w(self):
+        return self._check_xlsx(self.cleaned_data['file_2w'])
+
+    def clean_file_cv(self):
+        return self._check_xlsx(self.cleaned_data['file_cv'])

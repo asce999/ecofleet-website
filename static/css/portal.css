@@ -440,3 +440,15 @@ input.portal-input[type="date"]::-webkit-calendar-picker-indicator:hover { opaci
   .cof-topbar-actions { width: 100%; }
   .cof-topbar-actions .cof-history-link { flex: 1; justify-content: center; }
 }
+
+/* ---------- PENDENCY: in-transit checkbox ---------- */
+.pendency-check {
+  display: flex; align-items: center; gap: 10px;
+  margin: 4px 22px 4px; padding: 14px 18px; border-radius: 12px;
+  background: rgba(0,174,239,0.06); border: 1px solid rgba(0,174,239,0.22);
+}
+.pendency-check label { font-size: 13.5px; color: var(--text); cursor: pointer; }
+.portal-check {
+  width: 18px; height: 18px; flex-shrink: 0; cursor: pointer;
+  accent-color: var(--cyan);
+}

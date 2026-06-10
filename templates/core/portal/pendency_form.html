@@ -1,0 +1,59 @@
+{% extends 'core/portal/base.html' %}
+{% block title %}Pendency Report — EcoFleet Portal{% endblock %}
+{% block heading %}Pendency Report{% endblock %}
+{% block content %}
+
+<div class="cof-topbar">
+  <span class="cof-meta">Upload the 2W and CV master reports, choose your delay threshold, and generate. The report month is read from the file names.</span>
+</div>
+
+<form method="post" class="cof-form" enctype="multipart/form-data" novalidate>
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+  <div class="portal-msg portal-msg-error">{{ form.non_field_errors|striptags }}</div>
+  {% endif %}
+
+  <div class="cof-section">
+    <div class="cof-section-head"><i class="ti ti-file-upload"></i> Master Reports</div>
+    <div class="cof-grid">
+      {% include 'core/portal/_field.html' with field=form.file_2w %}
+      {% include 'core/portal/_field.html' with field=form.file_cv %}
+    </div>
+  </div>
+
+  <div class="cof-section">
+    <div class="cof-section-head"><i class="ti ti-adjustments"></i> Report Options</div>
+    <div class="cof-grid">
+      {% include 'core/portal/_field.html' with field=form.report_name hint="e.g. Pendency_as_on_10Jun26" %}
+      {% include 'core/portal/_field.html' with field=form.min_delay_days hint="Shipments overdue by at least this many days" %}
+    </div>
+    <div class="pendency-check">
+      {{ form.all_in_transit }}
+      <label for="{{ form.all_in_transit.id_for_label }}">{{ form.all_in_transit.label }}</label>
+    </div>
+  </div>
+
+  <div class="cof-actions">
+    <button type="submit" class="btn-primary"><i class="ti ti-clipboard-list"></i> Generate Report</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Grey out the delay-days field when "everything in transit" is ticked.
+  (function () {
+    const all = document.getElementById('id_all_in_transit');
+    const delay = document.getElementById('id_min_delay_days');
+    if (!all || !delay) return;
+    function sync() {
+      delay.disabled = all.checked;
+      const field = delay.closest('.cof-field');
+      if (field) field.style.opacity = all.checked ? '0.45' : '1';
+    }
+    all.addEventListener('change', sync);
+    sync();
+  })();
+</script>
+{% endblock %}

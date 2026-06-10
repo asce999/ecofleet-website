@@ -1,0 +1,28 @@
+{% extends 'core/portal/base.html' %}
+{% block title %}{{ run.get_tool_display }} — EcoFleet Portal{% endblock %}
+{% block heading %}{{ run.get_tool_display }}{% endblock %}
+{% block content %}
+<div class="portal-card cof-success">
+  <div class="cof-success-ico"><i class="ti ti-circle-check"></i></div>
+  <h2>Report Generated Successfully</h2>
+
+  <div class="cof-success-grid">
+    <div><span>Report</span><strong>{{ run.reference|default:run.get_tool_display }}</strong></div>
+    <div><span>Generated</span><strong>{{ run.created_at|date:"d M Y, H:i" }}</strong></div>
+    <div class="full"><span>Details</span><strong>{{ run.detail }}</strong></div>
+  </div>
+
+  <div class="cof-success-actions">
+    {% for f in run.files.all %}
+    <a href="{% url 'download_file' f.id %}" class="{% if forloop.first %}btn-primary{% else %}btn-secondary{% endif %}">
+      <i class="ti ti-download"></i> {{ f.label }}
+    </a>
+    {% endfor %}
+    {% if run.tool == 'PENDENCY' %}
+    <a href="{% url 'pendency_report' %}" class="btn-secondary"><i class="ti ti-plus"></i> New Report</a>
+    {% elif run.tool == 'MORNING' %}
+    <a href="{% url 'morning_report' %}" class="btn-secondary"><i class="ti ti-plus"></i> New Report</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -17,8 +17,8 @@ from django.core.files.base import ContentFile
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 
-from .forms import CofForm, WorkbookUploadForm
-from . import cof
+from .forms import CofForm, WorkbookUploadForm, PendencyForm, MorningForm
+from . import cof, pendency, morning
 
 from .decorators import staff_required
 from .models import ToolRun, ToolRunFile, CofWorkbook
@@ -346,11 +346,93 @@ def download_file(request, file_id):
 
 @staff_required
 def morning_report(request):
-    return render(request, 'core/portal/coming_soon.html',
-                {'active': 'morning', 'heading': 'Morning Report', 'phase': 'Phase 4'})
+    if request.method == 'POST':
+        form = MorningForm(request.POST, request.FILES)
+        delhivery_files = request.FILES.getlist('delhivery_files')
+        ok = form.is_valid()
+        if not delhivery_files:
+            messages.error(request, "Upload at least one Delhivery CSV.")
+            ok = False
+        elif any(not f.name.lower().endswith('.csv') for f in delhivery_files):
+            messages.error(request, "Delhivery files must be .csv.")
+            ok = False
+
+        if ok:
+            try:
+                result = morning.generate(
+                    delhivery_files, form.cleaned_data['file_2w'], form.cleaned_data['file_cv'])
+            except morning.ReportError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                ToolRun.objects.create(
+                    user=request.user, tool=ToolRun.TOOL_MORNING,
+                    status=ToolRun.STATUS_FAILED, detail=f"Error: {e}")
+                messages.error(request, f"Failed to generate report: {e}")
+            else:
+                s = result['summary']
+                run = ToolRun.objects.create(
+                    user=request.user, tool=ToolRun.TOOL_MORNING,
+                    status=ToolRun.STATUS_SUCCESS,
+                    reference=f"Morning Report {datetime.date.today():%d %b %Y}",
+                    detail=(f"2W: {s['two_w']['updated']} updated / {s['two_w']['new']} new · "
+                            f"CV: {s['cv']['updated']} updated / {s['cv']['new']} new · "
+                            f"{s['delhivery_rows']} Delhivery rows"))
+                for key in ("2W", "CV"):
+                    buf, fname = result[key]
+                    ToolRunFile.objects.create(
+                        run=run, label=f"{key} master",
+                        file=ContentFile(buf.getvalue(), name=fname))
+                messages.success(request, "Morning report generated.")
+                return redirect('tool_result', pk=run.pk)
+        # fall through to re-render with errors
+    else:
+        form = MorningForm()
+    return render(request, 'core/portal/morning_form.html',
+                  {'active': 'morning', 'form': form})
 
 
 @staff_required
 def pendency_report(request):
-    return render(request, 'core/portal/coming_soon.html',
-                {'active': 'pendency', 'heading': 'Pendency Report', 'phase': 'Phase 5'})
+    if request.method == 'POST':
+        form = PendencyForm(request.POST, request.FILES)
+        if form.is_valid():
+            cd = form.cleaned_data
+            try:
+                buf, summary = pendency.generate(
+                    cd['file_2w'], cd['file_cv'],
+                    cd['file_2w'].name, cd['file_cv'].name,
+                    cd.get('min_delay_days') or 1,
+                    cd.get('all_in_transit') or False)
+            except pendency.ReportError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                ToolRun.objects.create(
+                    user=request.user, tool=ToolRun.TOOL_PENDENCY,
+                    status=ToolRun.STATUS_FAILED, detail=f"Error: {e}")
+                messages.error(request, f"Failed to generate report: {e}")
+            else:
+                fname = f"{cd['report_name']}.xlsx"
+                run = ToolRun.objects.create(
+                    user=request.user, tool=ToolRun.TOOL_PENDENCY,
+                    status=ToolRun.STATUS_SUCCESS, reference=cd['report_name'],
+                    detail=(f"2W: {summary['count_2w']} · CV: {summary['count_cv']} "
+                            f"shipments · Month: {summary['month']}"))
+                ToolRunFile.objects.create(
+                    run=run, label="Pendency report",
+                    file=ContentFile(buf.getvalue(), name=fname))
+                messages.success(request, "Pendency report generated.")
+                return redirect('tool_result', pk=run.pk)
+        else:
+            messages.error(request, "Please fix the highlighted fields.")
+    else:
+        form = PendencyForm()
+    return render(request, 'core/portal/pendency_form.html',
+                  {'active': 'pendency', 'form': form})
+
+
+@staff_required
+def tool_result(request, pk):
+    run = get_object_or_404(ToolRun.objects.prefetch_related('files'),
+                            pk=pk, status=ToolRun.STATUS_SUCCESS)
+    active = {'COF': 'cof', 'MORNING': 'morning', 'PENDENCY': 'pendency'}.get(run.tool, '')
+    return render(request, 'core/portal/tool_result.html', {'active': active, 'run': run})

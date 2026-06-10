@@ -1,0 +1,40 @@
+{% extends 'core/portal/base.html' %}
+{% block title %}Morning Report — EcoFleet Portal{% endblock %}
+{% block heading %}Morning Report{% endblock %}
+{% block content %}
+
+<div class="cof-topbar">
+  <span class="cof-meta">Upload the Delhivery CSVs from your email and yesterday's 2W &amp; CV master files. You'll get back the updated 2W and CV masters.</span>
+</div>
+
+<form method="post" class="cof-form" enctype="multipart/form-data" novalidate>
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+  <div class="portal-msg portal-msg-error">{{ form.non_field_errors|striptags }}</div>
+  {% endif %}
+
+  <div class="cof-section">
+    <div class="cof-section-head"><i class="ti ti-mail"></i> Delhivery Files (from email)</div>
+    <div class="cof-grid single">
+      <div class="cof-field">
+        <label>Delhivery CSV file(s) <span class="req">*</span></label>
+        <input type="file" name="delhivery_files" class="portal-file" accept=".csv" multiple required>
+        <span class="cof-hint">Select both daily Delhivery exports (e.g. ecofleet4 &amp; ecofleet6). 2W/CV are split automatically.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="cof-section">
+    <div class="cof-section-head"><i class="ti ti-file-spreadsheet"></i> Yesterday's Master Files</div>
+    <div class="cof-grid">
+      {% include 'core/portal/_field.html' with field=form.file_2w %}
+      {% include 'core/portal/_field.html' with field=form.file_cv %}
+    </div>
+  </div>
+
+  <div class="cof-actions">
+    <button type="submit" class="btn-primary"><i class="ti ti-sun"></i> Generate Updated Masters</button>
+  </div>
+</form>
+{% endblock %}
