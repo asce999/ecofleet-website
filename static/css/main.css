@@ -1607,7 +1607,10 @@ h1 {
 .location-stats {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 48px;
+  width: 100%;
+  max-width: 680px;
   background: rgba(255,255,255,0.03);
   border: 1px solid var(--border);
   border-radius: 16px;
