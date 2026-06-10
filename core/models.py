@@ -49,3 +49,38 @@ class ToolRun(models.Model):
 
     def __str__(self):
         return f"{self.get_tool_display()} · {self.created_at:%d-%b-%Y %H:%M} · {self.status}"
+
+
+class ToolRunFile(models.Model):
+    """An output file produced by a ToolRun (a run can produce several)."""
+    run = models.ForeignKey(ToolRun, on_delete=models.CASCADE, related_name='files')
+    label = models.CharField(max_length=80)
+    file = models.FileField(upload_to='tool_outputs/%Y/%m/')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.label} ({self.run_id})"
+
+
+class CofWorkbook(models.Model):
+    """The team's active COF tracking workbook (one current row at a time)."""
+    file = models.FileField(upload_to='cof/')
+    original_name = models.CharField(max_length=255)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='cof_workbooks')
+    is_active = models.BooleanField(default=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return f"{self.original_name} ({'active' if self.is_active else 'archived'})"
+
+    @classmethod
+    def active(cls):
+        return cls.objects.filter(is_active=True).first()

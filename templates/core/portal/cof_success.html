@@ -1,0 +1,28 @@
+{% extends 'core/portal/base.html' %}
+{% block title %}COF Generated — EcoFleet Portal{% endblock %}
+{% block heading %}COF Generated{% endblock %}
+{% block content %}
+<div class="portal-card cof-success">
+  <div class="cof-success-ico"><i class="ti ti-circle-check"></i></div>
+  <h2>COF Generated Successfully</h2>
+
+  <div class="cof-success-grid">
+    <div><span>COF Number</span><strong>{{ run.reference }}</strong></div>
+    <div><span>Generated</span><strong>{{ run.created_at|date:"d M Y, H:i" }}</strong></div>
+    <div class="full"><span>Details</span><strong>{{ run.detail }}</strong></div>
+  </div>
+
+  <p class="cof-warn">
+    <i class="ti ti-info-circle"></i>
+    The tracking workbook on the server has been updated automatically — the next COF will continue from here. Review the COF document before sending.
+  </p>
+
+  <div class="cof-success-actions">
+    {% for f in run.files.all %}
+    <a href="{% url 'download_file' f.id %}" class="btn-primary"><i class="ti ti-download"></i> {{ f.label }}</a>
+    {% endfor %}
+    <a href="{% url 'cof_workbook_download' %}" class="btn-secondary"><i class="ti ti-file-spreadsheet"></i> Download updated workbook</a>
+    <a href="{% url 'cof_generator' %}" class="btn-secondary"><i class="ti ti-plus"></i> Generate Next</a>
+  </div>
+</div>
+{% endblock %}

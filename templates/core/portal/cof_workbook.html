@@ -1,0 +1,53 @@
+{% extends 'core/portal/base.html' %}
+{% block title %}COF Workbook — EcoFleet Portal{% endblock %}
+{% block heading %}COF Tracking Workbook{% endblock %}
+{% block content %}
+
+{% if wb %}
+<div class="portal-card wb-active">
+  <div class="wb-active-head">
+    <div class="wb-ico"><i class="ti ti-file-spreadsheet"></i></div>
+    <div>
+      <h3>{{ wb.original_name }}</h3>
+      <p>Uploaded by {{ wb.uploaded_by.get_full_name|default:wb.uploaded_by.username|default:"—" }}
+         on {{ wb.uploaded_at|date:"d M Y, H:i" }}</p>
+      {% if info %}<p class="wb-next">Next COF: <strong>{{ info.cof_number }}</strong> · Serial {{ info.serial }}</p>{% endif %}
+    </div>
+  </div>
+  <div class="wb-actions">
+    <a href="{% url 'cof_generator' %}" class="btn-primary"><i class="ti ti-file-certificate"></i> Generate COF</a>
+    <a href="{% url 'cof_workbook_download' %}" class="btn-secondary"><i class="ti ti-download"></i> Download current</a>
+    <form method="post" onsubmit="return confirm('Remove the active workbook? You will need to upload one again to generate COFs.');" style="display:inline;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="remove" />
+      <button type="submit" class="btn-danger"><i class="ti ti-trash"></i> Remove</button>
+    </form>
+  </div>
+</div>
+
+<div class="section-title">Replace workbook</div>
+<p class="wb-hint">Upload a corrected or newer tracking sheet. It becomes the active workbook; the current one is archived.</p>
+{% else %}
+<div class="portal-msg portal-msg-error" style="margin-bottom:18px;">
+  <i class="ti ti-alert-circle"></i> No active tracking workbook. Upload one to start generating COFs.
+</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data" class="wb-upload-form">
+  {% csrf_token %}
+  <div class="cof-section">
+    <div class="cof-section-head"><i class="ti ti-upload"></i> {% if wb %}Replace{% else %}Upload{% endif %} Tracking Workbook</div>
+    <div class="cof-grid single">
+      <div class="cof-field">
+        <label>Tracking Workbook (.xlsx) <span class="req">*</span></label>
+        {{ form.workbook }}
+        <span class="cof-hint">Must be your standard COF tracking workbook (with the data log and the blank COF template sheet).</span>
+        {% if form.workbook.errors %}<span class="cof-err">{{ form.workbook.errors|striptags }}</span>{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="cof-actions">
+    <button type="submit" class="btn-primary"><i class="ti ti-check"></i> {% if wb %}Replace{% else %}Upload{% endif %} Workbook</button>
+  </div>
+</form>
+{% endblock %}

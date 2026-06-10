@@ -297,3 +297,146 @@
 @media (max-width: 900px) {
   .chart-grid { grid-template-columns: 1fr; }
 }
+
+ /* ---------- COF GENERATOR ---------- */
+  .cof-topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    margin-bottom: 20px; padding: 16px 20px;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 14px;
+  }
+  .cof-next { font-size: 15px; }
+  .cof-next strong { color: var(--cyan); }
+  .cof-meta { font-size: 12.5px; color: var(--muted); margin-left: 10px; }
+  .cof-history-link { padding: 9px 16px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+
+  .cof-section { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 18px; margin-bottom: 18px; overflow: hidden; }
+  .cof-section-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 15px 22px; font-weight: 700; font-size: 14.5px;
+    background: linear-gradient(135deg, rgba(0,174,239,0.12), rgba(168,85,247,0.10));
+    border-bottom: 1px solid var(--border);
+  }
+  .cof-section-head i { color: var(--cyan); font-size: 19px; }
+  .cof-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; padding: 18px 22px; }
+  .cof-field { display: flex; flex-direction: column; gap: 6px; }
+  .cof-field label { font-size: 12.5px; color: var(--muted); font-weight: 500; }
+  .cof-field .req { color: var(--cyan); }
+  .cof-hint { font-size: 11px; color: var(--hint); }
+  .cof-err { font-size: 11.5px; color: #ff6b6b; }
+
+  .portal-input, .portal-select {
+    width: 100%;
+    background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+    border-radius: 10px; padding: 11px 14px;
+    color: var(--text); font-size: 14px; font-family: inherit;
+    outline: none; transition: border-color 0.2s;
+  }
+  .portal-input:focus, .portal-select:focus { border-color: var(--cyan); }
+  .portal-input::placeholder { color: var(--hint); }
+  .portal-select { appearance: none; -webkit-appearance: none; cursor: pointer; }
+  .portal-select option { background: #0a0e1a; color: var(--text); }
+
+  .cof-loss {
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 0 22px 4px; padding: 14px 18px; border-radius: 12px;
+    background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25);
+  }
+  .cof-loss-label { font-size: 13px; font-weight: 600; color: #22c55e; }
+  .cof-loss-val { font-size: 22px; font-weight: 800; color: #22c55e; font-variant-numeric: tabular-nums; }
+
+  .cof-actions { display: flex; justify-content: flex-end; margin-top: 4px; }
+  .cof-actions .btn-primary[disabled] { opacity: 0.45; cursor: not-allowed; }
+
+  /* COF success */
+  .cof-success { text-align: center; padding: 44px 28px; max-width: 620px; margin: 0 auto; }
+  .cof-success-ico { font-size: 52px; color: #22c55e; }
+  .cof-success h2 { font-size: 22px; font-weight: 800; margin: 14px 0 24px; }
+  .cof-success-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; text-align: left; margin-bottom: 20px; }
+  .cof-success-grid > div { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .cof-success-grid .full { grid-column: 1 / -1; }
+  .cof-success-grid span { display: block; font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+  .cof-success-grid strong { font-size: 14.5px; }
+  .cof-warn { font-size: 13px; color: var(--orange); margin-bottom: 22px; display: flex; align-items: center; gap: 8px; justify-content: center; }
+  .cof-success-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .cof-success-actions a { text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+
+  /* COF history */
+  .cof-search { display: flex; gap: 10px; margin-bottom: 16px; }
+  .cof-search .portal-input { max-width: 480px; }
+  .cof-search .btn-primary, .cof-search .btn-secondary { white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+  .cof-history-count { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+
+  @media (max-width: 900px) {
+    .cof-grid { grid-template-columns: 1fr; }
+    .cof-success-grid { grid-template-columns: 1fr; }
+  }
+/* ---------- COF WORKBOOK MANAGE + TOPBAR ACTIONS ---------- */
+.cof-topbar-actions { display: flex; gap: 8px; }
+.wb-active { margin-bottom: 22px; }
+.wb-active-head { display: flex; gap: 16px; align-items: flex-start; }
+.wb-ico {
+  width: 52px; height: 52px; border-radius: 13px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 26px;
+  background: rgba(0,174,239,0.12); color: var(--cyan);
+}
+.wb-active-head h3 { font-size: 16px; font-weight: 700; }
+.wb-active-head p { font-size: 13px; color: var(--muted); margin-top: 3px; }
+.wb-next strong { color: var(--cyan); }
+.wb-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+.wb-actions a, .wb-actions button { text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+.wb-hint { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+.btn-danger {
+  background: rgba(237,28,36,0.1); border: 1px solid rgba(237,28,36,0.35);
+  border-radius: 12px; padding: 14px 24px; color: #ff6b6b;
+  font-size: 14.5px; font-weight: 600; cursor: pointer; font-family: inherit;
+}
+.btn-danger:hover { background: rgba(237,28,36,0.18); }
+
+/* ---------- FILE UPLOAD BUTTON (matches page theme) ---------- */
+.portal-file {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--muted);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.portal-file:hover { border-color: var(--cyan); background: rgba(0,174,239,0.04); }
+.portal-file::file-selector-button {
+  background: linear-gradient(135deg, var(--cyan), var(--purple));
+  border: none;
+  border-radius: 8px;
+  padding: 9px 18px;
+  margin-right: 14px;
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.portal-file::file-selector-button:hover { opacity: 0.9; }
+
+/* ---------- NATIVE DATE INPUTS (dark-theme calendar) ---------- */
+input.portal-input[type="date"] { color-scheme: dark; }
+input.portal-input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.9;
+}
+input.portal-input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+
+/* ---------- PHONE: stack the COF preview bar ---------- */
+@media (max-width: 600px) {
+  .cof-topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .cof-meta { margin-left: 0; display: block; margin-top: 4px; }
+  .cof-topbar-actions { width: 100%; }
+  .cof-topbar-actions .cof-history-link { flex: 1; justify-content: center; }
+}

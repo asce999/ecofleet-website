@@ -1,0 +1,130 @@
+{% extends 'core/portal/base.html' %}
+{% block title %}COF Generator — EcoFleet Portal{% endblock %}
+{% block heading %}COF Generator{% endblock %}
+{% block content %}
+
+{% if preview_error %}
+<div class="portal-msg portal-msg-error">
+  <i class="ti ti-alert-triangle"></i> Couldn't read the active workbook: {{ preview_error }}
+</div>
+{% endif %}
+
+<div class="cof-topbar">
+  <div>
+    {% if preview %}
+      <span class="cof-next">Next: <strong>{{ preview.cof_number }}</strong></span>
+      <span class="cof-meta">Claim #{{ preview.claim_number }} · Optlog {{ preview.optlog }} · Serial {{ preview.serial }}</span>
+    {% endif %}
+    <span class="cof-meta">· Workbook: {{ wb.original_name }}</span>
+  </div>
+  <div class="cof-topbar-actions">
+    <a href="{% url 'cof_history' %}" class="btn-secondary cof-history-link"><i class="ti ti-history"></i> History</a>
+    <a href="{% url 'cof_workbook' %}" class="btn-secondary cof-history-link"><i class="ti ti-file-spreadsheet"></i> Workbook</a>
+  </div>
+</div>
+
+<form method="post" class="cof-form" novalidate>
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+  <div class="portal-msg portal-msg-error">{{ form.non_field_errors|striptags }}</div>
+  {% endif %}
+
+  <div class="cof-section">
+    <div class="cof-section-head"><i class="ti ti-package"></i> Shipment Details</div>
+    <div class="cof-grid">
+      {% include 'core/portal/_field.html' with field=form.lr_number %}
+      {% include 'core/portal/_field.html' with field=form.invoice_date %}
+      {% include 'core/portal/_field.html' with field=form.invoice_numbers hint="Separate multiple with /" %}
+      {% include 'core/portal/_field.html' with field=form.remark %}
+      {% include 'core/portal/_field.html' with field=form.transporter %}
+      {% include 'core/portal/_field.html' with field=form.biz %}
+      {% include 'core/portal/_field.html' with field=form.state %}
+    </div>
+  </div>
+
+  <div class="cof-section">
+    <div class="cof-section-head"><i class="ti ti-building-store"></i> Dealer Details</div>
+    <div class="cof-grid">
+      {% include 'core/portal/_field.html' with field=form.dealer_code %}
+      {% include 'core/portal/_field.html' with field=form.dealer_name %}
+    </div>
+  </div>
+
+  <div class="cof-section">
+    <div class="cof-section-head"><i class="ti ti-receipt"></i> Invoice &amp; Package</div>
+    <div class="cof-grid">
+      {% include 'core/portal/_field.html' with field=form.ndp_price %}
+      {% include 'core/portal/_field.html' with field=form.disc_qty %}
+    </div>
+    <div class="cof-loss">
+      <span class="cof-loss-label">Loss Amount  (NDP × Qty)</span>
+      <span class="cof-loss-val">₹ <span id="lossVal">0.00</span></span>
+    </div>
+    <div class="cof-grid">
+      {% include 'core/portal/_field.html' with field=form.weight %}
+      {% include 'core/portal/_field.html' with field=form.num_packages %}
+      {% include 'core/portal/_field.html' with field=form.pickup_date %}
+      {% include 'core/portal/_field.html' with field=form.delivery_date %}
+    </div>
+  </div>
+
+  <div class="cof-section">
+    <div class="cof-section-head"><i class="ti ti-map-pin"></i> Consignee Details</div>
+    <div class="cof-grid">
+      {% include 'core/portal/_field.html' with field=form.consignee_name %}
+      {% include 'core/portal/_field.html' with field=form.destination_city %}
+      {% include 'core/portal/_field.html' with field=form.consignee_address %}
+      {% include 'core/portal/_field.html' with field=form.consignee_state %}
+    </div>
+  </div>
+
+  <div class="cof-section">
+    <div class="cof-section-head"><i class="ti ti-clipboard-list"></i> Status &amp; Tracking</div>
+    <div class="cof-grid">
+      {% include 'core/portal/_field.html' with field=form.status_delhivery %}
+      {% include 'core/portal/_field.html' with field=form.ref_delhivery %}
+    </div>
+  </div>
+
+  <div class="cof-actions">
+    <button type="submit" class="btn-primary" {% if not preview %}disabled{% endif %}>
+      <i class="ti ti-file-certificate"></i> Generate COF
+    </button>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function recalc() {
+    const ndp = parseFloat(document.getElementById('id_ndp_price').value) || 0;
+    const qty = parseFloat(document.getElementById('id_disc_qty').value) || 0;
+    document.getElementById('lossVal').textContent = (ndp * qty).toFixed(2);
+  }
+  document.getElementById('id_ndp_price').addEventListener('input', recalc);
+  document.getElementById('id_disc_qty').addEventListener('input', recalc);
+  recalc();
+
+  // Auto-fill the other state field from the first one filled.
+  // Only writes into a field the user hasn't already typed into, so
+  // manual overrides are always preserved.
+  (function () {
+    const state = document.getElementById('id_state');
+    const consigneeState = document.getElementById('id_consignee_state');
+    if (!state || !consigneeState) return;
+
+    function mirror(src, dst) {
+      // Mark a field as "touched" the moment the user edits it directly.
+      src.addEventListener('input', function () {
+        src.dataset.touched = '1';
+        if (!dst.dataset.touched || dst.value.trim() === '') {
+          dst.value = src.value;
+        }
+      });
+    }
+    mirror(state, consigneeState);
+    mirror(consigneeState, state);
+  })();
+</script>
+{% endblock %}

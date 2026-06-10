@@ -1,0 +1,6 @@
+<div class="cof-field">
+    <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="req">*</span>{% endif %}</label>
+    {{ field }}
+    {% if hint %}<span class="cof-hint">{{ hint }}</span>{% endif %}
+    {% if field.errors %}<span class="cof-err">{{ field.errors|striptags }}</span>{% endif %}
+</div>

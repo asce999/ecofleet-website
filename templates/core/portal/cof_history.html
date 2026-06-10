@@ -1,0 +1,43 @@
+{% extends 'core/portal/base.html' %}
+{% block title %}COF History — EcoFleet Portal{% endblock %}
+{% block heading %}COF History{% endblock %}
+{% block content %}
+
+{% if not wb %}
+<div class="portal-msg portal-msg-error">
+  <i class="ti ti-alert-circle"></i> No active workbook.
+  <a href="{% url 'cof_workbook' %}" style="color:inherit;text-decoration:underline;">Upload one</a> to see history.
+</div>
+{% else %}
+<form method="get" class="cof-search">
+  <input type="text" name="q" value="{{ q }}" class="portal-input"
+         placeholder="Search by LR, dealer, state, invoice, optlog…" />
+  <button type="submit" class="btn-primary"><i class="ti ti-search"></i> Search</button>
+  {% if q %}<a href="{% url 'cof_history' %}" class="btn-secondary">Clear</a>{% endif %}
+</form>
+
+<div class="cof-history-count">{{ total }} record{{ total|pluralize }}{% if q %} matching “{{ q }}”{% endif %}</div>
+
+<div class="portal-card" style="padding:6px; overflow-x:auto;">
+  {% if rows %}
+  <table class="activity-table">
+    <thead>
+      <tr><th>#</th><th>LR Number</th><th>Invoice</th><th>Dealer</th><th>State</th>
+          <th>Claim Amt</th><th>Status</th><th>COF Date</th><th>Optlog</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.num }}</td><td>{{ r.lr }}</td><td>{{ r.invoice }}</td>
+        <td>{{ r.dealer }}</td><td>{{ r.state }}</td><td>{{ r.claim }}</td>
+        <td>{{ r.status }}</td><td>{{ r.cof_date }}</td><td>{{ r.optlog }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="activity-empty">No COF records found{% if q %} for “{{ q }}”{% endif %}.</div>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
