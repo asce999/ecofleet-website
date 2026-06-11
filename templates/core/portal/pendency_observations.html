@@ -1,0 +1,67 @@
+{% extends 'core/portal/base.html' %}
+{% block title %}Add Observations — EcoFleet Express Portal{% endblock %}
+{% block heading %}Pendency · Observations{% endblock %}
+{% block content %}
+
+<div class="cof-topbar">
+  <span class="cof-meta">Upload one or more observation CSVs to fill the <strong>Observation</strong>
+    column of this report. Records are matched <strong>strictly by LR Number</strong>; every other
+    value in the report stays exactly as it is.</span>
+</div>
+
+<div class="cof-section">
+  <div class="cof-section-head"><i class="ti ti-file-spreadsheet"></i> Current Report</div>
+  <div class="cof-success-grid">
+    <div><span>Report</span><strong>{{ run.reference|default:"Pendency report" }}</strong></div>
+    <div><span>Generated</span><strong>{{ run.created_at|date:"d M Y, H:i" }}</strong></div>
+    <div class="full"><span>Latest file</span><strong>{{ current.label }}</strong></div>
+  </div>
+  <div class="cof-actions" style="margin-top:12px;">
+    <a href="{% url 'download_file' current.id %}" class="btn-secondary">
+      <i class="ti ti-download"></i> Download current report
+    </a>
+  </div>
+</div>
+
+<form method="post" class="cof-form" enctype="multipart/form-data" novalidate>
+  {% csrf_token %}
+  <div class="cof-section">
+    <div class="cof-section-head"><i class="ti ti-upload"></i> Observation CSV(s)</div>
+    <div class="cof-grid single">
+      <div class="cof-field">
+        <label>Observation CSV file(s) <span class="req">*</span></label>
+        <input type="file" name="observation_files" class="portal-file" accept=".csv" multiple required>
+        <span class="cof-hint">Each CSV needs an LR column (<code>LR No.</code> / <code>LR Number</code>)
+          and an Observation column (<code>Observation</code> / <code>Status</code>). Multiple files
+          are processed together; later rows win on duplicate LRs.</span>
+      </div>
+    </div>
+  </div>
+  <div class="cof-actions">
+    <button type="submit" class="btn-primary"><i class="ti ti-clipboard-check"></i> Apply Observations</button>
+    <a href="{% url 'tool_result' run.pk %}" class="btn-secondary"><i class="ti ti-arrow-left"></i> Back</a>
+  </div>
+</form>
+
+{% if preview %}
+<div class="cof-section">
+  <div class="cof-section-head"><i class="ti ti-eye"></i> Preview (first rows)</div>
+  {% for sheet in preview %}
+  <div class="cof-history-count">Sheet: <strong>{{ sheet.name }}</strong></div>
+  <div class="portal-card" style="padding:6px; overflow-x:auto; margin-bottom:14px;">
+    <table class="activity-table">
+      <thead>
+        <tr>{% for col in sheet.columns %}<th>{{ col }}</th>{% endfor %}</tr>
+      </thead>
+      <tbody>
+        {% for row in sheet.rows %}
+        <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

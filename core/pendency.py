@@ -9,6 +9,7 @@ import io
 import re
 
 import pandas as pd
+from openpyxl import load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 
@@ -37,6 +38,14 @@ def _col(df, *cands):
         if key in norm:
             return df[norm[key]]
     return pd.Series([None] * len(df), index=df.index)
+
+
+def _norm_lr(value):
+    """Normalise an LR for *exact* matching: trim and drop a trailing '.0'."""
+    s = str(value).strip()
+    if s.endswith(".0") and s[:-2].isdigit():
+        s = s[:-2]
+    return s
 
 
 def extract_month_label(*names):
@@ -163,7 +172,11 @@ def _style_data_sheet(ws, row_count):
 
 # ── Orchestrator ─────────────────────────────────────────────────────
 def generate(file_2w, file_cv, name_2w, name_cv, min_delay, all_in_transit):
-    """Build the pendency workbook (2W + CV sheets). Returns (BytesIO, summary dict)."""
+    """Build the pendency workbook (2W + CV sheets). Returns (BytesIO, summary dict).
+
+    The Observation column is left blank here; it is filled afterwards from the
+    uploaded observation CSV(s) — see load_observation_csvs / apply_observations.
+    """
     out_2w = load_delayed(file_2w, "2W", min_delay, all_in_transit)
     out_cv = load_delayed(file_cv, "CV", min_delay, all_in_transit)
     month_full, month_label = extract_month_label(name_2w, name_cv)
@@ -183,3 +196,102 @@ def generate(file_2w, file_cv, name_2w, name_cv, min_delay, all_in_transit):
         "month": month_label or "—",
     }
     return buf, summary
+
+
+# ── CSV observation override ─────────────────────────────────────────
+_LR_CANDS = ("LR No.", "LR No", "LR Number", "LRN", "Lr No.", "Lr No")
+_OBS_CANDS = ("Observation", "Observations", "Status", "Remark", "Remarks", "Comment", "Comments")
+
+
+def _find_col(df, *cands):
+    """Return the actual column name matching a candidate (case/space-insensitive), or None."""
+    norm = {str(c).strip().lower(): c for c in df.columns}
+    for cand in cands:
+        key = cand.strip().lower()
+        if key in norm:
+            return norm[key]
+    return None
+
+
+def load_observation_csvs(files):
+    """Read one or more observation CSVs into a {normalised_lr: observation} map.
+
+    Each CSV must have an LR column (e.g. 'LR No.' / 'LR Number') and an
+    Observation column (e.g. 'Observation' / 'Status'). Later rows/files win on
+    duplicate LRs. Returns (obs_map, stats). Raises ReportError on bad input.
+    """
+    obs_map, records, duplicates, file_count = {}, 0, 0, 0
+    for f in files:
+        name = getattr(f, "name", "CSV")
+        try:
+            df = pd.read_csv(f, dtype=str, keep_default_na=False)
+        except Exception as e:
+            raise ReportError(f"Couldn't read observation CSV '{name}' ({e}).")
+        df.columns = [str(c) for c in df.columns]
+
+        lr_col = _find_col(df, *_LR_CANDS)
+        obs_col = _find_col(df, *_OBS_CANDS)
+        if lr_col is None or obs_col is None:
+            raise ReportError(
+                f"'{name}' needs an LR column (e.g. 'LR No.' / 'LR Number') and an "
+                f"Observation column (e.g. 'Observation' / 'Status').")
+        file_count += 1
+
+        for lr, obs in zip(df[lr_col], df[obs_col]):
+            key = _norm_lr(lr)
+            text = str(obs).strip()
+            if not key or key.lower() == "nan" or not text:
+                continue
+            records += 1
+            if key in obs_map:
+                duplicates += 1
+            obs_map[key] = text  # later rows/files override
+
+    if not obs_map:
+        raise ReportError("No usable observation rows found in the uploaded CSV(s).")
+    return obs_map, {
+        "files": file_count, "records": records,
+        "duplicates": duplicates, "unique": len(obs_map),
+    }
+
+
+def apply_observations(report_bytes, obs_map):
+    """Overlay observations onto an existing pendency workbook by exact LR match.
+
+    Opens the workbook with openpyxl and writes *only* the Observation cells of
+    matched rows — every other cell, value, and style is left untouched. Returns
+    (BytesIO, stats) where stats includes matched count and the observation LRs
+    that matched no report row.
+    """
+    wb = load_workbook(io.BytesIO(report_bytes))
+    matched, report_rows, matched_keys = 0, 0, set()
+
+    for ws in wb.worksheets:
+        headers = {str(c.value).strip().lower(): c.column
+                   for c in ws[1] if c.value is not None}
+        lr_idx = next((headers[c] for c in ("lr no.", "lr no", "lr number", "lrn")
+                       if c in headers), None)
+        obs_idx = headers.get("observation")
+        if lr_idx is None or obs_idx is None:
+            continue
+
+        for row in ws.iter_rows(min_row=2):
+            lr_cell = row[lr_idx - 1]
+            if lr_cell.value is None or str(lr_cell.value).strip() == "":
+                continue
+            report_rows += 1
+            key = _norm_lr(lr_cell.value)
+            if key in obs_map:
+                row[obs_idx - 1].value = obs_map[key]
+                matched += 1
+                matched_keys.add(key)
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    unmatched = sorted(set(obs_map) - matched_keys)
+    stats = {
+        "matched": matched, "report_rows": report_rows,
+        "unmatched_obs": unmatched, "unmatched_count": len(unmatched),
+    }
+    return buf, stats

@@ -13,6 +13,8 @@ from django.db.models import Count, Q
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 import os
+import io
+import pandas as pd
 from django.core.files.base import ContentFile
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
@@ -234,7 +236,7 @@ def cof_generator(request):
                     status=ToolRun.STATUS_SUCCESS, reference=result['cof_number'],
                     detail=f"Sheet: {result['sheet_name']} · Consignee: {data['consignee_name']}")
                 ToolRunFile.objects.create(
-                    run=run, label="COF document",
+                    run=run, label="COF document", download_name=result['docx_name'],
                     file=ContentFile(result['docx'].getvalue(), name=result['docx_name']))
                 messages.success(request, f"{result['cof_number']} generated successfully.")
                 return redirect('cof_success', pk=run.pk)
@@ -341,7 +343,7 @@ def download_file(request, file_id):
     if not f.file:
         raise Http404("File not available.")
     return FileResponse(f.file.open('rb'), as_attachment=True,
-                        filename=os.path.basename(f.file.name))
+                        filename=f.download_name or os.path.basename(f.file.name))
 
 
 @staff_required
@@ -380,7 +382,7 @@ def morning_report(request):
                 for key in ("2W", "CV"):
                     buf, fname = result[key]
                     ToolRunFile.objects.create(
-                        run=run, label=f"{key} master",
+                        run=run, label=f"{key} master", download_name=fname,
                         file=ContentFile(buf.getvalue(), name=fname))
                 messages.success(request, "Morning report generated.")
                 return redirect('tool_result', pk=run.pk)
@@ -418,7 +420,7 @@ def pendency_report(request):
                     detail=(f"2W: {summary['count_2w']} · CV: {summary['count_cv']} "
                             f"shipments · Month: {summary['month']}"))
                 ToolRunFile.objects.create(
-                    run=run, label="Pendency report",
+                    run=run, label="Pendency report", download_name=fname,
                     file=ContentFile(buf.getvalue(), name=fname))
                 messages.success(request, "Pendency report generated.")
                 return redirect('tool_result', pk=run.pk)
@@ -428,6 +430,91 @@ def pendency_report(request):
         form = PendencyForm()
     return render(request, 'core/portal/pendency_form.html',
                   {'active': 'pendency', 'form': form})
+
+
+def _read_file_bytes(tool_file):
+    """Read a ToolRunFile's bytes (open/close safely)."""
+    f = tool_file.file
+    f.open('rb')
+    try:
+        return f.read()
+    finally:
+        f.close()
+
+
+def _pendency_preview(tool_file, max_rows=15):
+    """Build a small per-sheet preview of a pendency workbook for the UI."""
+    try:
+        data = _read_file_bytes(tool_file)
+        xls = pd.ExcelFile(io.BytesIO(data))
+    except Exception:
+        return []
+    sheets = []
+    for name in xls.sheet_names:
+        try:
+            df = pd.read_excel(xls, sheet_name=name, nrows=max_rows).fillna("")
+        except Exception:
+            continue
+        sheets.append({
+            'name': name,
+            'columns': [str(c) for c in df.columns],
+            'rows': df.astype(str).values.tolist(),
+        })
+    return sheets
+
+
+@staff_required
+def pendency_observations(request, pk):
+    """Override / fill the Observation column of an existing pendency report by
+    uploading one or more observation CSVs, matched strictly by LR Number."""
+    run = get_object_or_404(
+        ToolRun.objects.prefetch_related('files'),
+        pk=pk, tool=ToolRun.TOOL_PENDENCY, status=ToolRun.STATUS_SUCCESS)
+    current = run.files.last()  # newest report (original, or a prior override)
+    if not current or not current.file:
+        raise Http404("No pendency report file to enrich.")
+
+    if request.method == 'POST':
+        obs_files = request.FILES.getlist('observation_files')
+        if not obs_files:
+            messages.error(request, "Upload at least one observation CSV.")
+        elif any(not f.name.lower().endswith('.csv') for f in obs_files):
+            messages.error(request, "Observation files must be .csv.")
+        else:
+            try:
+                obs_map, load_stats = pendency.load_observation_csvs(obs_files)
+                report_bytes = _read_file_bytes(current)
+                buf, apply_stats = pendency.apply_observations(report_bytes, obs_map)
+            except pendency.ReportError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f"Failed to apply observations: {e}")
+            else:
+                fname = f"{run.reference or 'pendency'}_with_observations.xlsx"
+                ToolRunFile.objects.create(
+                    run=run, label="Pendency report (observations updated)",
+                    download_name=fname,
+                    file=ContentFile(buf.getvalue(), name=fname))
+                extra = (f"Observations applied: {apply_stats['matched']} matched "
+                         f"from {load_stats['unique']} CSV record(s)")
+                if apply_stats['unmatched_count']:
+                    extra += f" · {apply_stats['unmatched_count']} CSV LR(s) unmatched"
+                run.detail = f"{run.detail} · {extra}"
+                run.save(update_fields=['detail'])
+                messages.success(
+                    request, f"{apply_stats['matched']} observation(s) applied by exact LR match.")
+                if apply_stats['unmatched_count']:
+                    sample = ", ".join(apply_stats['unmatched_obs'][:10])
+                    more = "…" if apply_stats['unmatched_count'] > 10 else ""
+                    messages.warning(
+                        request, f"{apply_stats['unmatched_count']} LR(s) from the CSV(s) "
+                                 f"matched no report row: {sample}{more}")
+                return redirect('tool_result', pk=run.pk)
+
+    return render(request, 'core/portal/pendency_observations.html', {
+        'active': 'pendency', 'run': run, 'current': current,
+        'preview': _pendency_preview(current),
+    })
 
 
 @staff_required

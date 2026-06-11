@@ -56,6 +56,7 @@ class ToolRunFile(models.Model):
     run = models.ForeignKey(ToolRun, on_delete=models.CASCADE, related_name='files')
     label = models.CharField(max_length=80)
     file = models.FileField(upload_to='tool_outputs/%Y/%m/')
+    download_name = models.CharField(max_length=255, blank=True)  # user-facing filename
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

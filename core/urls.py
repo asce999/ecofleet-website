@@ -25,5 +25,7 @@ urlpatterns = [
 
     path('portal/morning-report/', views.morning_report, name='morning_report'),
     path('portal/pendency/', views.pendency_report, name='pendency_report'),
+    path('portal/pendency/observations/<int:pk>/',
+         views.pendency_observations, name='pendency_observations'),
     path('portal/result/<int:pk>/', views.tool_result, name='tool_result'),
 ]
