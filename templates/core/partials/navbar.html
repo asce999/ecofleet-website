@@ -11,8 +11,13 @@
     <li><a href="{% url 'find_location' %}" class="{% if request.resolver_match.url_name == 'find_location' %}active{% endif %}">Find Location</a></li>
     <li><a href="{% url 'contact' %}" class="{% if request.resolver_match.url_name == 'contact' %}active{% endif %}">Contact</a></li>
   </ul>
-  <button class="nav-cta">Customer Login</button>
-  <button class="nav-hamburger" id="hamburger">
-    <i class="ti ti-menu-2"></i>
-  </button>
+  <div class="nav-actions">
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle light theme" title="Toggle theme">
+      <i class="ti ti-sun"></i><i class="ti ti-moon"></i>
+    </button>
+    <button class="nav-cta">Customer Login</button>
+    <button class="nav-hamburger" id="hamburger">
+      <i class="ti ti-menu-2"></i>
+    </button>
+  </div>
 </nav>

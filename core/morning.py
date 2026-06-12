@@ -59,6 +59,10 @@ def _today():
     return pd.Timestamp(datetime.datetime.today().date())
 
 
+def _report_date():
+    return datetime.datetime.today().date() - timedelta(days=1)
+
+
 def normalize_lr(series):
     """Strip whitespace and remove a trailing .0 from LR numbers."""
     return series.astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
@@ -386,7 +390,7 @@ def generate(delhivery_files, file_2w, file_cv):
     out_2w, sum_2w = process_vehicle_type("2W", delhivery_df, bytes_2w)
     out_cv, sum_cv = process_vehicle_type("CV", delhivery_df, bytes_cv)
 
-    date_str = datetime.datetime.today().strftime("%d%b%y")
+    date_str = _report_date().strftime("%d%b%y")
     return {
         "2W": (out_2w, f"2W_{date_str}.xlsx"),
         "CV": (out_cv, f"CV_{date_str}.xlsx"),

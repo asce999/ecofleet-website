@@ -7,6 +7,18 @@
     <meta name="robots" content="noindex, nofollow" />
     <title>{% block title %}Employee Portal — EcoFleet Express{% endblock %}</title>
 
+    <script>
+      (function () {
+        try {
+          if (localStorage.getItem('ef-theme') !== 'dark') {
+            document.documentElement.setAttribute('data-theme', 'light');
+          }
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
+
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicons/favicon-32x32.png' %}">
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -44,6 +56,9 @@
     <header class="portal-topbar">
         <button class="portal-burger" id="portalBurger"><i class="ti ti-menu-2"></i></button>
         <div class="portal-topbar-title">{% block heading %}{% endblock %}</div>
+        <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle light theme" title="Toggle theme">
+            <i class="ti ti-sun"></i><i class="ti ti-moon"></i>
+        </button>
         <div class="portal-user">
             <div class="portal-user-meta">
             <span class="portal-user-name">{{ request.user.get_full_name|default:request.user.username }}</span>
@@ -70,6 +85,28 @@
     document.getElementById('portalBurger')?.addEventListener('click', function () {
         document.getElementById('portalSidebar').classList.toggle('open');
     });
+
+    (function () {
+        var KEY = 'ef-theme';
+        function current() {
+            return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+        }
+        document.querySelectorAll('.theme-toggle').forEach(function (btn) {
+            btn.setAttribute('aria-pressed', current() === 'light' ? 'true' : 'false');
+            btn.addEventListener('click', function () {
+                var next = current() === 'light' ? 'dark' : 'light';
+                try { localStorage.setItem(KEY, next); } catch (e) {}
+                if (next === 'light') {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                }
+                document.querySelectorAll('.theme-toggle').forEach(function (b) {
+                    b.setAttribute('aria-pressed', next === 'light' ? 'true' : 'false');
+                });
+            });
+        });
+    })();
 </script>
 {% block extra_js %}{% endblock %}
 </body>

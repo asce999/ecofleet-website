@@ -1,23 +1,37 @@
 {% extends 'core/portal/base.html' %}
-{% block title %}Add Observations — EcoFleet Express Portal{% endblock %}
-{% block heading %}Pendency · Observations{% endblock %}
+{% block title %}Add Observations - EcoFleet Express Portal{% endblock %}
+{% block heading %}Pendency Observations{% endblock %}
 {% block content %}
 
-<div class="cof-topbar">
-  <span class="cof-meta">Upload one or more observation CSVs to fill the <strong>Observation</strong>
-    column of this report. Records are matched <strong>strictly by LR Number</strong>; every other
-    value in the report stays exactly as it is.</span>
+<div class="cof-topbar observe-topbar">
+  <div>
+    <div class="observe-kicker">Observation update</div>
+    <div class="observe-title">Update the current pendency report from CSV</div>
+    <span class="cof-meta observe-meta">Only the Observation column is updated. Matching is done strictly by LR Number.</span>
+  </div>
+  <div class="cof-topbar-actions">
+    <a href="{% url 'tool_result' run.pk %}" class="btn-secondary cof-history-link">
+      <i class="ti ti-arrow-left"></i> Back to result
+    </a>
+  </div>
 </div>
 
 <div class="cof-section">
   <div class="cof-section-head"><i class="ti ti-file-spreadsheet"></i> Current Report</div>
-  <div class="cof-success-grid">
-    <div><span>Report</span><strong>{{ run.reference|default:"Pendency report" }}</strong></div>
-    <div><span>Generated</span><strong>{{ run.created_at|date:"d M Y, H:i" }}</strong></div>
-    <div class="full"><span>Latest file</span><strong>{{ current.label }}</strong></div>
-  </div>
-  <div class="cof-actions" style="margin-top:12px;">
-    <a href="{% url 'download_file' current.id %}" class="btn-secondary">
+  <div class="observe-summary">
+    <div class="observe-summary-item">
+      <span>Report</span>
+      <strong>{{ run.reference|default:"Pendency report" }}</strong>
+    </div>
+    <div class="observe-summary-item">
+      <span>Generated</span>
+      <strong>{{ run.created_at|date:"d M Y, H:i" }}</strong>
+    </div>
+    <div class="observe-summary-item">
+      <span>Latest file</span>
+      <strong>{{ current.label }}</strong>
+    </div>
+    <a href="{% url 'download_file' current.id %}" class="btn-secondary observe-download">
       <i class="ti ti-download"></i> Download current report
     </a>
   </div>
@@ -25,40 +39,53 @@
 
 <form method="post" class="cof-form" enctype="multipart/form-data" novalidate>
   {% csrf_token %}
+
   <div class="cof-section">
-    <div class="cof-section-head"><i class="ti ti-upload"></i> Observation CSV(s)</div>
-    <div class="cof-grid single">
-      <div class="cof-field">
-        <label>Observation CSV file(s) <span class="req">*</span></label>
-        <input type="file" name="observation_files" class="portal-file" accept=".csv" multiple required>
-        <span class="cof-hint">Each CSV needs an LR column (<code>LR No.</code> / <code>LR Number</code>)
-          and an Observation column (<code>Observation</code> / <code>Status</code>). Multiple files
-          are processed together; later rows win on duplicate LRs.</span>
+    <div class="cof-section-head"><i class="ti ti-upload"></i> Observation CSV Files</div>
+    <div class="observe-upload">
+      <label class="observe-file-label" for="id_observation_files">
+        <span class="observe-file-icon"><i class="ti ti-file-type-csv"></i></span>
+        <span>
+          <strong>Select CSV file(s)</strong>
+          <small>Upload one or more observation files. Multiple files are processed together.</small>
+        </span>
+      </label>
+      <input id="id_observation_files" type="file" name="observation_files" class="portal-file" accept=".csv" multiple required>
+
+      <div class="observe-requirements">
+        <div><i class="ti ti-key"></i> LR column: <strong>LR No.</strong> or <strong>LR Number</strong></div>
+        <div><i class="ti ti-message-2"></i> Observation column: <strong>Observation</strong> or <strong>Status</strong></div>
+        <div><i class="ti ti-refresh"></i> Duplicate LR rows: the later row is used</div>
       </div>
     </div>
   </div>
-  <div class="cof-actions">
+
+  <div class="cof-actions observe-form-actions">
     <button type="submit" class="btn-primary"><i class="ti ti-clipboard-check"></i> Apply Observations</button>
-    <a href="{% url 'tool_result' run.pk %}" class="btn-secondary"><i class="ti ti-arrow-left"></i> Back</a>
   </div>
 </form>
 
 {% if preview %}
-<div class="cof-section">
-  <div class="cof-section-head"><i class="ti ti-eye"></i> Preview (first rows)</div>
+<div class="cof-section observe-preview">
+  <div class="cof-section-head observe-preview-head">
+    <span><i class="ti ti-eye"></i> Workbook Preview</span>
+    <small>First rows only</small>
+  </div>
   {% for sheet in preview %}
-  <div class="cof-history-count">Sheet: <strong>{{ sheet.name }}</strong></div>
-  <div class="portal-card" style="padding:6px; overflow-x:auto; margin-bottom:14px;">
-    <table class="activity-table">
-      <thead>
-        <tr>{% for col in sheet.columns %}<th>{{ col }}</th>{% endfor %}</tr>
-      </thead>
-      <tbody>
-        {% for row in sheet.rows %}
-        <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="observe-sheet">
+    <div class="observe-sheet-title">Sheet: <strong>{{ sheet.name }}</strong></div>
+    <div class="observe-table-wrap">
+      <table class="activity-table">
+        <thead>
+          <tr>{% for col in sheet.columns %}<th>{{ col }}</th>{% endfor %}</tr>
+        </thead>
+        <tbody>
+          {% for row in sheet.rows %}
+          <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
   {% endfor %}
 </div>

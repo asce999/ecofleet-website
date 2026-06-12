@@ -7,6 +7,18 @@
     <meta name="robots" content="noindex, nofollow" />
     <title>Employee Login — EcoFleet Express</title>
 
+    <script>
+      (function () {
+        try {
+          if (localStorage.getItem('ef-theme') !== 'dark') {
+            document.documentElement.setAttribute('data-theme', 'light');
+          }
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
+
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicons/favicon-32x32.png' %}">
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -15,6 +27,10 @@
     <link rel="stylesheet" href="{% static 'css/portal.css' %}" />
 </head>
 <body class="portal-login-body">
+
+<button class="theme-toggle theme-toggle-floating" id="themeToggle" type="button" aria-label="Toggle light theme" title="Toggle theme">
+    <i class="ti ti-sun"></i><i class="ti ti-moon"></i>
+</button>
 
 <div class="orbs">
     <div class="orb orb1"></div><div class="orb orb2"></div>
@@ -50,5 +66,27 @@
 
       <a href="{% url 'home' %}" class="login-back"><i class="ti ti-arrow-left"></i> Back to website</a>
     </div>
+
+<script>
+    (function () {
+        var KEY = 'ef-theme';
+        function current() {
+            return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+        }
+        document.querySelectorAll('.theme-toggle').forEach(function (btn) {
+            btn.setAttribute('aria-pressed', current() === 'light' ? 'true' : 'false');
+            btn.addEventListener('click', function () {
+                var next = current() === 'light' ? 'dark' : 'light';
+                try { localStorage.setItem(KEY, next); } catch (e) {}
+                if (next === 'light') {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                }
+                btn.setAttribute('aria-pressed', next === 'light' ? 'true' : 'false');
+            });
+        });
+    })();
+</script>
 </body>
 </html>

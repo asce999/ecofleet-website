@@ -1,6 +1,45 @@
 // EcoFleet Express - Main JS
 
+// Theme toggle (light / dark). Persists choice in localStorage.
+// The initial theme is applied pre-paint by an inline script in the <head>;
+// here we just wire up the toggle buttons.
+window.EcoFleetTheme = (function () {
+  var KEY = 'ef-theme';
+
+  function current() {
+    return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  }
+
+  function apply(theme) {
+    if (theme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+    document.querySelectorAll('.theme-toggle').forEach(function (btn) {
+      btn.setAttribute('aria-pressed', theme === 'light' ? 'true' : 'false');
+    });
+  }
+
+  function toggle() {
+    var next = current() === 'light' ? 'dark' : 'light';
+    try { localStorage.setItem(KEY, next); } catch (e) {}
+    apply(next);
+  }
+
+  function init() {
+    apply(current());
+    document.querySelectorAll('.theme-toggle').forEach(function (btn) {
+      btn.addEventListener('click', toggle);
+    });
+  }
+
+  return { init: init, toggle: toggle, apply: apply };
+})();
+
 document.addEventListener('DOMContentLoaded', function () {
+
+  window.EcoFleetTheme.init();
 
   // Mobile nav toggle
   const hamburger = document.getElementById('hamburger');
