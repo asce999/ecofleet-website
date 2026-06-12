@@ -414,6 +414,29 @@ h1 {
   gap: 8px;
 }
 
+.btn-rainbow {
+  background: linear-gradient(135deg, var(--cyan) 0%, var(--purple) 45%, var(--orange) 90%);
+  border: none;
+  border-radius: 12px;
+  padding: 14px 32px;
+  color: #fff;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.btn-rainbow:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+
 .btn-secondary {
   background: var(--surface-2);
   border: 1px solid var(--border-strong);

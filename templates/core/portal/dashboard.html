@@ -141,8 +141,12 @@
   <script>
     const D = JSON.parse(document.getElementById('chartData').textContent);
 
-    const CY = '#00AEEF', PU = '#a855f7', OR = '#F7941D';
-    const MUTED = 'rgba(232,234,246,0.55)', GRID = 'rgba(255,255,255,0.06)';
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const CY = isLight ? '#0089b8' : '#00AEEF';
+    const PU = isLight ? '#7c3aed' : '#a855f7';
+    const OR = isLight ? '#c2710a' : '#F7941D';
+    const MUTED = isLight ? 'rgba(22,32,58,0.62)' : 'rgba(232,234,246,0.55)';
+    const GRID = isLight ? 'rgba(20,32,60,0.08)' : 'rgba(255,255,255,0.06)';
 
     Chart.defaults.color = MUTED;
     Chart.defaults.font.family = "Inter, sans-serif";
@@ -167,9 +171,10 @@
 
     // Tool activity — line with gradient fill
     const actx = document.getElementById('activityChart').getContext('2d');
+    const gradColor = isLight ? '0,137,184' : '0,174,239';
     const grad = actx.createLinearGradient(0, 0, 0, 260);
-    grad.addColorStop(0, 'rgba(0,174,239,0.35)');
-    grad.addColorStop(1, 'rgba(0,174,239,0)');
+    grad.addColorStop(0, `rgba(${gradColor},0.25)`);
+    grad.addColorStop(1, `rgba(${gradColor},0)`);
     new Chart(actx, {
       type: 'line',
       data: {
@@ -196,7 +201,7 @@
       data: {
         labels: D.states.labels,
         datasets: [{
-          data: D.states.data, backgroundColor: 'rgba(0,174,239,0.65)',
+          data: D.states.data, backgroundColor: isLight ? 'rgba(0,137,184,0.65)' : 'rgba(0,174,239,0.65)',
           borderRadius: 6, borderSkipped: false
         }]
       },
@@ -220,7 +225,9 @@
         datasets: [{
           data: empty ? [1, 1, 1] : D.tools.data,
           backgroundColor: empty
-            ? ['rgba(255,255,255,0.07)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.07)']
+            ? (isLight
+               ? ['rgba(20,32,60,0.06)', 'rgba(20,32,60,0.04)', 'rgba(20,32,60,0.06)']
+               : ['rgba(255,255,255,0.07)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.07)'])
             : [CY, OR, PU],
           borderColor: 'rgba(0,0,0,0)', borderWidth: 2, hoverOffset: 6
         }]

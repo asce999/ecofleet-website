@@ -3,41 +3,152 @@
 {% block heading %}Pendency Report{% endblock %}
 {% block content %}
 
-<div class="cof-topbar">
-  <span class="cof-meta">Upload the 2W and CV master reports, choose your delay threshold, and generate. The report month is read from the file names. When a Delhivery token is configured, the Observation column is auto-filled from live shipment status; you can also override observations from a CSV after generating.</span>
+<div class="portal-tabs" style="display: flex; gap: 8px; margin-bottom: 22px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+  <button type="button" class="portal-tab-btn active" data-tab="generate" style="background: none; border: none; outline: none; padding: 10px 18px; font-size: 14.5px; font-weight: 600; color: var(--muted); cursor: pointer; border-radius: 8px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
+    <i class="ti ti-file-plus"></i> Generate Report
+  </button>
+  <button type="button" class="portal-tab-btn" data-tab="observe" style="background: none; border: none; outline: none; padding: 10px 18px; font-size: 14.5px; font-weight: 600; color: var(--muted); cursor: pointer; border-radius: 8px; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
+    <i class="ti ti-edit"></i> Update Observations
+  </button>
 </div>
 
-<form method="post" class="cof-form" enctype="multipart/form-data" novalidate>
-  {% csrf_token %}
+<!-- Tab 1: Generate Report -->
+<div id="tab-generate" class="portal-tab-content active">
+  <div class="cof-topbar">
+    <span class="cof-meta">Upload the 2W and CV master reports, choose your delay threshold, and generate. The report month is read from the file names. When a Delhivery token is configured, the Observation column is auto-filled from live shipment status; you can also override observations from a CSV after generating.</span>
+  </div>
 
-  {% if form.non_field_errors %}
-  <div class="portal-msg portal-msg-error">{{ form.non_field_errors|striptags }}</div>
+  <form method="post" class="cof-form" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="portal-msg portal-msg-error">{{ form.non_field_errors|striptags }}</div>
+    {% endif %}
+
+    <div class="cof-section">
+      <div class="cof-section-head"><i class="ti ti-file-upload"></i> Master Reports</div>
+      <div class="cof-grid">
+        {% include 'core/portal/_field.html' with field=form.file_2w %}
+        {% include 'core/portal/_field.html' with field=form.file_cv %}
+      </div>
+    </div>
+
+    <div class="cof-section">
+      <div class="cof-section-head"><i class="ti ti-adjustments"></i> Report Options</div>
+      <div class="cof-grid">
+        {% include 'core/portal/_field.html' with field=form.report_name hint="e.g. Pendency_as_on_10Jun26" %}
+        {% include 'core/portal/_field.html' with field=form.min_delay_days hint="Shipments overdue by at least this many days" %}
+      </div>
+      <div class="pendency-check">
+        {{ form.all_in_transit }}
+        <label for="{{ form.all_in_transit.id_for_label }}">{{ form.all_in_transit.label }}</label>
+      </div>
+    </div>
+
+    <div class="cof-actions">
+      <button type="submit" class="btn-primary"><i class="ti ti-clipboard-list"></i> Generate Report</button>
+    </div>
+  </form>
+</div>
+
+<!-- Tab 2: Update Observations -->
+<div id="tab-observe" class="portal-tab-content" style="display: none;">
+  {% if latest_run and current %}
+    <div class="cof-topbar observe-topbar">
+      <div>
+        <div class="observe-kicker">Observation update</div>
+        <div class="observe-title">Update the current pendency report from CSV</div>
+        <span class="cof-meta observe-meta">Only the Observation column is updated. Matching is done strictly by LR Number.</span>
+      </div>
+    </div>
+
+    <div class="cof-section">
+      <div class="cof-section-head"><i class="ti ti-file-spreadsheet"></i> Current Report</div>
+      <div class="observe-summary">
+        <div class="observe-summary-item">
+          <span>Report</span>
+          <strong>{{ latest_run.reference|default:"Pendency report" }}</strong>
+        </div>
+        <div class="observe-summary-item">
+          <span>Generated</span>
+          <strong>{{ latest_run.created_at|date:"d M Y, H:i" }}</strong>
+        </div>
+        <div class="observe-summary-item">
+          <span>Latest file</span>
+          <strong>{{ current.label }}</strong>
+        </div>
+        <a href="{% url 'download_file' current.id %}" class="btn-secondary observe-download">
+          <i class="ti ti-download"></i> Download current report
+        </a>
+      </div>
+    </div>
+
+    <form method="post" action="{% url 'pendency_observations' latest_run.pk %}" class="cof-form" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      <div class="cof-section">
+        <div class="cof-section-head"><i class="ti ti-upload"></i> Observation CSV Files</div>
+        <div class="observe-upload">
+          <label class="observe-file-label" for="id_observation_files_main">
+            <span class="observe-file-icon"><i class="ti ti-file-type-csv"></i></span>
+            <span>
+              <strong>Select CSV file(s)</strong>
+              <small>Upload one or more observation files. Multiple files are processed together.</small>
+            </span>
+          </label>
+          <input id="id_observation_files_main" type="file" name="observation_files" class="portal-file" accept=".csv" multiple required>
+
+          <div class="observe-requirements">
+            <div><i class="ti ti-key"></i> LR column: <strong>LR No.</strong> or <strong>LR Number</strong></div>
+            <div><i class="ti ti-message-2"></i> Observation column: <strong>Observation</strong> or <strong>Status</strong></div>
+            <div><i class="ti ti-refresh"></i> Duplicate LR rows: the later row is used</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cof-actions observe-form-actions">
+        <button type="submit" class="btn-primary"><i class="ti ti-clipboard-check"></i> Apply Observations</button>
+      </div>
+    </form>
+
+    {% if preview %}
+    <div class="cof-section observe-preview">
+      <div class="cof-section-head observe-preview-head">
+        <span><i class="ti ti-eye"></i> Workbook Preview</span>
+        <small>First rows only</small>
+      </div>
+      {% for sheet in preview %}
+      <div class="observe-sheet">
+        <div class="observe-sheet-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 4px 0;">
+          <div class="observe-sheet-title" style="margin-bottom: 0; font-weight: 600;">Sheet: <strong>{{ sheet.name }}</strong></div>
+          <button type="button" class="btn-secondary btn-sm copy-lr-btn" data-sheet="{{ sheet.name }}" style="padding: 6px 12px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; border-radius: 8px;">
+            <i class="ti ti-copy"></i> Copy all LR Numbers
+          </button>
+        </div>
+        <div class="observe-table-wrap">
+          <table class="activity-table">
+            <thead>
+              <tr>{% for col in sheet.columns %}<th>{{ col }}</th>{% endfor %}</tr>
+            </thead>
+            <tbody>
+              {% for row in sheet.rows %}
+              <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+  {% else %}
+    <div class="portal-msg portal-msg-error" style="margin-top: 10px;">
+      <i class="ti ti-alert-circle"></i> No pendency reports have been generated yet. Please generate a report first.
+    </div>
   {% endif %}
+</div>
 
-  <div class="cof-section">
-    <div class="cof-section-head"><i class="ti ti-file-upload"></i> Master Reports</div>
-    <div class="cof-grid">
-      {% include 'core/portal/_field.html' with field=form.file_2w %}
-      {% include 'core/portal/_field.html' with field=form.file_cv %}
-    </div>
-  </div>
-
-  <div class="cof-section">
-    <div class="cof-section-head"><i class="ti ti-adjustments"></i> Report Options</div>
-    <div class="cof-grid">
-      {% include 'core/portal/_field.html' with field=form.report_name hint="e.g. Pendency_as_on_10Jun26" %}
-      {% include 'core/portal/_field.html' with field=form.min_delay_days hint="Shipments overdue by at least this many days" %}
-    </div>
-    <div class="pendency-check">
-      {{ form.all_in_transit }}
-      <label for="{{ form.all_in_transit.id_for_label }}">{{ form.all_in_transit.label }}</label>
-    </div>
-  </div>
-
-  <div class="cof-actions">
-    <button type="submit" class="btn-primary"><i class="ti ti-clipboard-list"></i> Generate Report</button>
-  </div>
-</form>
+{{ all_lrs|json_script:"allLrsData" }}
 {% endblock %}
 
 {% block extra_js %}
@@ -54,6 +165,105 @@
     }
     all.addEventListener('change', sync);
     sync();
+  })();
+
+  // Tabs switching logic
+  (function () {
+    const tabBtns = document.querySelectorAll('.portal-tab-btn');
+    const tabContents = document.querySelectorAll('.portal-tab-content');
+    
+    // Read theme colors or variables
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    
+    function setTab(tabId) {
+      tabBtns.forEach(btn => {
+        const isCurrent = btn.getAttribute('data-tab') === tabId;
+        if (isCurrent) {
+          btn.classList.add('active');
+          btn.style.color = 'var(--cyan)';
+          btn.style.background = 'var(--surface-3)';
+          btn.style.boxShadow = 'inset 0 -2px 0 var(--cyan)';
+          btn.style.borderRadius = '8px 8px 0 0';
+        } else {
+          btn.classList.remove('active');
+          btn.style.color = 'var(--muted)';
+          btn.style.background = 'none';
+          btn.style.boxShadow = 'none';
+          btn.style.borderRadius = '8px';
+        }
+      });
+      
+      tabContents.forEach(content => {
+        if (content.id === `tab-${tabId}`) {
+          content.style.display = 'block';
+        } else {
+          content.style.display = 'none';
+        }
+      });
+      
+      window.location.hash = tabId;
+    }
+    
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        setTab(this.getAttribute('data-tab'));
+      });
+      
+      // Initial styling
+      btn.style.color = 'var(--muted)';
+      btn.style.background = 'none';
+      btn.style.borderRadius = '8px';
+      btn.addEventListener('mouseenter', function() {
+        if (!this.classList.contains('active')) {
+          this.style.background = 'var(--surface-2)';
+          this.style.color = 'var(--text)';
+        }
+      });
+      btn.addEventListener('mouseleave', function() {
+        if (!this.classList.contains('active')) {
+          this.style.background = 'none';
+          this.style.color = 'var(--muted)';
+        }
+      });
+    });
+    
+    let defaultTab = 'generate';
+    if (window.location.hash === '#observe') {
+      defaultTab = 'observe';
+    }
+    setTab(defaultTab);
+  })();
+
+  // Copy LR Numbers logic
+  (function () {
+    const dataEl = document.getElementById('allLrsData');
+    if (!dataEl) return;
+    const allLrs = JSON.parse(dataEl.textContent);
+    
+    document.querySelectorAll('.copy-lr-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const sheetName = this.getAttribute('data-sheet');
+        const lrs = allLrs[sheetName] || [];
+        if (lrs.length === 0) {
+          alert(`No LR numbers found in the ${sheetName} sheet.`);
+          return;
+        }
+        
+        const textToCopy = lrs.join('\n');
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          const origHtml = this.innerHTML;
+          this.innerHTML = '<i class="ti ti-circle-check"></i> Copied!';
+          this.style.color = 'var(--success)';
+          setTimeout(() => {
+            this.innerHTML = origHtml;
+            this.style.color = '';
+          }, 2000);
+        }).catch(err => {
+          console.error('Could not copy text: ', err);
+          alert('Failed to copy LR numbers.');
+        });
+      });
+    });
   })();
 </script>
 {% endblock %}

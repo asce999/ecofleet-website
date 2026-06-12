@@ -395,6 +395,15 @@ def morning_report(request):
 
 @staff_required
 def pendency_report(request):
+    latest_run = ToolRun.objects.filter(tool=ToolRun.TOOL_PENDENCY, status=ToolRun.STATUS_SUCCESS).first()
+    latest_file = latest_run.files.last() if latest_run else None
+    
+    preview = None
+    all_lrs = {}
+    if latest_file:
+        preview = _pendency_preview(latest_file)
+        all_lrs = _get_all_lrs_from_workbook(latest_file)
+
     if request.method == 'POST':
         form = PendencyForm(request.POST, request.FILES)
         if form.is_valid():
@@ -428,8 +437,15 @@ def pendency_report(request):
             messages.error(request, "Please fix the highlighted fields.")
     else:
         form = PendencyForm()
-    return render(request, 'core/portal/pendency_form.html',
-                  {'active': 'pendency', 'form': form})
+    
+    return render(request, 'core/portal/pendency_form.html', {
+        'active': 'pendency',
+        'form': form,
+        'latest_run': latest_run,
+        'current': latest_file,
+        'preview': preview,
+        'all_lrs': all_lrs,
+    })
 
 
 def _read_file_bytes(tool_file):
@@ -461,6 +477,29 @@ def _pendency_preview(tool_file, max_rows=15):
             'rows': df.astype(str).values.tolist(),
         })
     return sheets
+
+
+def _get_all_lrs_from_workbook(tool_file):
+    """Get all LR numbers from the 2W and CV sheets as a dict: {sheet_name: [lr1, lr2, ...]}."""
+    try:
+        data = _read_file_bytes(tool_file)
+        xls = pd.ExcelFile(io.BytesIO(data))
+    except Exception:
+        return {}
+    
+    result = {}
+    for name in xls.sheet_names:
+        if name in ("2W", "CV"):
+            try:
+                df = pd.read_excel(xls, sheet_name=name)
+                df.columns = [str(c).strip().lower() for c in df.columns]
+                lr_col = next((c for c in df.columns if c in ("lr no.", "lr no", "lr number", "lrn")), None)
+                if lr_col:
+                    lrs = df[lr_col].dropna().astype(str).str.strip().str.replace(r'\.0$', '', regex=True).tolist()
+                    result[name] = lrs
+            except Exception:
+                continue
+    return result
 
 
 @staff_required
@@ -514,6 +553,7 @@ def pendency_observations(request, pk):
     return render(request, 'core/portal/pendency_observations.html', {
         'active': 'pendency', 'run': run, 'current': current,
         'preview': _pendency_preview(current),
+        'all_lrs': _get_all_lrs_from_workbook(current),
     })
 
 

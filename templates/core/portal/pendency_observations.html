@@ -73,7 +73,12 @@
   </div>
   {% for sheet in preview %}
   <div class="observe-sheet">
-    <div class="observe-sheet-title">Sheet: <strong>{{ sheet.name }}</strong></div>
+    <div class="observe-sheet-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 4px 0;">
+      <div class="observe-sheet-title" style="margin-bottom: 0; font-weight: 600;">Sheet: <strong>{{ sheet.name }}</strong></div>
+      <button type="button" class="btn-secondary btn-sm copy-lr-btn" data-sheet="{{ sheet.name }}" style="padding: 6px 12px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; border-radius: 8px;">
+        <i class="ti ti-copy"></i> Copy all LR Numbers
+      </button>
+    </div>
     <div class="observe-table-wrap">
       <table class="activity-table">
         <thead>
@@ -91,4 +96,41 @@
 </div>
 {% endif %}
 
+{{ all_lrs|json_script:"allLrsData" }}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Copy LR Numbers logic
+  (function () {
+    const dataEl = document.getElementById('allLrsData');
+    if (!dataEl) return;
+    const allLrs = JSON.parse(dataEl.textContent);
+    
+    document.querySelectorAll('.copy-lr-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const sheetName = this.getAttribute('data-sheet');
+        const lrs = allLrs[sheetName] || [];
+        if (lrs.length === 0) {
+          alert(`No LR numbers found in the ${sheetName} sheet.`);
+          return;
+        }
+        
+        const textToCopy = lrs.join('\n');
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          const origHtml = this.innerHTML;
+          this.innerHTML = '<i class="ti ti-circle-check"></i> Copied!';
+          this.style.color = 'var(--success)';
+          setTimeout(() => {
+            this.innerHTML = origHtml;
+            this.style.color = '';
+          }, 2000);
+        }).catch(err => {
+          console.error('Could not copy text: ', err);
+          alert('Failed to copy LR numbers.');
+        });
+      });
+    });
+  })();
+</script>
 {% endblock %}

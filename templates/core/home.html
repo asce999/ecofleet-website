@@ -32,11 +32,15 @@
     Real-time tracking, zero surprises, every shipment.
   </p>
   <div class="hero-btns">
-    <button class="btn-primary">
+    <button class="btn-primary" onclick="document.querySelector('.track-section').scrollIntoView({ behavior: 'smooth' })">
       <i class="ti ti-package"></i>
       Track your shipment
     </button>
-      <a href="{% url 'services' %}" class="{% if request.resolver_match.url_name == 'services' %}active{% endif %}"><button class="btn-secondary">Explore our services →</button></a>
+    <a href="{% url 'contact' %}" class="btn-rainbow">
+      <i class="ti ti-calendar-event"></i>
+      Book a Service Now
+    </a>
+    <a href="{% url 'services' %}" class="{% if request.resolver_match.url_name == 'services' %}active{% endif %}"><button class="btn-secondary">Explore our services →</button></a>
   </div>
   <div class="stats-strip">
     <div class="stat-item">
