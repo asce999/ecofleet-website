@@ -27,5 +27,6 @@ urlpatterns = [
     path('portal/pendency/', views.pendency_report, name='pendency_report'),
     path('portal/pendency/observations/<int:pk>/',
          views.pendency_observations, name='pendency_observations'),
+    path('portal/prev-month-update/', views.prev_month_update, name='prev_month_update'),
     path('portal/result/<int:pk>/', views.tool_result, name='tool_result'),
 ]

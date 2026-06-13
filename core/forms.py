@@ -175,3 +175,25 @@ class MorningForm(forms.Form):
 
     def clean_file_cv(self):
         return self._check_xlsx(self.cleaned_data['file_cv'])
+
+
+class PrevMonthUpdateForm(forms.Form):
+    file_2w = forms.FileField(label="Previous Month's 2W Report (.xlsx)")
+    file_cv = forms.FileField(label="Previous Month's CV Report (.xlsx)")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.setdefault('class', 'portal-file')
+
+    def _check_xlsx(self, f):
+        if not f.name.lower().endswith('.xlsx'):
+            raise forms.ValidationError("Please upload an .xlsx file.")
+        return f
+
+    def clean_file_2w(self):
+        return self._check_xlsx(self.cleaned_data['file_2w'])
+
+    def clean_file_cv(self):
+        return self._check_xlsx(self.cleaned_data['file_cv'])
+

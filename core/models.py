@@ -18,10 +18,12 @@ class ToolRun(models.Model):
     TOOL_COF = 'COF'
     TOOL_MORNING = 'MORNING'
     TOOL_PENDENCY = 'PENDENCY'
+    TOOL_PREV_MONTH = 'PREV_MONTH'
     TOOL_CHOICES = [
         (TOOL_COF, 'COF Generator'),
         (TOOL_MORNING, 'Morning Report'),
         (TOOL_PENDENCY, 'Pendency Report'),
+        (TOOL_PREV_MONTH, 'Previous Month Update'),
     ]
 
     STATUS_SUCCESS = 'SUCCESS'

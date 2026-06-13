@@ -19,8 +19,8 @@ from django.core.files.base import ContentFile
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 
-from .forms import CofForm, WorkbookUploadForm, PendencyForm, MorningForm
-from . import cof, pendency, morning
+from .forms import CofForm, WorkbookUploadForm, PendencyForm, MorningForm, PrevMonthUpdateForm
+from . import cof, pendency, morning, prev_month
 
 from .decorators import staff_required
 from .models import ToolRun, ToolRunFile, CofWorkbook
@@ -142,7 +142,7 @@ def dashboard(request):
         tool=ToolRun.TOOL_COF, status=ToolRun.STATUS_SUCCESS,
         created_at__gte=month_start).count()
     reports_month = ToolRun.objects.filter(
-        tool__in=[ToolRun.TOOL_MORNING, ToolRun.TOOL_PENDENCY],
+        tool__in=[ToolRun.TOOL_MORNING, ToolRun.TOOL_PENDENCY, ToolRun.TOOL_PREV_MONTH],
         status=ToolRun.STATUS_SUCCESS, created_at__gte=month_start).count()
     total_runs = ToolRun.objects.count()
     team_members = User.objects.filter(is_staff=True, is_active=True).count()
@@ -173,13 +173,14 @@ def dashboard(request):
             ToolRun.objects.values('tool').annotate(c=Count('id'))}
     tool_counts = [usage.get(ToolRun.TOOL_COF, 0),
                     usage.get(ToolRun.TOOL_MORNING, 0),
-                    usage.get(ToolRun.TOOL_PENDENCY, 0)]
+                    usage.get(ToolRun.TOOL_PENDENCY, 0),
+                    usage.get(ToolRun.TOOL_PREV_MONTH, 0)]
 
     chart_data = {
         'coverage': {'oda': oda, 'non_oda': non_oda},
         'states': {'labels': state_labels, 'data': state_data},
         'activity': {'labels': activity_labels, 'data': activity_data},
-        'tools': {'labels': ['COF', 'Morning Report', 'Pendency'], 'data': tool_counts},
+        'tools': {'labels': ['COF', 'Morning Report', 'Pendency', 'Previous Month Update'], 'data': tool_counts},
     }
 
     ctx = {
@@ -561,5 +562,51 @@ def pendency_observations(request, pk):
 def tool_result(request, pk):
     run = get_object_or_404(ToolRun.objects.prefetch_related('files'),
                             pk=pk, status=ToolRun.STATUS_SUCCESS)
-    active = {'COF': 'cof', 'MORNING': 'morning', 'PENDENCY': 'pendency'}.get(run.tool, '')
+    active = {'COF': 'cof', 'MORNING': 'morning', 'PENDENCY': 'pendency', 'PREV_MONTH': 'prev_month'}.get(run.tool, '')
     return render(request, 'core/portal/tool_result.html', {'active': active, 'run': run})
+
+
+@staff_required
+def prev_month_update(request):
+    if request.method == 'POST':
+        form = PrevMonthUpdateForm(request.POST, request.FILES)
+        delhivery_files = request.FILES.getlist('delhivery_files')
+        ok = form.is_valid()
+        if not delhivery_files:
+            messages.error(request, "Upload at least one Delhivery CSV.")
+            ok = False
+        elif any(not f.name.lower().endswith('.csv') for f in delhivery_files):
+            messages.error(request, "Delhivery files must be .csv.")
+            ok = False
+
+        if ok:
+            try:
+                result = prev_month.generate(
+                    delhivery_files, form.cleaned_data['file_2w'], form.cleaned_data['file_cv'])
+            except prev_month.ReportError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                ToolRun.objects.create(
+                    user=request.user, tool=ToolRun.TOOL_PREV_MONTH,
+                    status=ToolRun.STATUS_FAILED, detail=f"Error: {e}")
+                messages.error(request, f"Failed to run previous month update: {e}")
+            else:
+                s = result['summary']
+                run = ToolRun.objects.create(
+                    user=request.user, tool=ToolRun.TOOL_PREV_MONTH,
+                    status=ToolRun.STATUS_SUCCESS,
+                    reference=f"Previous Month Update {datetime.date.today():%d %b %Y}",
+                    detail=(f"2W: {s['two_w']['updated']} updated ({s['two_w']['delivered']} delivered / {s['two_w']['in_transit']} in transit) · "
+                            f"CV: {s['cv']['updated']} updated ({s['cv']['delivered']} delivered / {s['cv']['in_transit']} in transit) · "
+                            f"{s['delhivery_rows']} Delhivery rows"))
+                for key in ("2W", "CV"):
+                    buf, fname = result[key]
+                    ToolRunFile.objects.create(
+                        run=run, label=f"{key} master", download_name=fname,
+                        file=ContentFile(buf.getvalue(), name=fname))
+                messages.success(request, "Previous month update completed.")
+                return redirect('tool_result', pk=run.pk)
+    else:
+        form = PrevMonthUpdateForm()
+    return render(request, 'core/portal/prev_month_form.html',
+                  {'active': 'prev_month', 'form': form})

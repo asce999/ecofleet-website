@@ -23,6 +23,8 @@
     <a href="{% url 'pendency_report' %}" class="btn-secondary"><i class="ti ti-plus"></i> New Report</a>
     {% elif run.tool == 'MORNING' %}
     <a href="{% url 'morning_report' %}" class="btn-secondary"><i class="ti ti-plus"></i> New Report</a>
+    {% elif run.tool == 'PREV_MONTH' %}
+    <a href="{% url 'prev_month_update' %}" class="btn-secondary"><i class="ti ti-plus"></i> New Update</a>
     {% endif %}
   </div>
 </div>
