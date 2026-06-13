@@ -415,11 +415,12 @@ h1 {
 }
 
 .btn-rainbow {
-  background: linear-gradient(135deg, var(--cyan) 0%, var(--purple) 45%, var(--orange) 90%);
-  border: none;
+  background: transparent;
+  border: 2px solid transparent;
+  background-clip: padding-box;
   border-radius: 12px;
   padding: 14px 32px;
-  color: #fff;
+  color: var(--text);
   font-size: 14.5px;
   font-weight: 600;
   cursor: pointer;
@@ -428,12 +429,40 @@ h1 {
   align-items: center;
   gap: 8px;
   text-decoration: none;
-  transition: opacity 0.2s, transform 0.2s;
+  position: relative;
+  transition: color 0.3s ease;
+}
+
+.btn-rainbow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  padding: 2px;
+  background: linear-gradient(135deg, var(--cyan), var(--purple), var(--orange));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  transition: opacity 0.3s ease;
+}
+
+.btn-rainbow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--cyan), var(--purple), var(--orange));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.btn-rainbow:hover::after {
+  opacity: 1;
 }
 
 .btn-rainbow:hover {
-  opacity: 0.92;
-  transform: translateY(-1px);
+  color: #fff;
 }
 
 
@@ -1801,4 +1830,25 @@ h1 {
   width: 1px;
   height: 40px;
   background: var(--border);
+}
+
+/* ── BTN RAINBOW ANIMATED BORDER ── */
+@keyframes borderRotate {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.btn-rainbow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  padding: 2px;
+  background: linear-gradient(270deg, #00AEEF, #a855f7, #F7941D, #ED1C24, #00AEEF);
+  background-size: 300% 300%;
+  animation: borderRotate 3s ease infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
 }
