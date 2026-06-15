@@ -83,28 +83,43 @@
   </div>
 
   <!-- Quick actions -->
+  {% if request.user.profile.can_use_cof or request.user.profile.can_use_morning or request.user.profile.can_use_pendency or request.user.profile.can_use_prev_month %}
   <div class="section-title">Quick Actions</div>
   <div class="action-grid">
+    {% if request.user.profile.can_use_cof %}
     <a href="{% url 'cof_generator' %}" class="action-card">
       <div class="action-ico ico-cyan"><i class="ti ti-file-certificate"></i></div>
       <h3>Generate COF</h3>
       <p>Create a Certificate of Facts and update the tracking sheet.</p>
     </a>
+    {% endif %}
+    {% if request.user.profile.can_use_morning %}
     <a href="{% url 'morning_report' %}" class="action-card">
       <div class="action-ico ico-orange"><i class="ti ti-sun"></i></div>
       <h3>Morning Report</h3>
       <p>Process Delhivery &amp; DTDC files into 2W and CV masters.</p>
     </a>
+    {% endif %}
+    {% if request.user.profile.can_use_pendency %}
     <a href="{% url 'pendency_report' %}" class="action-card">
       <div class="action-ico ico-purple"><i class="ti ti-clock-exclamation"></i></div>
       <h3>Pendency Report</h3>
       <p>Pull delayed shipments from the latest master files.</p>
     </a>
+    {% endif %}
+    {% if request.user.profile.can_use_prev_month %}
+    <a href="{% url 'prev_month_update' %}" class="action-card">
+      <div class="action-ico ico-green"><i class="ti ti-history"></i></div>
+      <h3>Previous Month Update</h3>
+      <p>Update historical months' in-transit shipments.</p>
+    </a>
+    {% endif %}
   </div>
+  {% endif %}
 
   <!-- Recent activity -->
   <div class="section-title">Recent Activity</div>
-  <div class="portal-card" style="padding: 6px;">
+  <div class="portal-card" style="padding: 6px; overflow-x: auto;">
     {% if recent_runs %}
     <table class="activity-table">
       <thead>

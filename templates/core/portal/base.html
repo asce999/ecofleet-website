@@ -41,10 +41,21 @@
 
     <nav class="portal-nav">
         <a href="{% url 'dashboard' %}" class="{% if active == 'dashboard' %}active{% endif %}"><i class="ti ti-layout-dashboard"></i> Dashboard</a>
+        {% if request.user.profile.can_use_cof %}
         <a href="{% url 'cof_generator' %}" class="{% if active == 'cof' %}active{% endif %}"><i class="ti ti-file-certificate"></i> COF Generator</a>
+        {% endif %}
+        {% if request.user.profile.can_use_morning %}
         <a href="{% url 'morning_report' %}" class="{% if active == 'morning' %}active{% endif %}"><i class="ti ti-sun"></i> Morning Report</a>
+        {% endif %}
+        {% if request.user.profile.can_use_pendency %}
         <a href="{% url 'pendency_report' %}" class="{% if active == 'pendency' %}active{% endif %}"><i class="ti ti-clock-exclamation"></i> Pendency Report</a>
+        {% endif %}
+        {% if request.user.profile.can_use_prev_month %}
         <a href="{% url 'prev_month_update' %}" class="{% if active == 'prev_month' %}active{% endif %}"><i class="ti ti-history"></i> Previous Month Update</a>
+        {% endif %}
+        {% if request.user.profile.role == 'Director' %}
+        <a href="{% url 'portal_users' %}" class="{% if active == 'users' %}active{% endif %}"><i class="ti ti-users"></i> User Permissions</a>
+        {% endif %}
     </nav>
 
     <div class="portal-sidebar-foot">
@@ -61,8 +72,8 @@
         </button>
         <div class="portal-user">
             <div class="portal-user-meta">
-            <span class="portal-user-name">{{ request.user.get_full_name|default:request.user.username }}</span>
-            <span class="portal-user-role">Employee</span>
+            <span class="portal-user-name">{{ request.user.first_name|default:request.user.username }}</span>
+            <span class="portal-user-role">{{ request.user.profile.role|default:"Employee" }}</span>
           </div>
           <div class="portal-avatar">{{ request.user.username|slice:":1"|upper }}</div>
         </div>

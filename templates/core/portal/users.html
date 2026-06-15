@@ -1,0 +1,86 @@
+{% extends 'core/portal/base.html' %}
+{% block title %}User Permissions — EcoFleet Express Portal{% endblock %}
+{% block heading %}User Permissions{% endblock %}
+{% block content %}
+
+<div class="cof-topbar">
+  <span class="cof-meta">Manage roles and restrict visibility of tools for other staff members. Only the Director role has access to this permission dashboard.</span>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  <div class="portal-card" style="padding: 6px; overflow-x: auto; margin-bottom: 24px;">
+    <table class="activity-table">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Full Name</th>
+          <th>Role</th>
+          <th style="text-align: center;">COF Generator</th>
+          <th style="text-align: center;">Morning Report</th>
+          <th style="text-align: center;">Pendency Report</th>
+          <th style="text-align: center;">Prev Month Update</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in profiles %}
+        <tr>
+          <td>
+            <strong>{{ p.user.username }}</strong>
+            {% if p.user == request.user %}
+            <span class="pill pill-success" style="margin-left: 6px;">You</span>
+            {% endif %}
+          </td>
+          <td>{{ p.user.get_full_name|default:"—" }}</td>
+          <td>
+            {% if p.user == request.user %}
+            <span style="font-weight: 600; font-size: 13.5px; color: var(--cyan);">{{ p.role }}</span>
+            <input type="hidden" name="role_{{ p.user.id }}" value="{{ p.role }}" />
+            {% else %}
+            <select name="role_{{ p.user.id }}" class="portal-select" style="padding: 6px 12px; font-size: 13px; max-width: 140px;">
+              <option value="Employee" {% if p.role == 'Employee' %}selected{% endif %}>Employee</option>
+              <option value="Manager" {% if p.role == 'Manager' %}selected{% endif %}>Manager</option>
+              <option value="Director" {% if p.role == 'Director' %}selected{% endif %}>Director</option>
+            </select>
+            {% endif %}
+          </td>
+          <td style="text-align: center;">
+            {% if p.user == request.user %}
+            <i class="ti ti-check" style="color: var(--success); font-size: 20px;"></i>
+            {% else %}
+            <input type="checkbox" name="cof_{{ p.user.id }}" class="portal-check" {% if p.can_use_cof %}checked{% endif %} />
+            {% endif %}
+          </td>
+          <td style="text-align: center;">
+            {% if p.user == request.user %}
+            <i class="ti ti-check" style="color: var(--success); font-size: 20px;"></i>
+            {% else %}
+            <input type="checkbox" name="morning_{{ p.user.id }}" class="portal-check" {% if p.can_use_morning %}checked{% endif %} />
+            {% endif %}
+          </td>
+          <td style="text-align: center;">
+            {% if p.user == request.user %}
+            <i class="ti ti-check" style="color: var(--success); font-size: 20px;"></i>
+            {% else %}
+            <input type="checkbox" name="pendency_{{ p.user.id }}" class="portal-check" {% if p.can_use_pendency %}checked{% endif %} />
+            {% endif %}
+          </td>
+          <td style="text-align: center;">
+            {% if p.user == request.user %}
+            <i class="ti ti-check" style="color: var(--success); font-size: 20px;"></i>
+            {% else %}
+            <input type="checkbox" name="prev_month_{{ p.user.id }}" class="portal-check" {% if p.can_use_prev_month %}checked{% endif %} />
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="cof-actions" style="margin-top: 24px;">
+    <button type="submit" class="btn-primary"><i class="ti ti-device-floppy"></i> Save Permissions</button>
+  </div>
+</form>
+
+{% endblock %}

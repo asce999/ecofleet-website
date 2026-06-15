@@ -14,6 +14,7 @@ urlpatterns = [
     path('portal/login/', views.portal_login, name='portal_login'),
     path('portal/logout/', views.portal_logout, name='portal_logout'),
     path('portal/', views.dashboard, name='dashboard'),
+    path('portal/users/', views.portal_users, name='portal_users'),
 
     # COF
     path('portal/cof/', views.cof_generator, name='cof_generator'),
