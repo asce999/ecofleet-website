@@ -30,4 +30,7 @@ urlpatterns = [
          views.pendency_observations, name='pendency_observations'),
     path('portal/prev-month-update/', views.prev_month_update, name='prev_month_update'),
     path('portal/result/<int:pk>/', views.tool_result, name='tool_result'),
+    path('portal/btpl/', views.btpl_sheet, name='btpl_sheet'),
+    path('portal/btpl/download/', views.btpl_download, name='btpl_download'),
+    path('portal/btpl/settings/', views.btpl_settings, name='btpl_settings'),
 ]

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.shortcuts import render
 from django.http import HttpResponse
 from .models import Pincode
@@ -18,12 +19,13 @@ import pandas as pd
 from django.core.files.base import ContentFile
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
+from django.views.decorators.cache import never_cache
 
-from .forms import CofForm, WorkbookUploadForm, PendencyForm, MorningForm, PrevMonthUpdateForm
-from . import cof, pendency, morning, prev_month
+from .forms import CofForm, WorkbookUploadForm, PendencyForm, MorningForm, PrevMonthUpdateForm, BtplShipmentForm, BtplWorkbookUploadForm
+from . import cof, pendency, morning, prev_month, btpl
 
 from .decorators import staff_required, tool_permission_required, director_required
-from .models import ToolRun, ToolRunFile, CofWorkbook
+from .models import ToolRun, ToolRunFile, CofWorkbook, BtplWorkbook
 
 def home(request):
     return render(request, 'core/home.html')
@@ -356,6 +358,7 @@ def download_file(request, file_id):
         'MORNING': 'morning',
         'PENDENCY': 'pendency',
         'PREV_MONTH': 'prev_month',
+        'BTPL': 'btpl',
     }
     required_perm = tool_map.get(f.run.tool)
     if required_perm and not getattr(profile, f"can_use_{required_perm}", False):
@@ -666,6 +669,7 @@ def portal_users(request):
             profile.can_use_morning = f"morning_{u.id}" in request.POST
             profile.can_use_pendency = f"pendency_{u.id}" in request.POST
             profile.can_use_prev_month = f"prev_month_{u.id}" in request.POST
+            profile.can_use_btpl = f"btpl_{u.id}" in request.POST
             profile.save()
 
         messages.success(request, "User roles and permissions updated successfully.")
@@ -675,4 +679,277 @@ def portal_users(request):
     return render(request, 'core/portal/users.html', {
         'active': 'users',
         'profiles': profiles,
-    })
+    })
+
+
+def get_active_btpl_workbook():
+    from .models import BtplWorkbook
+    # If there are BtplWorkbook records but no active one, it means sheet was removed entirely!
+    wb_count = BtplWorkbook.objects.count()
+    if wb_count > 0:
+        wb_obj = BtplWorkbook.active()
+        if not wb_obj:
+            return None, None, None
+        return wb_obj, wb_obj.file.path, wb_obj.active_sheet
+    else:
+        # Initial fresh state: fall back to default
+        file_path = os.path.join(settings.BASE_DIR, 'BTPL_Shipments.xlsx')
+        sheet_name = 'JUN 26'
+        return None, file_path, sheet_name
+
+
+@staff_required
+@tool_permission_required('btpl')
+@never_cache
+def btpl_sheet(request):
+    from django.urls import reverse
+    wb_obj, file_path, sheet_name = get_active_btpl_workbook()
+    
+    if not file_path:
+        return render(request, 'core/portal/btpl_form.html', {
+            'active': 'btpl',
+            'no_sheet': True,
+        })
+        
+    # Get totals row to find upper boundary
+    totals_row = 64
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(file_path, read_only=True)
+        if sheet_name in wb.sheetnames:
+            sheet = wb[sheet_name]
+            mapping = btpl.get_column_mapping(sheet)
+            totals_row = btpl.find_totals_row(sheet, mapping)
+    except Exception:
+        pass
+        
+    # Check for manual target row selection
+    manual_row = request.GET.get('row')
+    next_row = None
+    if manual_row:
+        try:
+            r_val = int(manual_row)
+            if 2 <= r_val < totals_row:
+                next_row = r_val
+        except (ValueError, TypeError):
+            pass
+            
+    if not next_row:
+        next_row = btpl.find_next_btpl_row(file_path, sheet_name=sheet_name)
+        
+    success_run_id = request.GET.get('run_id')
+    is_success = request.GET.get('success') == '1'
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'delete_row':
+            row_to_del = request.POST.get('row_to_delete')
+            try:
+                r_val = int(row_to_del)
+                if 2 <= r_val < totals_row:
+                    btpl.clear_btpl_row(file_path, r_val, sheet_name=sheet_name)
+                    
+                    ToolRun.objects.create(
+                        user=request.user,
+                        tool=ToolRun.TOOL_BTPL,
+                        status=ToolRun.STATUS_SUCCESS,
+                        reference=f"Clear Row: {r_val}",
+                        detail=f"Cleared all shipment details in Row {r_val} on sheet {sheet_name}"
+                    )
+                    messages.success(request, f"Shipment details in Row {r_val} have been deleted.")
+                else:
+                    messages.error(request, "Invalid row number.")
+            except Exception as e:
+                messages.error(request, f"Failed to delete row: {e}")
+            return redirect('btpl_sheet')
+
+        form = BtplShipmentForm(request.POST)
+        if form.is_valid():
+            row_data = form.cleaned_data
+            target_row = row_data['row_num']
+            try:
+                btpl.add_btpl_shipment(file_path, row_data, sheet_name=sheet_name)
+                
+                run = ToolRun.objects.create(
+                    user=request.user,
+                    tool=ToolRun.TOOL_BTPL,
+                    status=ToolRun.STATUS_SUCCESS,
+                    reference=f"LR: {row_data.get('lr_number') or ''}",
+                    detail=f"Row: {target_row} · Sheet: {sheet_name} · Consignee: {row_data.get('name') or ''}"
+                )
+                
+                messages.success(request, "Shipment details updated successfully.")
+                return redirect(f"{reverse('btpl_sheet')}?success=1&run_id={run.pk}")
+            except Exception as e:
+                ToolRun.objects.create(
+                    user=request.user,
+                    tool=ToolRun.TOOL_BTPL,
+                    status=ToolRun.STATUS_FAILED,
+                    detail=f"Error writing row {target_row}: {e}"
+                )
+                messages.error(request, f"Failed to update sheet: {e}")
+        else:
+            messages.error(request, "Please fix the highlighted fields.")
+    else:
+        initial_data = {}
+        if next_row:
+            initial_data = btpl.get_btpl_row_values(file_path, next_row, sheet_name=sheet_name)
+        form = BtplShipmentForm(initial=initial_data)
+        
+    preview_data = btpl.get_btpl_preview(file_path, sheet_name=sheet_name)
+    
+    context = {
+        'active': 'btpl',
+        'form': form,
+        'preview': preview_data,
+        'next_row': next_row,
+        'totals_row': totals_row,
+        'max_shipment_row': totals_row - 1,
+        'success': is_success,
+        'run_id': success_run_id,
+        'sheet_name': sheet_name,
+        'wb': wb_obj,
+    }
+    return render(request, 'core/portal/btpl_form.html', context)
+
+
+@staff_required
+@tool_permission_required('btpl')
+def btpl_download(request):
+    wb_obj, file_path, sheet_name = get_active_btpl_workbook()
+    if not file_path or not os.path.exists(file_path):
+        raise Http404("BTPL Shipments file not found.")
+    
+    filename = wb_obj.original_name if wb_obj else "BTPL_Shipments.xlsx"
+    response = FileResponse(open(file_path, 'rb'), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@staff_required
+@tool_permission_required('btpl')
+def btpl_settings(request):
+    """Manage active BTPL shipment workbook and active sheet tab."""
+    wb_obj, file_path, current_sheet_name = get_active_btpl_workbook()
+    
+    # Read sheets from Excel if file_path exists
+    sheets = []
+    if file_path:
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(file_path, read_only=True)
+            sheets = wb.sheetnames
+        except Exception:
+            sheets = ['JUN 26']
+    else:
+        sheets = ['JUN 26']
+        
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'remove':
+            BtplWorkbook.objects.filter(is_active=True).update(is_active=False)
+            if BtplWorkbook.objects.count() == 0:
+                BtplWorkbook.objects.create(
+                    original_name='BTPL_Shipments.xlsx',
+                    active_sheet='JUN 26',
+                    uploaded_by=request.user,
+                    is_active=False
+                )
+            messages.success(request, "BTPL shipment sheet removed entirely. Portal is now in empty state.")
+            return redirect('btpl_settings')
+            
+        elif action == 'load_default':
+            import shutil
+            root_file_path = os.path.join(settings.BASE_DIR, 'BTPL_Shipments.xlsx')
+            target_dir = os.path.join(settings.MEDIA_ROOT, 'btpl')
+            os.makedirs(target_dir, exist_ok=True)
+            dest_path = os.path.join(target_dir, 'BTPL_Shipments.xlsx')
+            shutil.copy2(root_file_path, dest_path)
+            
+            # Deactivate any existing
+            BtplWorkbook.objects.filter(is_active=True).update(is_active=False)
+            
+            wb_obj = BtplWorkbook.objects.create(
+                original_name='BTPL_Shipments.xlsx',
+                active_sheet='JUN 26',
+                uploaded_by=request.user,
+                is_active=True
+            )
+            wb_obj.file.name = 'btpl/BTPL_Shipments.xlsx'
+            wb_obj.save(update_fields=['file'])
+            
+            messages.success(request, "Default BTPL shipment workbook loaded successfully.")
+            return redirect('btpl_settings')
+            
+        elif action == 'change_sheet':
+            form = BtplWorkbookUploadForm(request.POST, sheets=sheets)
+            if form.is_valid():
+                sheet_sel = form.cleaned_data.get('active_sheet')
+                if wb_obj:
+                    wb_obj.active_sheet = sheet_sel
+                    wb_obj.save(update_fields=['active_sheet'])
+                else:
+                    # Copy root file to media directory and register in database
+                    import shutil
+                    root_file_path = os.path.join(settings.BASE_DIR, 'BTPL_Shipments.xlsx')
+                    target_dir = os.path.join(settings.MEDIA_ROOT, 'btpl')
+                    os.makedirs(target_dir, exist_ok=True)
+                    dest_path = os.path.join(target_dir, 'BTPL_Shipments.xlsx')
+                    shutil.copy2(root_file_path, dest_path)
+                    
+                    wb_obj = BtplWorkbook.objects.create(
+                        original_name='BTPL_Shipments.xlsx',
+                        active_sheet=sheet_sel,
+                        uploaded_by=request.user,
+                        is_active=True
+                    )
+                    wb_obj.file.name = 'btpl/BTPL_Shipments.xlsx'
+                    wb_obj.save(update_fields=['file'])
+                    
+                messages.success(request, f"Active sheet tab changed to '{sheet_sel}'.")
+                return redirect('btpl_sheet')
+                
+        elif action == 'upload':
+            form = BtplWorkbookUploadForm(request.POST, request.FILES, sheets=sheets)
+            if form.is_valid():
+                upload = request.FILES.get('workbook')
+                if upload:
+                    # Create new workbook record
+                    new_wb = BtplWorkbook.objects.create(
+                        file=upload, original_name=upload.name,
+                        uploaded_by=request.user, is_active=False
+                    )
+                    
+                    # Read sheets from the uploaded workbook to set default active sheet
+                    try:
+                        import openpyxl
+                        temp_wb = openpyxl.load_workbook(new_wb.file.path, read_only=True)
+                        uploaded_sheets = temp_wb.sheetnames
+                        default_sheet = uploaded_sheets[0] if uploaded_sheets else 'JUN 26'
+                    except Exception:
+                        default_sheet = 'JUN 26'
+                        
+                    new_wb.active_sheet = default_sheet
+                    new_wb.save(update_fields=['active_sheet'])
+                    
+                    # Deactivate existing active workbook
+                    BtplWorkbook.objects.filter(is_active=True).update(is_active=False)
+                    new_wb.is_active = True
+                    new_wb.save(update_fields=['is_active'])
+                    
+                    messages.success(request, f"Uploaded workbook '{upload.name}' is now the active BTPL shipment workbook.")
+                    return redirect('btpl_settings')
+                else:
+                    messages.error(request, "Please choose a valid .xlsx file to upload.")
+    else:
+        form = BtplWorkbookUploadForm(initial={'active_sheet': current_sheet_name}, sheets=sheets)
+        
+    context = {
+        'active': 'btpl',
+        'form': form,
+        'wb': wb_obj,
+        'current_sheet': current_sheet_name,
+        'sheets': sheets,
+    }
+    return render(request, 'core/portal/btpl_settings.html', context)

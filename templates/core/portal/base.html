@@ -53,6 +53,9 @@
         {% if request.user.profile.can_use_prev_month %}
         <a href="{% url 'prev_month_update' %}" class="{% if active == 'prev_month' %}active{% endif %}"><i class="ti ti-history"></i> Previous Month Update</a>
         {% endif %}
+        {% if request.user.profile.can_use_btpl %}
+        <a href="{% url 'btpl_sheet' %}" class="{% if active == 'btpl' %}active{% endif %}"><i class="ti ti-table"></i> BTPL Sheet</a>
+        {% endif %}
         {% if request.user.profile.role == 'Director' %}
         <a href="{% url 'portal_users' %}" class="{% if active == 'users' %}active{% endif %}"><i class="ti ti-users"></i> User Permissions</a>
         {% endif %}

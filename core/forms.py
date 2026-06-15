@@ -197,3 +197,68 @@ class PrevMonthUpdateForm(forms.Form):
     def clean_file_cv(self):
         return self._check_xlsx(self.cleaned_data['file_cv'])
 
+
+class BtplShipmentForm(forms.Form):
+    row_num = forms.IntegerField(widget=forms.HiddenInput())
+    lr_number = forms.CharField(label="LR NUMBER", required=False)
+    pickup_date = forms.DateField(
+        label="Pickup Request Date",
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date'}),
+    )
+    name = forms.CharField(label="Consignee/Customer Name", required=False)
+    address = forms.CharField(
+        label="Address",
+        required=False,
+        widget=forms.Textarea(attrs={'rows': 2}),
+    )
+    contact_person = forms.CharField(label="Contact Person", required=False)
+    contact_number = forms.CharField(label="Contact Number", required=False)
+    city = forms.CharField(label="City", required=False)
+    state = forms.CharField(label="State", required=False)
+    boxes = forms.IntegerField(label="No Of Boxes", required=False)
+    weight_ef = forms.FloatField(label="Weight as per EcoFleet", required=False)
+    weight_opt = forms.FloatField(label="Weight as per Optlog", required=False)
+    status = forms.CharField(label="Status", required=False)
+    delivered_on = forms.DateField(
+        label="Delivered on",
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date'}),
+    )
+    tat = forms.IntegerField(label="TAT", required=False)
+    rate = forms.FloatField(label="Rate", required=False)
+    amount = forms.FloatField(label="Amount (leave blank for auto-formula)", required=False)
+    vendor = forms.CharField(label="Vendor", required=False)
+    vendor_rate = forms.FloatField(label="Vendor Rate", required=False)
+    vendor_payment = forms.FloatField(label="CNG Paid & Vendor Payment", required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name, field in self.fields.items():
+            w = field.widget
+            if not isinstance(w, forms.HiddenInput):
+                css = 'portal-select' if isinstance(w, forms.Select) else 'portal-input'
+                w.attrs.setdefault('class', css)
+
+
+class BtplWorkbookUploadForm(forms.Form):
+    workbook = forms.FileField(label="BTPL Shipment Workbook (.xlsx)", required=False)
+    active_sheet = forms.ChoiceField(label="Active Sheet Tab", required=False, choices=[])
+
+    def __init__(self, *args, **kwargs):
+        sheets = kwargs.pop('sheets', [])
+        super().__init__(*args, **kwargs)
+        self.fields['workbook'].widget.attrs.setdefault('class', 'portal-file')
+        self.fields['active_sheet'].widget.attrs.setdefault('class', 'portal-select')
+        if sheets:
+            self.fields['active_sheet'].choices = [(s, s) for s in sheets]
+        else:
+            self.fields['active_sheet'].choices = [('JUN 26', 'JUN 26')]
+
+    def clean_workbook(self):
+        f = self.cleaned_data.get('workbook')
+        if f and not f.name.lower().endswith('.xlsx'):
+            raise forms.ValidationError("Please upload an .xlsx Excel workbook.")
+        return f
+
+

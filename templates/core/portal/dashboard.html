@@ -83,7 +83,6 @@
   </div>
 
   <!-- Quick actions -->
-  {% if request.user.profile.can_use_cof or request.user.profile.can_use_morning or request.user.profile.can_use_pendency or request.user.profile.can_use_prev_month %}
   <div class="section-title">Quick Actions</div>
   <div class="action-grid">
     {% if request.user.profile.can_use_cof %}
@@ -114,8 +113,14 @@
       <p>Update historical months' in-transit shipments.</p>
     </a>
     {% endif %}
+    {% if request.user.profile.can_use_btpl %}
+    <a href="{% url 'btpl_sheet' %}" class="action-card">
+      <div class="action-ico ico-cyan"><i class="ti ti-table"></i></div>
+      <h3>BTPL Sheet</h3>
+      <p>Preview and append shipments to the BTPL shipments spreadsheet.</p>
+    </a>
+    {% endif %}
   </div>
-  {% endif %}
 
   <!-- Recent activity -->
   <div class="section-title">Recent Activity</div>

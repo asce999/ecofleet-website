@@ -1,0 +1,210 @@
+{% extends 'core/portal/base.html' %}
+{% block title %}BTPL Sheet — EcoFleet Express Portal{% endblock %}
+{% block heading %}BTPL Shipment Sheet{% endblock %}
+{% block content %}
+
+{% if no_sheet %}
+<div class="portal-card" style="border-left: 5px solid var(--danger); padding: 32px; text-align: center; max-width: 600px; margin: 40px auto;">
+  <div style="color: var(--danger); font-size: 56px; margin-bottom: 16px;"><i class="ti ti-file-x"></i></div>
+  <h3 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 700; color: var(--text-main);">No Active Shipment Sheet</h3>
+  <p style="margin: 0 16px 24px 16px; color: var(--muted); font-size: 14.5px; line-height: 1.6;">
+    The shipment workbook has been removed from active operations. 
+    You must upload a new Excel file or load the default system template workbook to continue.
+  </p>
+  <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
+    <a href="{% url 'btpl_settings' %}" class="btn-primary"><i class="ti ti-file-spreadsheet"></i> Go to Settings</a>
+  </div>
+</div>
+{% else %}
+
+<div class="cof-topbar" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; width: 100%;">
+  <div>
+    <span class="cof-next">Active Tab: <strong>{{ sheet_name }}</strong></span>
+    <span class="cof-meta">· Workbook: {{ wb.original_name|default:"BTPL_Shipments.xlsx" }}</span>
+  </div>
+  <div class="cof-topbar-actions" style="display: flex; gap: 10px;">
+    <a href="{% url 'btpl_settings' %}" class="btn-secondary cof-history-link"><i class="ti ti-file-spreadsheet"></i> Sheet Settings</a>
+  </div>
+</div>
+
+{% if success %}
+<div class="portal-card success-banner" style="border-left: 5px solid var(--success); margin-bottom: 24px; padding: 24px;">
+  <div style="display: flex; align-items: flex-start; gap: 16px;">
+    <div style="color: var(--success); font-size: 32px; line-height: 1;"><i class="ti ti-circle-check"></i></div>
+    <div style="flex-grow: 1;">
+      <h3 style="margin: 0 0 6px 0; font-size: 18px; font-weight: 700;">Shipment Appended Successfully</h3>
+      <p style="margin: 0 0 16px 0; color: var(--muted); font-size: 14.5px;">
+        The shipment details have been written to the sheet on the server. 
+        <br/>
+        <strong style="color: var(--text-main);">Note on Formulas:</strong> The calculated fields (e.g. Amount, Totals, Profits) are stored as active Excel formulas and will evaluate automatically when you open the downloaded sheet in Microsoft Excel.
+      </p>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <a href="{% url 'btpl_download' %}" class="btn-primary"><i class="ti ti-download"></i> Download Updated Sheet</a>
+        <a href="{% url 'btpl_sheet' %}" class="btn-secondary"><i class="ti ti-arrow-right"></i> Continue Next</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Sheet Preview Section -->
+<div class="cof-section">
+  <div class="cof-section-head" style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 12px;">
+    <span><i class="ti ti-file-spreadsheet"></i> {{ sheet_name }} Sheet Preview</span>
+    <a href="{% url 'btpl_download' %}" class="btn-secondary btn-sm" style="font-size: 12.5px; padding: 6px 12px;">
+      <i class="ti ti-download"></i> Download Excel
+    </a>
+  </div>
+  <div class="observe-sheet" style="padding: 16px 0 0 0;">
+    <div class="observe-table-wrap">
+      <table class="activity-table">
+        <thead>
+          <tr>
+            <th style="padding: 10px 14px; font-weight: 600; font-size: 12.5px; text-align: center;">Action</th>
+            {% for col in preview.columns %}
+            <th style="padding: 10px 14px; font-weight: 600; font-size: 12.5px;">{{ col }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% if preview.rows %}
+            {% for row in preview.rows %}
+            {% with r_num=forloop.counter|add:1 %}
+            <tr style="{% if r_num >= totals_row %}background: rgba(var(--purple-rgb), 0.03); font-weight: 600;{% endif %}{% if next_row == r_num %}background: rgba(0, 174, 239, 0.08); border-left: 3px solid var(--cyan);{% endif %}">
+              <td style="padding: 10px 14px; text-align: center; display: flex; justify-content: center; align-items: center; gap: 8px;">
+                {% if r_num < totals_row %}
+                  <a href="?row={{ r_num }}" class="btn-secondary btn-sm" style="font-size: 11.5px; padding: 5px 9px; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px;">
+                    <i class="ti ti-edit"></i> Edit
+                  </a>
+                  <form method="post" action="{% url 'btpl_sheet' %}" onsubmit="return confirm('Delete all shipment details in Row {{ r_num }}?');" style="display: inline-block; margin: 0;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_row" />
+                    <input type="hidden" name="row_to_delete" value="{{ r_num }}" />
+                    <button type="submit" class="btn-danger btn-sm" style="font-size: 11.5px; padding: 5px 9px; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; background: var(--danger); border: none; color: #fff; cursor: pointer;">
+                      <i class="ti ti-trash"></i> Delete
+                    </button>
+                  </form>
+                {% else %}
+                  <span style="font-size: 11.5px; color: var(--muted); font-weight: bold;">Summary</span>
+                {% endif %}
+              </td>
+              {% for cell in row %}
+              <td style="padding: 10px 14px; font-size: 13px;">{{ cell }}</td>
+              {% endfor %}
+            </tr>
+            {% endwith %}
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="22" style="text-align: center; padding: 24px; color: var(--muted);">No rows to display</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top: 10px; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px;">
+      <i class="ti ti-info-circle"></i>
+      <span>Preview displays active shipment rows followed by summary totals. Click <strong>Edit Row</strong> on any row to load its details into the form below.</span>
+    </div>
+  </div>
+</div>
+
+<!-- Shipment Form Section -->
+{% if next_row %}
+<form method="post" class="cof-form" novalidate>
+  {% csrf_token %}
+  {{ form.row_num }}
+
+  {% if form.non_field_errors %}
+  <div class="portal-msg portal-msg-error">{{ form.non_field_errors|striptags }}</div>
+  {% endif %}
+
+  <div class="cof-section">
+    <div class="cof-section-head" style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 12px;">
+      <span><i class="ti ti-edit"></i> Shipment Entry Form</span>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 13px; color: var(--cyan); font-weight: 600; background: rgba(0,174,239,0.12); padding: 6px 12px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
+          Target Row: 
+          <input type="number" id="manualRowInput" value="{{ next_row }}" min="2" max="{{ max_shipment_row }}" style="background: transparent; border: none; border-bottom: 1px solid var(--cyan); color: var(--cyan); font-weight: bold; width: 45px; font-family: inherit; font-size: 13px; outline: none; text-align: center;" />
+        </span>
+        <button type="button" class="btn-secondary btn-sm" onclick="var r = document.getElementById('manualRowInput').value; if(r) window.location.href = '?row=' + r;" style="padding: 5px 10px;">
+          Load Row
+        </button>
+      </div>
+    </div>
+    
+    <div style="padding: 2px 22px 0 22px; margin-bottom: -6px;">
+      <p style="font-size: 13.5px; color: var(--muted); margin: 0; line-height: 1.5;">
+        Currently editing spreadsheet row <strong style="color: var(--text-main);">{{ next_row }}</strong>. 
+        Form fields are pre-populated with any existing values found in this row.
+      </p>
+    </div>
+
+    <!-- Section 1: Shipment Identification -->
+    <div style="padding: 18px 22px 6px 22px; font-weight: 600; font-size: 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; color: var(--text-main);">
+      <i class="ti ti-hash" style="color: var(--cyan);"></i> Identification &amp; Logistics
+    </div>
+    <div class="cof-grid">
+      {% include 'core/portal/_field.html' with field=form.lr_number %}
+      {% include 'core/portal/_field.html' with field=form.pickup_date %}
+      {% include 'core/portal/_field.html' with field=form.delivered_on %}
+      {% include 'core/portal/_field.html' with field=form.status %}
+      {% include 'core/portal/_field.html' with field=form.tat %}
+    </div>
+
+    <!-- Section 2: Consignee Details -->
+    <div style="padding: 18px 22px 6px 22px; font-weight: 600; font-size: 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; color: var(--text-main);">
+      <i class="ti ti-map-pin" style="color: var(--cyan);"></i> Consignee / Customer Details
+    </div>
+    <div class="cof-grid">
+      {% include 'core/portal/_field.html' with field=form.name %}
+      {% include 'core/portal/_field.html' with field=form.address %}
+      {% include 'core/portal/_field.html' with field=form.city %}
+      {% include 'core/portal/_field.html' with field=form.state %}
+      {% include 'core/portal/_field.html' with field=form.contact_person %}
+      {% include 'core/portal/_field.html' with field=form.contact_number %}
+    </div>
+
+    <!-- Section 3: Package & Cargo Details -->
+    <div style="padding: 18px 22px 6px 22px; font-weight: 600; font-size: 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; color: var(--text-main);">
+      <i class="ti ti-package" style="color: var(--cyan);"></i> Cargo &amp; Customer Rate
+    </div>
+    <div class="cof-grid">
+      {% include 'core/portal/_field.html' with field=form.boxes %}
+      {% include 'core/portal/_field.html' with field=form.weight_ef %}
+      {% include 'core/portal/_field.html' with field=form.weight_opt %}
+      {% include 'core/portal/_field.html' with field=form.rate %}
+      {% include 'core/portal/_field.html' with field=form.amount hint="Leave blank for auto-formula (Rate × Weight)" %}
+    </div>
+
+    <!-- Section 4: Vendor & Payment Details -->
+    <div style="padding: 18px 22px 6px 22px; font-weight: 600; font-size: 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; color: var(--text-main);">
+      <i class="ti ti-truck-delivery" style="color: var(--cyan);"></i> Vendor &amp; Payment Details
+    </div>
+    <div class="cof-grid">
+      {% include 'core/portal/_field.html' with field=form.vendor %}
+      {% include 'core/portal/_field.html' with field=form.vendor_rate %}
+      {% include 'core/portal/_field.html' with field=form.vendor_payment %}
+    </div>
+  </div>
+
+  <div class="cof-actions" style="margin-top: 24px;">
+    <button type="submit" class="btn-primary">
+      <i class="ti ti-plus"></i> Save Shipment Details
+    </button>
+  </div>
+</form>
+{% else %}
+<div class="portal-card" style="border-left: 5px solid var(--danger); padding: 24px; text-align: center;">
+  <div style="color: var(--danger); font-size: 48px; margin-bottom: 12px;"><i class="ti ti-alert-triangle"></i></div>
+  <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 700; color: var(--text-main);">Shipment Sheet Full</h3>
+  <p style="margin: 0; color: var(--muted); font-size: 14.5px;">
+    All available shipment slots are currently occupied in this sheet.
+    Please download the sheet or go to settings to adjust or upload another sheet.
+  </p>
+</div>
+{% endif %}
+
+{% endif %}
+
+{% endblock %}

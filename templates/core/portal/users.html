@@ -20,6 +20,7 @@
           <th style="text-align: center;">Morning Report</th>
           <th style="text-align: center;">Pendency Report</th>
           <th style="text-align: center;">Prev Month Update</th>
+          <th style="text-align: center;">BTPL Sheet</th>
         </tr>
       </thead>
       <tbody>
@@ -70,6 +71,13 @@
             <i class="ti ti-check" style="color: var(--success); font-size: 20px;"></i>
             {% else %}
             <input type="checkbox" name="prev_month_{{ p.user.id }}" class="portal-check" {% if p.can_use_prev_month %}checked{% endif %} />
+            {% endif %}
+          </td>
+          <td style="text-align: center;">
+            {% if p.user == request.user %}
+            <i class="ti ti-check" style="color: var(--success); font-size: 20px;"></i>
+            {% else %}
+            <input type="checkbox" name="btpl_{{ p.user.id }}" class="portal-check" {% if p.can_use_btpl %}checked{% endif %} />
             {% endif %}
           </td>
         </tr>

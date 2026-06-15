@@ -334,8 +334,25 @@
   }
   .portal-input:focus, .portal-select:focus { border-color: var(--cyan); }
   .portal-input::placeholder { color: var(--hint); }
-  .portal-select { appearance: none; -webkit-appearance: none; cursor: pointer; }
+  .portal-select {
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a8b2c1' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 16px;
+    padding-right: 40px !important;
+  }
+  [data-theme="light"] .portal-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234b5563' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  }
   .portal-select option { background: var(--select-bg); color: var(--text); }
+  
+  /* Enforce calendar popups scheme globally */
+  input[type="date"] {
+    color-scheme: var(--input-scheme) !important;
+  }
 
   .cof-loss {
     display: flex; align-items: center; justify-content: space-between;
