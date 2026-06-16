@@ -114,7 +114,10 @@ def validate_workbook(path):
 
 
 def get_next_cof_info(path):
-    wb = load_workbook(path, read_only=True)
+    try:
+        wb = load_workbook(path, read_only=True)
+    except PermissionError:
+        raise WorkbookInUse("The tracking workbook is open in Excel on the server. Close it and try again.")
     ws = wb[DATA_SHEET]
     last_serial, last_efe = 0, 0
     for row in ws.iter_rows(min_row=2, values_only=True):
