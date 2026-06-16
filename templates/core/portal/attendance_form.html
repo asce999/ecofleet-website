@@ -1,0 +1,437 @@
+{% extends 'core/portal/base.html' %}
+{% block title %}Attendance — EcoFleet Express Portal{% endblock %}
+{% block heading %}Attendance Tracker{% endblock %}
+{% block content %}
+
+<style>
+  .attendance-table-wrap {
+    overflow-x: auto;
+    max-width: 100%;
+    margin-top: 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+  }
+  .attendance-table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  .attendance-table th, .attendance-table td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: center;
+    font-size: 13px;
+    vertical-align: middle;
+  }
+  .attendance-table th {
+    background: var(--surface-2);
+    color: var(--text-main);
+    font-weight: 600;
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+  .attendance-table td.staff-name-col {
+    position: sticky;
+    left: 0;
+    background: var(--surface-1);
+    z-index: 10;
+    text-align: left;
+    font-weight: 500;
+    border-right: 2px solid var(--border);
+    min-width: 180px;
+    white-space: nowrap;
+  }
+  .attendance-table th.staff-name-header {
+    position: sticky;
+    left: 0;
+    background: var(--surface-2);
+    z-index: 11;
+    text-align: left;
+    border-right: 2px solid var(--border);
+    min-width: 180px;
+    white-space: nowrap;
+  }
+  .status-cell {
+    cursor: pointer;
+    font-weight: bold;
+    user-select: none;
+    transition: all 0.1s ease-in-out;
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+  }
+  .status-cell:hover:not(.status-holiday) {
+    filter: brightness(1.15);
+    transform: scale(1.05);
+    box-shadow: 0 0 8px rgba(0,0,0,0.15);
+  }
+  
+  /* Status Colors */
+  .status-p {
+    background-color: #10b981 !important;
+    color: #ffffff !important;
+  }
+  .status-a {
+    background-color: #ef4444 !important;
+    color: #ffffff !important;
+  }
+  .status-hd {
+    background-color: #f59e0b !important;
+    color: #ffffff !important;
+  }
+  .status-empty {
+    background-color: transparent;
+    color: var(--muted);
+  }
+  .status-holiday {
+    background-color: rgba(107, 114, 128, 0.08) !important;
+    color: var(--muted) !important;
+    cursor: not-allowed;
+    font-weight: normal;
+    font-size: 11.5px;
+  }
+  [data-theme="dark"] .status-holiday {
+    background-color: rgba(55, 65, 81, 0.3) !important;
+  }
+  
+  /* Modal styling */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+  }
+  .modal-box {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-hover);
+    max-width: 500px;
+    width: 90%;
+    padding: 32px;
+    position: relative;
+    animation: modalSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes modalSlide {
+    from { transform: translateY(15px) scale(0.98); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+  }
+  
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+</style>
+
+{% if no_sheet %}
+<div class="portal-card" style="border-left: 5px solid var(--danger); padding: 32px; text-align: center; max-width: 600px; margin: 40px auto;">
+  <div style="color: var(--danger); font-size: 56px; margin-bottom: 16px;"><i class="ti ti-calendar-cancel"></i></div>
+  <h3 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 700; color: var(--text-main);">No Active Attendance Sheet</h3>
+  <p style="margin: 0 16px 24px 16px; color: var(--muted); font-size: 14.5px; line-height: 1.6;">
+    The attendance tracking workbook has been removed from active operations. 
+    You must upload a new Excel file or load the default system template workbook to continue.
+  </p>
+  <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
+    <a href="{% url 'attendance_settings' %}" class="btn-primary"><i class="ti ti-file-spreadsheet"></i> Go to Settings</a>
+  </div>
+</div>
+{% else %}
+
+<div class="cof-topbar" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; width: 100%;">
+  <div>
+    <span class="cof-next">Active Tab: <strong>{{ sheet_name }}</strong></span>
+    <span class="cof-meta">· Workbook: {{ wb.original_name|default:"Attendance_Sheet.xlsx" }}</span>
+  </div>
+  <div class="cof-topbar-actions" style="display: flex; gap: 10px; align-items: center;">
+    
+    <!-- Quick month/sheet switcher form -->
+    <form method="post" action="{% url 'attendance_settings' %}" style="display: flex; align-items: center; gap: 6px; margin: 0;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="change_sheet" />
+      <select name="active_sheet" class="portal-select" onchange="this.form.submit()" style="padding: 6px 36px 6px 12px; font-size: 13.5px; height: 36px;">
+        {% for s in sheet_names %}
+        <option value="{{ s }}" {% if s == sheet_name %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    
+    <a href="{% url 'attendance_settings' %}" class="btn-secondary cof-history-link" style="height: 36px; display: inline-flex; align-items: center;"><i class="ti ti-file-spreadsheet"></i> Settings</a>
+    <a href="{% url 'attendance_download' %}" class="btn-secondary" style="height: 36px; display: inline-flex; align-items: center;"><i class="ti ti-download"></i> Download</a>
+  </div>
+</div>
+
+<!-- Attendance Legend & Instructions -->
+<div class="portal-card" style="margin-bottom: 24px; padding: 16px;">
+  <div class="attendance-legend-wrap" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+    <div class="attendance-legend-items" style="display: flex; gap: 16px; flex-wrap: wrap;">
+      <span class="legend-item"><span class="legend-color status-p"></span> Present (P)</span>
+      <span class="legend-item"><span class="legend-color status-a"></span> Absent (A)</span>
+      <span class="legend-item"><span class="legend-color status-hd"></span> Half Day (HD)</span>
+      <span class="legend-item"><span class="legend-color status-holiday" style="border: 1px solid var(--border);"></span> Holiday / Off</span>
+    </div>
+    <div style="color: var(--muted); font-size: 13px; font-weight: 500;">
+      <i class="ti ti-info-circle"></i> Click any active cell to cycle status: <strong>Unmarked &rarr; P &rarr; A &rarr; HD &rarr; Unmarked</strong>
+    </div>
+  </div>
+</div>
+
+<form method="post" id="attendanceForm">
+  {% csrf_token %}
+  
+  <div class="portal-card attendance-card-container" style="padding: 16px;">
+    <!-- Desktop Table View -->
+    <div class="attendance-table-wrap desktop-only">
+      <table class="attendance-table">
+        <thead>
+          <tr>
+            <th class="staff-name-header">Staff Name</th>
+            <th style="min-width: 110px;">Phone Number</th>
+            {% for day_info in days_info_list %}
+              <th class="{% if day_info.is_holiday %}status-holiday{% endif %}" title="{% if day_info.is_holiday %}Holiday / Weekly Off{% endif %}">
+                {{ day_info.day }}
+                {% if day_info.is_holiday %}<br/><span style="font-size: 9px; opacity: 0.8;">HD</span>{% endif %}
+              </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for emp in employees %}
+          <tr>
+            <td class="staff-name-col"><strong>{{ emp.name }}</strong></td>
+            <td>{{ emp.phone|default:"—" }}</td>
+            
+            {% for day_att in emp.days_attendance %}
+              {% if day_att.is_holiday %}
+                <td class="status-holiday status-cell" title="Holiday / Weekly Off">OFF</td>
+              {% else %}
+                <td class="status-cell {% if day_att.status == 'P' %}status-p{% elif day_att.status == 'A' %}status-a{% elif day_att.status == 'HD' %}status-hd{% else %}status-empty{% endif %}" 
+                    data-row="{{ emp.row_idx }}" 
+                    data-day="{{ day_att.day }}" 
+                    data-status="{{ day_att.status }}" 
+                    onclick="cycleStatus(this, {{ emp.row_idx }}, {{ day_att.day }})">
+                  {{ day_att.status }}
+                </td>
+              {% endif %}
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile Card View -->
+    <div class="attendance-mobile-cards-wrap mobile-only" id="attendanceMobileCards">
+      {% for emp in employees %}
+        <div class="attendance-card" id="attCard_{{ emp.row_idx }}">
+          <div class="att-card-header" onclick="toggleCardCollapse({{ emp.row_idx }})">
+            <div class="att-card-header-left">
+              <div class="att-employee-name">{{ emp.name }}</div>
+              <div class="att-employee-phone"><i class="ti ti-phone"></i> {{ emp.phone|default:"—" }}</div>
+            </div>
+            <div class="att-card-header-right">
+              <div class="att-card-summary" id="attSummary_{{ emp.row_idx }}">
+                <!-- summary badges counts injected by JS -->
+              </div>
+              <i class="ti ti-chevron-down att-chevron" id="attChevron_{{ emp.row_idx }}"></i>
+            </div>
+          </div>
+          <div class="att-card-detail" id="attDetail_{{ emp.row_idx }}" style="display: none;">
+            <div class="att-days-title"><i class="ti ti-calendar-event"></i> Mark Days</div>
+            <div class="att-days-grid">
+              {% for day_att in emp.days_attendance %}
+                {% if day_att.is_holiday %}
+                  <div class="status-holiday status-cell" title="Holiday / Weekly Off">OFF</div>
+                {% else %}
+                  <div class="status-cell {% if day_att.status == 'P' %}status-p{% elif day_att.status == 'A' %}status-a{% elif day_att.status == 'HD' %}status-hd{% else %}status-empty{% endif %}" 
+                       data-row="{{ emp.row_idx }}" 
+                       data-day="{{ day_att.day }}" 
+                       data-status="{{ day_att.status }}" 
+                       onclick="cycleStatus(this, {{ emp.row_idx }}, {{ day_att.day }})">
+                    {{ day_att.status }}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- Hidden Input Fields representing current grid state -->
+    <div id="hiddenInputsWrap">
+      {% for emp in employees %}
+        {% for day_att in emp.days_attendance %}
+          {% if not day_att.is_holiday %}
+            <input type="hidden" name="attendance_{{ emp.row_idx }}_{{ day_att.day }}" id="input_{{ emp.row_idx }}_{{ day_att.day }}" value="{{ day_att.status }}" />
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+    </div>
+
+    <!-- Desktop Action Bar -->
+    <div class="desktop-only" style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
+      <a href="{% url 'attendance_sheet' %}" class="btn-secondary" style="height: 38px; display: inline-flex; align-items: center;"><i class="ti ti-rotate"></i> Reset Changes</a>
+      <button type="submit" class="btn-primary" style="height: 38px;"><i class="ti ti-device-floppy"></i> Save Attendance</button>
+    </div>
+
+    <!-- Mobile Sticky Action Bar -->
+    <div class="mobile-action-bar mobile-only">
+      <a href="{% url 'attendance_sheet' %}" class="btn-secondary"><i class="ti ti-rotate"></i> Reset</a>
+      <button type="submit" class="btn-primary"><i class="ti ti-device-floppy"></i> Save</button>
+    </div>
+  </div>
+</form>
+
+{% endif %}
+
+<!-- Post-Save Success Modal -->
+{% if success %}
+<div class="modal-overlay" id="successModal">
+  <div class="modal-box">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <div style="color: var(--success); font-size: 56px; line-height: 1; margin-bottom: 12px;"><i class="ti ti-circle-check"></i></div>
+      <h3 style="margin: 0 0 6px 0; font-size: 20px; font-weight: 700; color: var(--text-main);">Attendance Saved Successfully</h3>
+      <p style="margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5;">
+        The attendance tracker has been updated on the server.
+      </p>
+    </div>
+    
+    <div style="display: flex; gap: 12px; justify-content: center; margin-top: 24px;">
+      <a href="{% url 'attendance_download' %}" class="btn-primary" style="padding: 10px 20px; border-radius: 8px;"><i class="ti ti-download"></i> Download Updated Excel</a>
+      <button onclick="dismissModal()" class="btn-secondary" style="padding: 10px 20px; border-radius: 8px;"><i class="ti ti-x"></i> Dismiss</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script>
+  function cycleStatus(cell, rowIdx, dayNum) {
+    const statuses = ['', 'P', 'A', 'HD'];
+    const current = cell.getAttribute('data-status') || '';
+    let nextIdx = (statuses.indexOf(current) + 1) % statuses.length;
+    const nextStatus = statuses[nextIdx];
+    
+    // Find all matching cells (both desktop and mobile) and sync their status
+    const cells = document.querySelectorAll(`.status-cell[data-row="${rowIdx}"][data-day="${dayNum}"]`);
+    cells.forEach(c => {
+      c.setAttribute('data-status', nextStatus);
+      c.textContent = nextStatus;
+      c.classList.remove('status-p', 'status-a', 'status-hd', 'status-empty');
+      if (nextStatus === 'P') {
+        c.classList.add('status-p');
+      } else if (nextStatus === 'A') {
+        c.classList.add('status-a');
+      } else if (nextStatus === 'HD') {
+        c.classList.add('status-hd');
+      } else {
+        c.classList.add('status-empty');
+      }
+    });
+    
+    // Update the form's hidden input
+    const inputId = `input_${rowIdx}_${dayNum}`;
+    const input = document.getElementById(inputId);
+    if (input) {
+      input.value = nextStatus;
+    }
+
+    // Update the mobile card header summary badges
+    updateMobileCardSummary(rowIdx);
+  }
+
+  function updateMobileCardSummary(rowIdx) {
+    // Only select the active mobile grid cells for this employee to count statuses
+    const cells = document.querySelectorAll(`.att-days-grid [data-row="${rowIdx}"].status-cell`);
+    let pCount = 0;
+    let aCount = 0;
+    let hdCount = 0;
+    
+    cells.forEach(c => {
+      const status = c.getAttribute('data-status') || '';
+      if (status === 'P') pCount++;
+      else if (status === 'A') aCount++;
+      else if (status === 'HD') hdCount++;
+    });
+    
+    const summaryDiv = document.getElementById(`attSummary_${rowIdx}`);
+    if (summaryDiv) {
+      let html = '';
+      if (pCount > 0) html += `<span class="att-summary-badge b-p">P:${pCount}</span>`;
+      if (aCount > 0) html += `<span class="att-summary-badge b-a">A:${aCount}</span>`;
+      if (hdCount > 0) html += `<span class="att-summary-badge b-hd">HD:${hdCount}</span>`;
+      if (html === '') html = '<span style="color:var(--hint); font-size:11px;">Unmarked</span>';
+      summaryDiv.innerHTML = html;
+    }
+  }
+
+  function toggleCardCollapse(rowIdx) {
+    const card = document.getElementById(`attCard_${rowIdx}`);
+    const detail = document.getElementById(`attDetail_${rowIdx}`);
+    if (!detail) return;
+    
+    const isHidden = detail.style.display === 'none';
+    if (isHidden) {
+      // Accordion effect: Close all other details first
+      document.querySelectorAll('.att-card-detail').forEach(d => {
+        d.style.display = 'none';
+      });
+      document.querySelectorAll('.attendance-card').forEach(c => {
+        c.classList.remove('active-open');
+      });
+      
+      detail.style.display = 'block';
+      card.classList.add('active-open');
+    } else {
+      detail.style.display = 'none';
+      card.classList.remove('active-open');
+    }
+  }
+
+  function dismissModal() {
+    const modal = document.getElementById('successModal');
+    if (modal) {
+      modal.style.display = 'none';
+    }
+    // Clean up query param from URL bar
+    const url = new URL(window.location);
+    url.searchParams.delete('success');
+    window.history.replaceState({}, document.title, url);
+  }
+
+  // Dismiss modal if clicking outside the modal-box
+  window.addEventListener('click', function(e) {
+    const modal = document.getElementById('successModal');
+    if (e.target === modal) {
+      dismissModal();
+    }
+  });
+
+  // Calculate initial counts for all cards on load
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.attendance-card').forEach(card => {
+      const idStr = card.id.replace('attCard_', '');
+      const rowIdx = parseInt(idStr, 10);
+      if (!isNaN(rowIdx)) {
+        updateMobileCardSummary(rowIdx);
+      }
+    });
+  });
+</script>
+
+{% endblock %}

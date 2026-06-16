@@ -31,6 +31,10 @@ urlpatterns = [
     path('portal/prev-month-update/', views.prev_month_update, name='prev_month_update'),
     path('portal/result/<int:pk>/', views.tool_result, name='tool_result'),
     path('portal/btpl/', views.btpl_sheet, name='btpl_sheet'),
+    path('portal/btpl/api/', views.btpl_api, name='btpl_api'),
     path('portal/btpl/download/', views.btpl_download, name='btpl_download'),
     path('portal/btpl/settings/', views.btpl_settings, name='btpl_settings'),
+    path('portal/attendance/', views.attendance_sheet, name='attendance_sheet'),
+    path('portal/attendance/download/', views.attendance_download, name='attendance_download'),
+    path('portal/attendance/settings/', views.attendance_settings, name='attendance_settings'),
 ]

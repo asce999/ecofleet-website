@@ -2,9 +2,14 @@
 {% block title %}{{ heading }} — EcoFleet Portal{% endblock %}
 {% block heading %}{{ heading }}{% endblock %}
 {% block content %}
-  <div class="portal-card coming-soon">
-    <i class="ti ti-tools"></i>
+  <div class="coming-soon">
+    <div class="coming-soon-glow">
+      <i class="ti ti-tools"></i>
+    </div>
     <h2>{{ heading }}</h2>
-    <p>This tool is being wired up in {{ phase }}. Check back shortly.</p>
+    <p>This tool is being wired up in <strong>{{ phase }}</strong>. Check back shortly.</p>
+    <div class="coming-soon-progress">
+      <div class="coming-soon-bar"></div>
+    </div>
   </div>
 {% endblock %}

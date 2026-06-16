@@ -28,6 +28,7 @@ class Command(BaseCommand):
         jude_profile.can_use_pendency = True
         jude_profile.can_use_prev_month = True
         jude_profile.can_use_btpl = True
+        jude_profile.can_use_attendance = True
         jude_profile.save()
 
         self.stdout.write(self.style.SUCCESS("Superuser 'Jude' (Director) updated/created successfully."))
@@ -54,6 +55,7 @@ class Command(BaseCommand):
         jitendra_profile.can_use_pendency = True
         jitendra_profile.can_use_prev_month = True
         jitendra_profile.can_use_btpl = True
+        jitendra_profile.can_use_attendance = True
         jitendra_profile.save()
 
         self.stdout.write(self.style.SUCCESS("Superuser 'Jitendra' (Manager) updated/created successfully."))

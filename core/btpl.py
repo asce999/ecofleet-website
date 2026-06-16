@@ -318,41 +318,150 @@ def evaluate_cell(sheet, row, col, memo=None):
         memo[cell_id] = val
         return val
 
-def get_btpl_preview(file_path, sheet_name='JUN 26'):
-    wb = openpyxl.load_workbook(file_path, data_only=False)
-    if sheet_name not in wb.sheetnames:
-        return {'columns': [], 'rows': []}
-    sheet = wb[sheet_name]
-    
-    mapping = get_column_mapping(sheet)
+def get_btpl_preview(file_path, sheet_name='JUN 26', page=1, page_size=20, sheet=None, mapping=None, memo=None):
+    """Return paginated preview data. If sheet/mapping/memo are provided, reuse them (single-load)."""
+    close_wb = False
+    if sheet is None:
+        wb = openpyxl.load_workbook(file_path, data_only=False)
+        if sheet_name not in wb.sheetnames:
+            return {'columns': [], 'rows': [], 'total_rows': 0, 'page': 1, 'page_size': page_size, 'total_pages': 0}
+        sheet = wb[sheet_name]
+        close_wb = True
+
+    if mapping is None:
+        mapping = get_column_mapping(sheet)
+    if memo is None:
+        memo = {}
+
     max_col = max(mapping.values()) if mapping else 20
-    
-    memo = {}
-    rows = []
-    for r in range(1, sheet.max_row + 1):
+
+    def format_cell(val):
+        if val is None:
+            return ""
+        elif isinstance(val, (datetime.datetime, datetime.date)):
+            return val.strftime('%d-%b-%y')
+        elif isinstance(val, float):
+            return str(int(val)) if val.is_integer() else f"{val:.2f}"
+        else:
+            return str(val)
+
+    # Get header row
+    columns = []
+    for c in range(1, max_col + 1):
+        val = evaluate_cell(sheet, 1, c, memo)
+        columns.append(format_cell(val))
+
+    # Collect all non-empty data rows (row 2 onwards)
+    all_data_rows = []
+    for r in range(2, sheet.max_row + 1):
         row_vals = []
+        has_data = False
         for c in range(1, max_col + 1):
             val = evaluate_cell(sheet, r, c, memo)
-            if val is None:
-                row_vals.append("")
-            elif isinstance(val, (datetime.datetime, datetime.date)):
-                row_vals.append(val.strftime('%d-%b-%y'))
-            elif isinstance(val, float):
-                if val.is_integer():
-                    row_vals.append(str(int(val)))
-                else:
-                    row_vals.append(f"{val:.2f}")
-            else:
-                row_vals.append(str(val))
-        if any(v != "" for v in row_vals):
-            rows.append(row_vals)
-            
-    if not rows:
-        return {'columns': [], 'rows': []}
-        
+            formatted = format_cell(val)
+            row_vals.append(formatted)
+            if formatted != "":
+                has_data = True
+        if has_data:
+            all_data_rows.append({'row_num': r, 'cells': row_vals})
+
+    total_rows = len(all_data_rows)
+    total_pages = max(1, (total_rows + page_size - 1) // page_size)
+    page = max(1, min(page, total_pages))
+
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    page_rows = all_data_rows[start_idx:end_idx]
+
     return {
-        'columns': rows[0],
-        'rows': rows[1:],
+        'columns': columns,
+        'rows': page_rows,
+        'total_rows': total_rows,
+        'page': page,
+        'page_size': page_size,
+        'total_pages': total_pages,
+    }
+
+
+def get_btpl_page_data(file_path, sheet_name='JUN 26', target_row=None, page=1, page_size=20):
+    """
+    Single-load function: opens the workbook ONCE and returns all data needed
+    for the BTPL page (mapping, totals_row, next_row, row_values, preview).
+    """
+    wb = openpyxl.load_workbook(file_path, data_only=False)
+    if sheet_name not in wb.sheetnames:
+        return None
+
+    sheet = wb[sheet_name]
+    mapping = get_column_mapping(sheet)
+    totals_row = find_totals_row(sheet, mapping)
+    memo = {}
+
+    # Find next empty row
+    lr_col = mapping.get('lr_number', 3)
+    auto_next_row = None
+    for r in range(2, totals_row):
+        val = sheet.cell(row=r, column=lr_col).value
+        if val is None or str(val).strip() == "":
+            auto_next_row = r
+            break
+
+    # Decide which row to target
+    next_row = None
+    if target_row and 2 <= target_row < totals_row:
+        next_row = target_row
+    else:
+        next_row = auto_next_row
+
+    # Get row values for the target row
+    row_values = {}
+    if next_row:
+        def get_val(key):
+            col = mapping.get(key)
+            if col is None:
+                return None
+            return sheet.cell(row=next_row, column=col).value
+
+        amount_val = get_val('amount')
+        if isinstance(amount_val, str) and amount_val.startswith('='):
+            amount_val = None
+
+        row_values = {
+            'row_num': next_row,
+            'lr_number': get_val('lr_number'),
+            'pickup_date': get_val('pickup_date'),
+            'name': get_val('name'),
+            'address': get_val('address'),
+            'contact_person': get_val('contact_person'),
+            'contact_number': get_val('contact_number'),
+            'city': get_val('city'),
+            'state': get_val('state'),
+            'boxes': get_val('boxes'),
+            'weight_ef': get_val('weight_ef'),
+            'weight_opt': get_val('weight_opt'),
+            'status': get_val('status'),
+            'delivered_on': get_val('delivered_on'),
+            'tat': get_val('tat'),
+            'rate': get_val('rate'),
+            'amount': amount_val,
+            'vendor': get_val('vendor'),
+            'vendor_rate': get_val('vendor_rate'),
+            'vendor_payment': get_val('vendor_payment'),
+        }
+
+    # Get paginated preview (reuse same sheet object and memo)
+    preview = get_btpl_preview(
+        file_path, sheet_name=sheet_name,
+        page=page, page_size=page_size,
+        sheet=sheet, mapping=mapping, memo=memo
+    )
+
+    return {
+        'mapping': mapping,
+        'totals_row': totals_row,
+        'next_row': next_row,
+        'row_values': row_values,
+        'preview': preview,
     }
 
 def clear_btpl_row(file_path, row, sheet_name='JUN 26'):

@@ -21,11 +21,11 @@ from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import never_cache
 
-from .forms import CofForm, WorkbookUploadForm, PendencyForm, MorningForm, PrevMonthUpdateForm, BtplShipmentForm, BtplWorkbookUploadForm
-from . import cof, pendency, morning, prev_month, btpl
+from .forms import CofForm, WorkbookUploadForm, PendencyForm, MorningForm, PrevMonthUpdateForm, BtplShipmentForm, BtplWorkbookUploadForm, AttendanceWorkbookUploadForm
+from . import cof, pendency, morning, prev_month, btpl, attendance
 
 from .decorators import staff_required, tool_permission_required, director_required
-from .models import ToolRun, ToolRunFile, CofWorkbook, BtplWorkbook
+from .models import ToolRun, ToolRunFile, CofWorkbook, BtplWorkbook, AttendanceWorkbook
 
 def home(request):
     return render(request, 'core/home.html')
@@ -359,6 +359,7 @@ def download_file(request, file_id):
         'PENDENCY': 'pendency',
         'PREV_MONTH': 'prev_month',
         'BTPL': 'btpl',
+        'ATTENDANCE': 'attendance',
     }
     required_perm = tool_map.get(f.run.tool)
     if required_perm and not getattr(profile, f"can_use_{required_perm}", False):
@@ -670,6 +671,7 @@ def portal_users(request):
             profile.can_use_pendency = f"pendency_{u.id}" in request.POST
             profile.can_use_prev_month = f"prev_month_{u.id}" in request.POST
             profile.can_use_btpl = f"btpl_{u.id}" in request.POST
+            profile.can_use_attendance = f"attendance_{u.id}" in request.POST
             profile.save()
 
         messages.success(request, "User roles and permissions updated successfully.")
@@ -710,66 +712,74 @@ def btpl_sheet(request):
             'active': 'btpl',
             'no_sheet': True,
         })
-        
-    # Get totals row to find upper boundary
-    totals_row = 64
-    try:
-        import openpyxl
-        wb = openpyxl.load_workbook(file_path, read_only=True)
-        if sheet_name in wb.sheetnames:
-            sheet = wb[sheet_name]
-            mapping = btpl.get_column_mapping(sheet)
-            totals_row = btpl.find_totals_row(sheet, mapping)
-    except Exception:
-        pass
-        
-    # Check for manual target row selection
-    manual_row = request.GET.get('row')
-    next_row = None
-    if manual_row:
-        try:
-            r_val = int(manual_row)
-            if 2 <= r_val < totals_row:
-                next_row = r_val
-        except (ValueError, TypeError):
-            pass
-            
-    if not next_row:
-        next_row = btpl.find_next_btpl_row(file_path, sheet_name=sheet_name)
-        
-    success_run_id = request.GET.get('run_id')
-    is_success = request.GET.get('success') == '1'
-    
-    if request.method == 'POST':
-        action = request.POST.get('action')
-        if action == 'delete_row':
-            row_to_del = request.POST.get('row_to_delete')
-            try:
-                r_val = int(row_to_del)
-                if 2 <= r_val < totals_row:
-                    btpl.clear_btpl_row(file_path, r_val, sheet_name=sheet_name)
-                    
-                    ToolRun.objects.create(
-                        user=request.user,
-                        tool=ToolRun.TOOL_BTPL,
-                        status=ToolRun.STATUS_SUCCESS,
-                        reference=f"Clear Row: {r_val}",
-                        detail=f"Cleared all shipment details in Row {r_val} on sheet {sheet_name}"
-                    )
-                    messages.success(request, f"Shipment details in Row {r_val} have been deleted.")
-                else:
-                    messages.error(request, "Invalid row number.")
-            except Exception as e:
-                messages.error(request, f"Failed to delete row: {e}")
-            return redirect('btpl_sheet')
 
+    page = int(request.GET.get('page', 1))
+    page_data = btpl.get_btpl_page_data(
+        file_path, sheet_name=sheet_name, page=page, page_size=20
+    )
+
+    if page_data is None:
+        return render(request, 'core/portal/btpl_form.html', {
+            'active': 'btpl',
+            'no_sheet': True,
+        })
+
+    totals_row = page_data['totals_row']
+    next_row = page_data['next_row']
+
+    context = {
+        'active': 'btpl',
+        'preview': page_data['preview'],
+        'next_row': next_row,
+        'totals_row': totals_row,
+        'max_shipment_row': totals_row - 1,
+        'sheet_name': sheet_name,
+        'wb': wb_obj,
+    }
+    return render(request, 'core/portal/btpl_form.html', context)
+
+
+@staff_required
+@tool_permission_required('btpl')
+@never_cache
+def btpl_api(request):
+    """JSON API endpoint for AJAX BTPL operations."""
+    import json
+    from django.http import JsonResponse
+
+    wb_obj, file_path, sheet_name = get_active_btpl_workbook()
+    if not file_path:
+        return JsonResponse({'error': 'No active workbook'}, status=404)
+
+    action = request.GET.get('action') or request.POST.get('action', '')
+
+    # GET: fetch row data for editing
+    if action == 'get_row':
+        row_num = int(request.GET.get('row', 0))
+        if row_num < 2:
+            return JsonResponse({'error': 'Invalid row'}, status=400)
+        row_data = btpl.get_btpl_row_values(file_path, row_num, sheet_name=sheet_name)
+        # Convert dates to strings for JSON
+        for key in ['pickup_date', 'delivered_on']:
+            val = row_data.get(key)
+            if isinstance(val, (datetime.datetime, datetime.date)):
+                row_data[key] = val.strftime('%Y-%m-%d')
+        return JsonResponse({'row_data': row_data})
+
+    # GET: paginated preview
+    if action == 'preview':
+        page = int(request.GET.get('page', 1))
+        preview = btpl.get_btpl_preview(file_path, sheet_name=sheet_name, page=page, page_size=20)
+        return JsonResponse({'preview': preview})
+
+    # POST: save row
+    if action == 'save' and request.method == 'POST':
         form = BtplShipmentForm(request.POST)
         if form.is_valid():
             row_data = form.cleaned_data
             target_row = row_data['row_num']
             try:
                 btpl.add_btpl_shipment(file_path, row_data, sheet_name=sheet_name)
-                
                 run = ToolRun.objects.create(
                     user=request.user,
                     tool=ToolRun.TOOL_BTPL,
@@ -777,9 +787,7 @@ def btpl_sheet(request):
                     reference=f"LR: {row_data.get('lr_number') or ''}",
                     detail=f"Row: {target_row} · Sheet: {sheet_name} · Consignee: {row_data.get('name') or ''}"
                 )
-                
-                messages.success(request, "Shipment details updated successfully.")
-                return redirect(f"{reverse('btpl_sheet')}?success=1&run_id={run.pk}")
+                return JsonResponse({'success': True, 'run_id': run.pk, 'row': target_row})
             except Exception as e:
                 ToolRun.objects.create(
                     user=request.user,
@@ -787,30 +795,38 @@ def btpl_sheet(request):
                     status=ToolRun.STATUS_FAILED,
                     detail=f"Error writing row {target_row}: {e}"
                 )
-                messages.error(request, f"Failed to update sheet: {e}")
+                return JsonResponse({'error': str(e)}, status=500)
         else:
-            messages.error(request, "Please fix the highlighted fields.")
-    else:
-        initial_data = {}
-        if next_row:
-            initial_data = btpl.get_btpl_row_values(file_path, next_row, sheet_name=sheet_name)
-        form = BtplShipmentForm(initial=initial_data)
-        
-    preview_data = btpl.get_btpl_preview(file_path, sheet_name=sheet_name)
-    
-    context = {
-        'active': 'btpl',
-        'form': form,
-        'preview': preview_data,
-        'next_row': next_row,
-        'totals_row': totals_row,
-        'max_shipment_row': totals_row - 1,
-        'success': is_success,
-        'run_id': success_run_id,
-        'sheet_name': sheet_name,
-        'wb': wb_obj,
-    }
-    return render(request, 'core/portal/btpl_form.html', context)
+            errors = {k: v[0] for k, v in form.errors.items()}
+            return JsonResponse({'error': 'Validation failed', 'field_errors': errors}, status=400)
+
+    # POST: delete row
+    if action == 'delete' and request.method == 'POST':
+        row_num = int(request.POST.get('row', 0))
+        # Get totals_row to validate
+        page_data = btpl.get_btpl_page_data(file_path, sheet_name=sheet_name, page=1, page_size=1)
+        totals_row = page_data['totals_row'] if page_data else 64
+        if row_num < 2 or row_num >= totals_row:
+            return JsonResponse({'error': 'Invalid row number'}, status=400)
+        try:
+            btpl.clear_btpl_row(file_path, row_num, sheet_name=sheet_name)
+            ToolRun.objects.create(
+                user=request.user,
+                tool=ToolRun.TOOL_BTPL,
+                status=ToolRun.STATUS_SUCCESS,
+                reference=f"Clear Row: {row_num}",
+                detail=f"Cleared all shipment details in Row {row_num} on sheet {sheet_name}"
+            )
+            return JsonResponse({'success': True, 'row': row_num})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    # GET: next available row
+    if action == 'next_row':
+        next_row = btpl.find_next_btpl_row(file_path, sheet_name=sheet_name)
+        return JsonResponse({'next_row': next_row})
+
+    return JsonResponse({'error': 'Unknown action'}, status=400)
 
 
 @staff_required
@@ -952,4 +968,227 @@ def btpl_settings(request):
         'current_sheet': current_sheet_name,
         'sheets': sheets,
     }
-    return render(request, 'core/portal/btpl_settings.html', context)
+    return render(request, 'core/portal/btpl_settings.html', context)
+
+
+@staff_required
+@tool_permission_required('attendance')
+@never_cache
+def attendance_sheet(request):
+    from django.urls import reverse
+    wb_obj, file_path, sheet_name = attendance.get_active_attendance_workbook()
+    
+    if not file_path or not os.path.exists(file_path):
+        return render(request, 'core/portal/attendance_form.html', {
+            'active': 'attendance',
+            'no_sheet': True,
+        })
+        
+    if request.method == 'POST':
+        try:
+            modified = attendance.save_attendance(file_path, sheet_name, request.POST)
+            if modified:
+                ToolRun.objects.create(
+                    user=request.user,
+                    tool=ToolRun.TOOL_ATTENDANCE,
+                    status=ToolRun.STATUS_SUCCESS,
+                    reference=f"Update: {sheet_name}",
+                    detail=f"Updated attendance sheet '{sheet_name}'"
+                )
+                messages.success(request, "Attendance updated successfully.")
+                return redirect(reverse('attendance_sheet') + '?success=1')
+            else:
+                messages.info(request, "No changes were made to the attendance sheet.")
+                return redirect('attendance_sheet')
+        except Exception as e:
+            messages.error(request, f"Failed to save attendance: {e}")
+            return redirect('attendance_sheet')
+            
+    # Load sheet data
+    data = attendance.get_attendance_data(file_path, sheet_name)
+    if not data:
+        return render(request, 'core/portal/attendance_form.html', {
+            'active': 'attendance',
+            'no_sheet': True,
+        })
+        
+    days_list = list(range(1, data['days_in_month'] + 1))
+    days_info_list = []
+    for d in days_list:
+        days_info_list.append({
+            'day': d,
+            'is_holiday': data['day_headers'][d]['is_holiday']
+        })
+        
+    employees_list = []
+    for emp in data['employees']:
+        days_attendance = []
+        for d in days_list:
+            days_attendance.append({
+                'day': d,
+                'status': emp['attendance'].get(d, ''),
+                'is_holiday': data['day_headers'][d]['is_holiday']
+            })
+        employees_list.append({
+            'row_idx': emp['row_idx'],
+            'name': emp['name'],
+            'phone': emp['phone'],
+            'days_attendance': days_attendance
+        })
+        
+    context = {
+        'active': 'attendance',
+        'sheet_name': data['sheet_name'],
+        'days_in_month': data['days_in_month'],
+        'days_info_list': days_info_list,
+        'employees': employees_list,
+        'sheet_names': data['sheet_names'],
+        'wb': wb_obj,
+        'success': request.GET.get('success') == '1',
+    }
+    return render(request, 'core/portal/attendance_form.html', context)
+
+
+@staff_required
+@tool_permission_required('attendance')
+def attendance_download(request):
+    wb_obj, file_path, sheet_name = attendance.get_active_attendance_workbook()
+    if not file_path or not os.path.exists(file_path):
+        raise Http404("Attendance workbook file not found.")
+        
+    filename = wb_obj.original_name if wb_obj else "Attendance_Sheet.xlsx"
+    response = FileResponse(open(file_path, 'rb'), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@staff_required
+@tool_permission_required('attendance')
+def attendance_settings(request):
+    """Manage active Attendance workbook and active sheet tab."""
+    wb_obj, file_path, current_sheet_name = attendance.get_active_attendance_workbook()
+    
+    # Read sheets from Excel if file_path exists
+    sheets = []
+    if file_path and os.path.exists(file_path):
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(file_path, read_only=True)
+            sheets = wb.sheetnames
+        except Exception:
+            sheets = ['JUNE 2026']
+    else:
+        sheets = ['JUNE 2026']
+        
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'remove':
+            AttendanceWorkbook.objects.filter(is_active=True).update(is_active=False)
+            if AttendanceWorkbook.objects.count() == 0:
+                AttendanceWorkbook.objects.create(
+                    original_name='Attendance_Sheet.xlsx',
+                    active_sheet='JUNE 2026',
+                    uploaded_by=request.user,
+                    is_active=False
+                )
+            messages.success(request, "Attendance sheet removed entirely. Portal is now in empty state.")
+            return redirect('attendance_settings')
+            
+        elif action == 'load_default':
+            import shutil
+            root_file_path = os.path.join(settings.BASE_DIR, 'Attendance_Sheet.xlsx')
+            target_dir = os.path.join(settings.MEDIA_ROOT, 'attendance')
+            os.makedirs(target_dir, exist_ok=True)
+            dest_path = os.path.join(target_dir, 'Attendance_Sheet.xlsx')
+            shutil.copy2(root_file_path, dest_path)
+            
+            AttendanceWorkbook.objects.filter(is_active=True).update(is_active=False)
+            
+            wb_obj = AttendanceWorkbook.objects.create(
+                original_name='Attendance_Sheet.xlsx',
+                active_sheet='JUNE 2026',
+                uploaded_by=request.user,
+                is_active=True
+            )
+            wb_obj.file.name = 'attendance/Attendance_Sheet.xlsx'
+            wb_obj.save(update_fields=['file'])
+            
+            try:
+                wb = openpyxl.load_workbook(dest_path, read_only=True)
+                if wb.sheetnames:
+                    wb_obj.active_sheet = wb.sheetnames[-1]
+                    wb_obj.save(update_fields=['active_sheet'])
+            except Exception:
+                pass
+                
+            messages.success(request, "Default attendance workbook loaded successfully.")
+            return redirect('attendance_settings')
+            
+        elif action == 'change_sheet':
+            form = AttendanceWorkbookUploadForm(request.POST, sheets=sheets)
+            if form.is_valid():
+                sheet_sel = form.cleaned_data.get('active_sheet')
+                if wb_obj:
+                    wb_obj.active_sheet = sheet_sel
+                    wb_obj.save(update_fields=['active_sheet'])
+                else:
+                    import shutil
+                    root_file_path = os.path.join(settings.BASE_DIR, 'Attendance_Sheet.xlsx')
+                    target_dir = os.path.join(settings.MEDIA_ROOT, 'attendance')
+                    os.makedirs(target_dir, exist_ok=True)
+                    dest_path = os.path.join(target_dir, 'Attendance_Sheet.xlsx')
+                    shutil.copy2(root_file_path, dest_path)
+                    
+                    wb_obj = AttendanceWorkbook.objects.create(
+                        original_name='Attendance_Sheet.xlsx',
+                        active_sheet=sheet_sel,
+                        uploaded_by=request.user,
+                        is_active=True
+                    )
+                    wb_obj.file.name = 'attendance/Attendance_Sheet.xlsx'
+                    wb_obj.save(update_fields=['file'])
+                    
+                messages.success(request, f"Active sheet tab changed to '{sheet_sel}'.")
+                return redirect('attendance_sheet')
+                
+        elif action == 'upload':
+            form = AttendanceWorkbookUploadForm(request.POST, request.FILES, sheets=sheets)
+            if form.is_valid():
+                upload = request.FILES.get('workbook')
+                if upload:
+                    new_wb = AttendanceWorkbook.objects.create(
+                        file=upload, original_name=upload.name,
+                        uploaded_by=request.user, is_active=False
+                    )
+                    
+                    try:
+                        import openpyxl
+                        temp_wb = openpyxl.load_workbook(new_wb.file.path, read_only=True)
+                        uploaded_sheets = temp_wb.sheetnames
+                        default_sheet = uploaded_sheets[-1] if uploaded_sheets else 'JUNE 2026'
+                    except Exception:
+                        default_sheet = 'JUNE 2026'
+                        
+                    new_wb.active_sheet = default_sheet
+                    new_wb.save(update_fields=['active_sheet'])
+                    
+                    AttendanceWorkbook.objects.filter(is_active=True).update(is_active=False)
+                    new_wb.is_active = True
+                    new_wb.save(update_fields=['is_active'])
+                    
+                    messages.success(request, f"Uploaded workbook '{upload.name}' is now the active attendance workbook.")
+                    return redirect('attendance_settings')
+                else:
+                    messages.error(request, "Please choose a valid .xlsx file to upload.")
+    else:
+        form = AttendanceWorkbookUploadForm(initial={'active_sheet': current_sheet_name}, sheets=sheets)
+        
+    context = {
+        'active': 'attendance',
+        'form': form,
+        'wb': wb_obj,
+        'current_sheet': current_sheet_name,
+        'sheets': sheets,
+    }
+    return render(request, 'core/portal/attendance_settings.html', context)

@@ -827,3 +827,636 @@ input.portal-input[type="date"]::-webkit-calendar-picker-indicator:hover { opaci
   }
 }
 
+/* ── LOGIN ENTRANCE ANIMATION ── */
+.login-card {
+  animation: loginCardEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes loginCardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── PORTAL SIDEBAR OVERLAY FOR MOBILE ── */
+.portal-sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 98;
+  transition: opacity 0.3s ease;
+}
+
+.portal-sidebar-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (max-width: 900px) {
+  .portal-sidebar {
+    z-index: 100;
+  }
+}
+
+/* ── PORTAL MESSAGES AUTO-DISMISS ANIMATION ── */
+.portal-messages {
+  transition: max-height 0.4s ease, margin 0.4s ease, padding 0.4s ease;
+}
+
+.portal-msg {
+  transition: opacity 0.4s ease, transform 0.4s ease, max-height 0.4s ease, margin 0.4s ease, padding 0.4s ease;
+}
+
+/* ── PORTAL FORM INPUT STYLING (DJANGO WIDGETS AUTOFIT) ── */
+.portal-content form input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="file"]),
+.portal-content form select,
+.portal-content form textarea,
+.settings-grid input:not([type="checkbox"]):not([type="radio"]),
+.settings-grid select,
+.settings-grid textarea {
+  width: 100%;
+  background: var(--surface-3); border: 1px solid var(--border);
+  border-radius: 10px; padding: 11px 14px;
+  color: var(--text); font-size: 14px; font-family: inherit;
+  outline: none; transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.portal-content form input:focus,
+.portal-content form select:focus,
+.portal-content form textarea:focus,
+.settings-grid input:focus,
+.settings-grid select:focus,
+.settings-grid textarea:focus {
+  border-color: var(--cyan);
+}
+
+.portal-content form select,
+.settings-grid select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a8b2c1' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
+  padding-right: 40px !important;
+}
+
+.portal-content form input[type="file"],
+.settings-grid input[type="file"] {
+  border: 1px dashed var(--border);
+  background: var(--surface-2);
+  padding: 12px;
+  cursor: pointer;
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+/* ── COMING SOON EMPTY STATE POLISH ── */
+.coming-soon {
+  text-align: center;
+  padding: 80px 40px;
+  max-width: 520px;
+  margin: 60px auto;
+  border-radius: 24px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card, 0 8px 32px rgba(0,0,0,0.2));
+  backdrop-filter: blur(12px);
+  position: relative;
+  overflow: hidden;
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.coming-soon::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(0, 174, 239, 0.05) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.coming-soon-glow {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: rgba(0, 174, 239, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 28px;
+  box-shadow: 0 0 30px rgba(0, 174, 239, 0.2);
+}
+
+.coming-soon i {
+  font-size: 42px;
+  color: var(--cyan);
+}
+
+.coming-soon h2 {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+  color: var(--text);
+}
+
+.coming-soon p {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 32px;
+}
+
+.coming-soon-progress {
+  width: 100%;
+  height: 6px;
+  background: var(--surface-3);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 24px;
+}
+
+.coming-soon-bar {
+  width: 65%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyan), var(--purple));
+  border-radius: 3px;
+  position: relative;
+  animation: progressPulse 2s ease-in-out infinite;
+}
+
+@keyframes progressPulse {
+  0% { opacity: 0.8; }
+  50% { opacity: 1; filter: brightness(1.2); }
+  100% { opacity: 0.8; }
+}
+
+/* ── MODERN GLOBAL SCROLLBAR STYLING ── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface-3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+  border: 2px solid var(--surface-3);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--cyan);
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) var(--surface-3);
+}
+
+/* ── MOBILE RESPONSIVENESS HELPER CLASSES ── */
+@media (min-width: 769px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+  
+  /* Reset layout boxes padding on mobile */
+  .portal-content {
+    padding: 12px 14px 88px !important; /* Extra bottom padding for floating save button on mobile */
+  }
+
+  /* Remove card frame backgrounds/borders on mobile so elements sit clean on page background */
+  .portal-card.btpl-card-container,
+  .portal-card.attendance-card-container {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Make the btpl search toolbar float as its own card block */
+  .btpl-toolbar {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+  }
+
+  .btpl-pagination {
+    background: var(--surface-1);
+    border: 1px solid var(--border) !important;
+    border-radius: 16px;
+    padding: 12px 16px;
+    margin-top: 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+  }
+
+  /* ── MOBILE GRID ACTIONS BLOCK ── */
+  .btpl-topbar,
+  .cof-topbar {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 14px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .btpl-topbar-actions,
+  .cof-topbar-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px !important;
+    width: 100%;
+  }
+
+  .btpl-topbar-actions button.btn-primary,
+  .cof-topbar-actions form {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .cof-topbar-actions form select {
+    width: 100% !important;
+    height: 40px !important;
+  }
+
+  .btpl-topbar-actions a,
+  .cof-topbar-actions a {
+    justify-content: center;
+    height: 40px !important;
+    font-size: 13px !important;
+  }
+
+  /* ── ATTENDANCE LEGEND STACKING ── */
+  .attendance-legend-wrap {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .attendance-legend-items {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px 12px !important;
+  }
+
+  /* ── BTPL SHEET CARD VIEW ── */
+  .btpl-mobile-cards-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 0;
+  }
+  
+  .btpl-mobile-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: transform 0.2s;
+  }
+  
+  .btpl-mobile-card:active {
+    transform: scale(0.99);
+  }
+  
+  .btpl-mobile-card.card-summary {
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.04), rgba(0, 174, 239, 0.04));
+    border: 1px dashed var(--purple);
+  }
+  
+  .card-lr-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+  
+  .card-lr {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--cyan);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .card-status {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.02em;
+    border: 1px solid transparent;
+  }
+  
+  .card-status.status-delivered {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+    border-color: rgba(34, 197, 94, 0.15);
+  }
+  
+  .card-status.status-pending,
+  .card-status.status-in-transit,
+  .card-status.status-out-for-delivery {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.15);
+  }
+  
+  .card-main-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .card-name {
+    font-weight: 600;
+    font-size: 14.5px;
+    color: var(--text-main);
+  }
+  
+  .card-destination {
+    font-size: 12.5px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .card-stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    background: var(--surface-2);
+    padding: 10px 12px;
+    border-radius: 12px;
+    text-align: center;
+  }
+  
+  .card-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  
+  .card-stat .lbl {
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+  }
+  
+  .card-stat .val {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text-main);
+  }
+  
+  .card-actions-row {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+  }
+  
+  .summary-card-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .summary-card-title {
+    font-weight: 800;
+    font-size: 13.5px;
+    color: var(--purple);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+  
+  .summary-card-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--text-main);
+    background: rgba(var(--purple-rgb), 0.03);
+    padding: 10px 14px;
+    border-radius: 12px;
+  }
+  
+  /* ── ATTENDANCE MOBILE CARD VIEW ── */
+  .attendance-mobile-cards-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 0;
+  }
+  
+  .attendance-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    transition: border-color 0.25s, box-shadow 0.25s;
+  }
+  
+  .attendance-card.active-open {
+    border-color: var(--cyan);
+    box-shadow: 0 6px 16px rgba(0, 174, 239, 0.08);
+  }
+  
+  .att-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    cursor: pointer;
+    user-select: none;
+  }
+  
+  .att-card-header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .att-employee-name {
+    font-weight: 700;
+    font-size: 14.5px;
+    color: var(--text-main);
+  }
+  
+  .att-employee-phone {
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  
+  .att-card-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .att-card-summary {
+    display: flex;
+    gap: 4px;
+  }
+  
+  .att-summary-badge {
+    font-size: 9.5px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+  }
+  
+  .att-summary-badge.b-p {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.15);
+  }
+  
+  .att-summary-badge.b-a {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.15);
+  }
+  
+  .att-summary-badge.b-hd {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.15);
+  }
+  
+  .att-chevron {
+    font-size: 14px;
+    color: var(--muted);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  .attendance-card.active-open .att-chevron {
+    transform: rotate(180deg);
+    color: var(--cyan);
+  }
+  
+  .att-card-detail {
+    padding: 0 16px 16px;
+    border-top: 1px dashed var(--border);
+    animation: slideDownFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  
+  @keyframes slideDownFade {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .att-days-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 16px 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  
+  .att-days-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+  
+  .att-days-grid .status-cell {
+    width: 100%;
+    height: 38px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+    box-sizing: border-box;
+  }
+  
+  .att-days-grid .status-cell.status-holiday {
+    cursor: not-allowed;
+    font-weight: normal;
+    font-size: 11px;
+    border-style: dotted;
+  }
+  
+  /* Floating / Sticky Mobile Actions Bar */
+  .mobile-action-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--glass-strong);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    gap: 10px;
+    z-index: 900;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+  }
+  
+  .mobile-action-bar button, 
+  .mobile-action-bar a {
+    flex: 1;
+    justify-content: center;
+    height: 44px !important;
+    font-size: 14px !important;
+  }
+}
+

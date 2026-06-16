@@ -56,6 +56,9 @@
         {% if request.user.profile.can_use_btpl %}
         <a href="{% url 'btpl_sheet' %}" class="{% if active == 'btpl' %}active{% endif %}"><i class="ti ti-table"></i> BTPL Sheet</a>
         {% endif %}
+        {% if request.user.profile.can_use_attendance %}
+        <a href="{% url 'attendance_sheet' %}" class="{% if active == 'attendance' %}active{% endif %}"><i class="ti ti-calendar-user"></i> Attendance</a>
+        {% endif %}
         {% if request.user.profile.role == 'Director' %}
         <a href="{% url 'portal_users' %}" class="{% if active == 'users' %}active{% endif %}"><i class="ti ti-users"></i> User Permissions</a>
         {% endif %}
@@ -65,6 +68,7 @@
         <a href="{% url 'portal_logout' %}" class="portal-logout"><i class="ti ti-logout"></i> Log Out</a>
     </div>
 </aside>
+<div class="portal-sidebar-overlay" id="portalSidebarOverlay"></div>
 
 <div class="portal-main">
     <header class="portal-topbar">
@@ -96,9 +100,64 @@
     </div>
 
 <script>
-    document.getElementById('portalBurger')?.addEventListener('click', function () {
-        document.getElementById('portalSidebar').classList.toggle('open');
-    });
+    (function () {
+        const portalBurger = document.getElementById('portalBurger');
+        const portalSidebar = document.getElementById('portalSidebar');
+        const portalSidebarOverlay = document.getElementById('portalSidebarOverlay');
+
+        const toggleSidebar = () => {
+            const isOpen = portalSidebar.classList.toggle('open');
+            if (portalSidebarOverlay) {
+                if (isOpen) {
+                    portalSidebarOverlay.classList.add('visible');
+                } else {
+                    portalSidebarOverlay.classList.remove('visible');
+                }
+            }
+        };
+
+        const closeSidebar = () => {
+            portalSidebar.classList.remove('open');
+            if (portalSidebarOverlay) {
+                portalSidebarOverlay.classList.remove('visible');
+            }
+        };
+
+        portalBurger?.addEventListener('click', function (e) {
+            e.stopPropagation();
+            toggleSidebar();
+        });
+
+        portalSidebarOverlay?.addEventListener('click', closeSidebar);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeSidebar();
+            }
+        });
+
+        // Auto-dismiss messages
+        const msgContainer = document.querySelector('.portal-messages');
+        const msgs = document.querySelectorAll('.portal-msg');
+        if (msgs.length > 0) {
+            setTimeout(() => {
+                msgs.forEach((msg) => {
+                    msg.style.opacity = '0';
+                    msg.style.transform = 'translateY(-10px)';
+                });
+                setTimeout(() => {
+                    if (msgContainer) {
+                        msgContainer.style.maxHeight = '0px';
+                        msgContainer.style.padding = '0px';
+                        msgContainer.style.margin = '0px';
+                    }
+                    setTimeout(() => {
+                        msgContainer?.remove();
+                    }, 400);
+                }, 400);
+            }, 5000);
+        }
+    })();
 
     (function () {
         var KEY = 'ef-theme';

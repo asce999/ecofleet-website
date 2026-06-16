@@ -262,3 +262,24 @@ class BtplWorkbookUploadForm(forms.Form):
         return f
 
 
+class AttendanceWorkbookUploadForm(forms.Form):
+    workbook = forms.FileField(label="Attendance Workbook (.xlsx)", required=False)
+    active_sheet = forms.ChoiceField(label="Active Sheet Tab", required=False, choices=[])
+
+    def __init__(self, *args, **kwargs):
+        sheets = kwargs.pop('sheets', [])
+        super().__init__(*args, **kwargs)
+        self.fields['workbook'].widget.attrs.setdefault('class', 'portal-file')
+        self.fields['active_sheet'].widget.attrs.setdefault('class', 'portal-select')
+        if sheets:
+            self.fields['active_sheet'].choices = [(s, s) for s in sheets]
+        else:
+            self.fields['active_sheet'].choices = [('JUNE 2026', 'JUNE 2026')]
+
+    def clean_workbook(self):
+        f = self.cleaned_data.get('workbook')
+        if f and not f.name.lower().endswith('.xlsx'):
+            raise forms.ValidationError("Please upload an .xlsx Excel workbook.")
+        return f
+
+

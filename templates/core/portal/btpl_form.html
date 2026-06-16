@@ -1,6 +1,165 @@
 {% extends 'core/portal/base.html' %}
 {% block title %}BTPL Sheet — EcoFleet Express Portal{% endblock %}
 {% block heading %}BTPL Shipment Sheet{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── BTPL Overrides ── */
+.btpl-topbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.btpl-topbar-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.btpl-topbar-meta .cof-next { font-size: 14px; }
+.btpl-topbar-actions { display: flex; gap: 8px; align-items: center; }
+
+/* Search + controls bar */
+.btpl-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 0; padding: 14px 18px; }
+.btpl-search { position: relative; flex: 0 1 280px; min-width: 180px; }
+.btpl-search input {
+  width: 100%; padding: 9px 14px 9px 36px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface-3); color: var(--text-main); font-size: 13px; font-family: inherit; outline: none;
+  transition: border-color 0.2s;
+}
+.btpl-search input:focus { border-color: var(--cyan); }
+.btpl-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 16px; pointer-events: none; }
+.btpl-row-count { font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+
+/* Compact table */
+.btpl-table-wrap { overflow-x: auto; overflow-y: auto; max-height: 520px; border-radius: 0 0 14px 14px; border-top: 1px solid var(--border); }
+.btpl-table { width: 100%; border-collapse: collapse; min-width: 900px; }
+.btpl-table thead { position: sticky; top: 0; z-index: 5; }
+.btpl-table th {
+  padding: 10px 12px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--border); white-space: nowrap; text-align: left;
+}
+.btpl-table td {
+  padding: 8px 12px; font-size: 12.5px; color: var(--text-main); border-bottom: 1px solid var(--border);
+  white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle;
+}
+.btpl-table tbody tr { transition: background 0.15s; }
+.btpl-table tbody tr:hover { background: rgba(var(--cyan-rgb, 0,174,239), 0.04); }
+.btpl-table tbody tr.btpl-summary-row { background: rgba(var(--purple-rgb), 0.04); font-weight: 600; }
+.btpl-table tbody tr.btpl-empty-row td { color: var(--hint); font-style: italic; }
+
+/* Row action buttons — hover reveal */
+.btpl-row-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }
+.btpl-table tbody tr:hover .btpl-row-actions { opacity: 1; }
+.btpl-row-act {
+  width: 30px; height: 30px; border-radius: 8px; border: none; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 15px;
+  transition: background 0.15s, color 0.15s; background: transparent; color: var(--muted);
+}
+.btpl-row-act:hover { background: var(--surface-3); }
+.btpl-row-act.act-edit:hover { color: var(--cyan); }
+.btpl-row-act.act-delete:hover { color: var(--danger); }
+
+/* Pagination */
+.btpl-pagination {
+  display: flex; justify-content: space-between; align-items: center; padding: 12px 18px;
+  border-top: 1px solid var(--border); font-size: 12.5px; color: var(--muted); flex-wrap: wrap; gap: 8px;
+}
+.btpl-page-btns { display: flex; gap: 4px; }
+.btpl-page-btn {
+  padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text-main); font-size: 12.5px; font-family: inherit; cursor: pointer; transition: all 0.15s;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.btpl-page-btn:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+.btpl-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btpl-page-btn.active { background: var(--cyan); border-color: var(--cyan); color: #fff; font-weight: 600; }
+
+/* ── Slide-in Modal ── */
+.btpl-modal-overlay {
+  position: fixed; inset: 0; z-index: 900; background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
+  opacity: 0; visibility: hidden; transition: opacity 0.25s, visibility 0.25s;
+}
+.btpl-modal-overlay.open { opacity: 1; visibility: visible; }
+.btpl-modal-panel {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 910; width: 500px; max-width: 100%;
+  background: var(--surface-1); border-left: 1px solid var(--border); box-shadow: -8px 0 32px rgba(0,0,0,0.18);
+  display: flex; flex-direction: column; 
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+.btpl-modal-overlay.open .btpl-modal-panel { transform: translateX(0); }
+.btpl-modal-header {
+  display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.btpl-modal-header h3 { margin: 0; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.btpl-modal-close {
+  width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--muted); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.btpl-modal-close:hover { color: var(--danger); border-color: var(--danger); }
+.btpl-modal-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
+.btpl-modal-footer {
+  padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+/* Modal form fields */
+.btpl-form-section {
+  font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em;
+  margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 6px;
+}
+.btpl-form-section:first-child { margin-top: 0; }
+.btpl-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+.btpl-form-group { display: flex; flex-direction: column; gap: 4px; }
+.btpl-form-group.full-width { grid-column: 1 / -1; }
+.btpl-form-group label { font-size: 11.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.btpl-form-group input, .btpl-form-group textarea {
+  padding: 9px 12px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface-3);
+  color: var(--text-main); font-size: 13.5px; font-family: inherit; outline: none; transition: border-color 0.2s;
+}
+.btpl-form-group input:focus, .btpl-form-group textarea:focus { border-color: var(--cyan); }
+.btpl-form-group textarea { resize: vertical; min-height: 48px; }
+.btpl-form-hint { font-size: 11px; color: var(--hint); margin-top: 2px; }
+
+/* Toast notifications */
+.btpl-toast {
+  position: fixed; bottom: 28px; right: 28px; z-index: 950; padding: 14px 22px; border-radius: 12px;
+  font-size: 13.5px; font-weight: 500; color: #fff; display: flex; align-items: center; gap: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(20px); opacity: 0;
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1); pointer-events: none;
+}
+.btpl-toast.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
+.btpl-toast.toast-success { background: linear-gradient(135deg, #22c55e, #16a34a); }
+.btpl-toast.toast-error { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.btpl-toast i { font-size: 20px; }
+
+/* Delete confirmation */
+.btpl-confirm-overlay {
+  position: fixed; inset: 0; z-index: 920; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.2s;
+}
+.btpl-confirm-overlay.open { opacity: 1; visibility: visible; }
+.btpl-confirm-box {
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: 16px;
+  padding: 28px 32px; max-width: 380px; width: 90%; text-align: center;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+}
+.btpl-confirm-box h4 { margin: 0 0 8px; font-size: 16px; }
+.btpl-confirm-box p { margin: 0 0 20px; color: var(--muted); font-size: 13.5px; }
+.btpl-confirm-actions { display: flex; gap: 10px; justify-content: center; }
+
+/* Loading spinner */
+.btpl-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: btpl-spin 0.6s linear infinite; }
+@keyframes btpl-spin { to { transform: rotate(360deg); } }
+
+/* Row fade-out animation */
+.btpl-row-removing { transition: opacity 0.4s, transform 0.4s; opacity: 0; transform: translateX(20px); }
+
+@media (max-width: 640px) {
+  .btpl-modal-panel { width: 100%; max-width: 100%; }
+  .btpl-form-grid { grid-template-columns: 1fr; }
+  .btpl-toolbar { flex-direction: column; align-items: stretch; }
+  .btpl-search { flex: 1; }
+}
+</style>
+{% endblock %}
+
 {% block content %}
 
 {% if no_sheet %}
@@ -17,194 +176,591 @@
 </div>
 {% else %}
 
-<div class="cof-topbar" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; width: 100%;">
-  <div>
+<!-- Top Bar -->
+<div class="btpl-topbar">
+  <div class="btpl-topbar-meta">
     <span class="cof-next">Active Tab: <strong>{{ sheet_name }}</strong></span>
     <span class="cof-meta">· Workbook: {{ wb.original_name|default:"BTPL_Shipments.xlsx" }}</span>
   </div>
-  <div class="cof-topbar-actions" style="display: flex; gap: 10px;">
-    <a href="{% url 'btpl_settings' %}" class="btn-secondary cof-history-link"><i class="ti ti-file-spreadsheet"></i> Sheet Settings</a>
-  </div>
-</div>
-
-{% if success %}
-<div class="portal-card success-banner" style="border-left: 5px solid var(--success); margin-bottom: 24px; padding: 24px;">
-  <div style="display: flex; align-items: flex-start; gap: 16px;">
-    <div style="color: var(--success); font-size: 32px; line-height: 1;"><i class="ti ti-circle-check"></i></div>
-    <div style="flex-grow: 1;">
-      <h3 style="margin: 0 0 6px 0; font-size: 18px; font-weight: 700;">Shipment Appended Successfully</h3>
-      <p style="margin: 0 0 16px 0; color: var(--muted); font-size: 14.5px;">
-        The shipment details have been written to the sheet on the server. 
-        <br/>
-        <strong style="color: var(--text-main);">Note on Formulas:</strong> The calculated fields (e.g. Amount, Totals, Profits) are stored as active Excel formulas and will evaluate automatically when you open the downloaded sheet in Microsoft Excel.
-      </p>
-      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-        <a href="{% url 'btpl_download' %}" class="btn-primary"><i class="ti ti-download"></i> Download Updated Sheet</a>
-        <a href="{% url 'btpl_sheet' %}" class="btn-secondary"><i class="ti ti-arrow-right"></i> Continue Next</a>
-      </div>
-    </div>
-  </div>
-</div>
-{% endif %}
-
-<!-- Sheet Preview Section -->
-<div class="cof-section">
-  <div class="cof-section-head" style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 12px;">
-    <span><i class="ti ti-file-spreadsheet"></i> {{ sheet_name }} Sheet Preview</span>
-    <a href="{% url 'btpl_download' %}" class="btn-secondary btn-sm" style="font-size: 12.5px; padding: 6px 12px;">
-      <i class="ti ti-download"></i> Download Excel
+  <div class="btpl-topbar-actions">
+    <a href="{% url 'btpl_download' %}" class="btn-secondary btn-sm" style="font-size: 12.5px; padding: 7px 14px; display: inline-flex; align-items: center; gap: 5px;">
+      <i class="ti ti-download"></i> Download
     </a>
-  </div>
-  <div class="observe-sheet" style="padding: 16px 0 0 0;">
-    <div class="observe-table-wrap">
-      <table class="activity-table">
-        <thead>
-          <tr>
-            <th style="padding: 10px 14px; font-weight: 600; font-size: 12.5px; text-align: center;">Action</th>
-            {% for col in preview.columns %}
-            <th style="padding: 10px 14px; font-weight: 600; font-size: 12.5px;">{{ col }}</th>
-            {% endfor %}
-          </tr>
-        </thead>
-        <tbody>
-          {% if preview.rows %}
-            {% for row in preview.rows %}
-            {% with r_num=forloop.counter|add:1 %}
-            <tr style="{% if r_num >= totals_row %}background: rgba(var(--purple-rgb), 0.03); font-weight: 600;{% endif %}{% if next_row == r_num %}background: rgba(0, 174, 239, 0.08); border-left: 3px solid var(--cyan);{% endif %}">
-              <td style="padding: 10px 14px; text-align: center; display: flex; justify-content: center; align-items: center; gap: 8px;">
-                {% if r_num < totals_row %}
-                  <a href="?row={{ r_num }}" class="btn-secondary btn-sm" style="font-size: 11.5px; padding: 5px 9px; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px;">
-                    <i class="ti ti-edit"></i> Edit
-                  </a>
-                  <form method="post" action="{% url 'btpl_sheet' %}" onsubmit="return confirm('Delete all shipment details in Row {{ r_num }}?');" style="display: inline-block; margin: 0;">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="delete_row" />
-                    <input type="hidden" name="row_to_delete" value="{{ r_num }}" />
-                    <button type="submit" class="btn-danger btn-sm" style="font-size: 11.5px; padding: 5px 9px; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; background: var(--danger); border: none; color: #fff; cursor: pointer;">
-                      <i class="ti ti-trash"></i> Delete
-                    </button>
-                  </form>
-                {% else %}
-                  <span style="font-size: 11.5px; color: var(--muted); font-weight: bold;">Summary</span>
-                {% endif %}
-              </td>
-              {% for cell in row %}
-              <td style="padding: 10px 14px; font-size: 13px;">{{ cell }}</td>
-              {% endfor %}
-            </tr>
-            {% endwith %}
-            {% endfor %}
-          {% else %}
-            <tr>
-              <td colspan="22" style="text-align: center; padding: 24px; color: var(--muted);">No rows to display</td>
-            </tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </div>
-    <div style="margin-top: 10px; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px;">
-      <i class="ti ti-info-circle"></i>
-      <span>Preview displays active shipment rows followed by summary totals. Click <strong>Edit Row</strong> on any row to load its details into the form below.</span>
-    </div>
-  </div>
-</div>
-
-<!-- Shipment Form Section -->
-{% if next_row %}
-<form method="post" class="cof-form" novalidate>
-  {% csrf_token %}
-  {{ form.row_num }}
-
-  {% if form.non_field_errors %}
-  <div class="portal-msg portal-msg-error">{{ form.non_field_errors|striptags }}</div>
-  {% endif %}
-
-  <div class="cof-section">
-    <div class="cof-section-head" style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 12px;">
-      <span><i class="ti ti-edit"></i> Shipment Entry Form</span>
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="font-size: 13px; color: var(--cyan); font-weight: 600; background: rgba(0,174,239,0.12); padding: 6px 12px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
-          Target Row: 
-          <input type="number" id="manualRowInput" value="{{ next_row }}" min="2" max="{{ max_shipment_row }}" style="background: transparent; border: none; border-bottom: 1px solid var(--cyan); color: var(--cyan); font-weight: bold; width: 45px; font-family: inherit; font-size: 13px; outline: none; text-align: center;" />
-        </span>
-        <button type="button" class="btn-secondary btn-sm" onclick="var r = document.getElementById('manualRowInput').value; if(r) window.location.href = '?row=' + r;" style="padding: 5px 10px;">
-          Load Row
-        </button>
-      </div>
-    </div>
-    
-    <div style="padding: 2px 22px 0 22px; margin-bottom: -6px;">
-      <p style="font-size: 13.5px; color: var(--muted); margin: 0; line-height: 1.5;">
-        Currently editing spreadsheet row <strong style="color: var(--text-main);">{{ next_row }}</strong>. 
-        Form fields are pre-populated with any existing values found in this row.
-      </p>
-    </div>
-
-    <!-- Section 1: Shipment Identification -->
-    <div style="padding: 18px 22px 6px 22px; font-weight: 600; font-size: 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; color: var(--text-main);">
-      <i class="ti ti-hash" style="color: var(--cyan);"></i> Identification &amp; Logistics
-    </div>
-    <div class="cof-grid">
-      {% include 'core/portal/_field.html' with field=form.lr_number %}
-      {% include 'core/portal/_field.html' with field=form.pickup_date %}
-      {% include 'core/portal/_field.html' with field=form.delivered_on %}
-      {% include 'core/portal/_field.html' with field=form.status %}
-      {% include 'core/portal/_field.html' with field=form.tat %}
-    </div>
-
-    <!-- Section 2: Consignee Details -->
-    <div style="padding: 18px 22px 6px 22px; font-weight: 600; font-size: 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; color: var(--text-main);">
-      <i class="ti ti-map-pin" style="color: var(--cyan);"></i> Consignee / Customer Details
-    </div>
-    <div class="cof-grid">
-      {% include 'core/portal/_field.html' with field=form.name %}
-      {% include 'core/portal/_field.html' with field=form.address %}
-      {% include 'core/portal/_field.html' with field=form.city %}
-      {% include 'core/portal/_field.html' with field=form.state %}
-      {% include 'core/portal/_field.html' with field=form.contact_person %}
-      {% include 'core/portal/_field.html' with field=form.contact_number %}
-    </div>
-
-    <!-- Section 3: Package & Cargo Details -->
-    <div style="padding: 18px 22px 6px 22px; font-weight: 600; font-size: 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; color: var(--text-main);">
-      <i class="ti ti-package" style="color: var(--cyan);"></i> Cargo &amp; Customer Rate
-    </div>
-    <div class="cof-grid">
-      {% include 'core/portal/_field.html' with field=form.boxes %}
-      {% include 'core/portal/_field.html' with field=form.weight_ef %}
-      {% include 'core/portal/_field.html' with field=form.weight_opt %}
-      {% include 'core/portal/_field.html' with field=form.rate %}
-      {% include 'core/portal/_field.html' with field=form.amount hint="Leave blank for auto-formula (Rate × Weight)" %}
-    </div>
-
-    <!-- Section 4: Vendor & Payment Details -->
-    <div style="padding: 18px 22px 6px 22px; font-weight: 600; font-size: 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; color: var(--text-main);">
-      <i class="ti ti-truck-delivery" style="color: var(--cyan);"></i> Vendor &amp; Payment Details
-    </div>
-    <div class="cof-grid">
-      {% include 'core/portal/_field.html' with field=form.vendor %}
-      {% include 'core/portal/_field.html' with field=form.vendor_rate %}
-      {% include 'core/portal/_field.html' with field=form.vendor_payment %}
-    </div>
-  </div>
-
-  <div class="cof-actions" style="margin-top: 24px;">
-    <button type="submit" class="btn-primary">
-      <i class="ti ti-plus"></i> Save Shipment Details
+    <a href="{% url 'btpl_settings' %}" class="btn-secondary btn-sm" style="font-size: 12.5px; padding: 7px 14px; display: inline-flex; align-items: center; gap: 5px;">
+      <i class="ti ti-settings"></i> Settings
+    </a>
+    <button type="button" class="btn-primary btn-sm" onclick="openModal(null)" style="font-size: 12.5px; padding: 7px 14px; display: inline-flex; align-items: center; gap: 5px;">
+      <i class="ti ti-plus"></i> Add Shipment
     </button>
   </div>
-</form>
-{% else %}
-<div class="portal-card" style="border-left: 5px solid var(--danger); padding: 24px; text-align: center;">
-  <div style="color: var(--danger); font-size: 48px; margin-bottom: 12px;"><i class="ti ti-alert-triangle"></i></div>
-  <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 700; color: var(--text-main);">Shipment Sheet Full</h3>
-  <p style="margin: 0; color: var(--muted); font-size: 14.5px;">
-    All available shipment slots are currently occupied in this sheet.
-    Please download the sheet or go to settings to adjust or upload another sheet.
-  </p>
 </div>
-{% endif %}
+
+<!-- Sheet Table Card -->
+<div class="portal-card btpl-card-container" style="padding: 0; overflow: hidden;">
+  <!-- Toolbar: Search + Row Count -->
+  <div class="btpl-toolbar">
+    <div class="btpl-search">
+      <i class="ti ti-search"></i>
+      <input type="text" id="btplSearch" placeholder="Search by LR, name, city…" oninput="filterRows()" />
+    </div>
+    <div class="btpl-row-count">
+      <i class="ti ti-table"></i>
+      <span id="btplRowCount">{{ preview.total_rows }} row{{ preview.total_rows|pluralize }}</span>
+    </div>
+  </div>
+
+  <!-- Data Table -->
+  <div class="btpl-table-wrap desktop-only">
+    <table class="btpl-table" id="btplTable">
+      <thead>
+        <tr>
+          <th style="width: 64px; text-align: center;"></th>
+          {% for col in preview.columns %}
+          <th>{{ col }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody id="btplTbody">
+        {% if preview.rows %}
+          {% for row in preview.rows %}
+          <tr data-row="{{ row.row_num }}" class="btpl-data-row {% if row.row_num >= totals_row %}btpl-summary-row{% endif %}">
+            <td style="text-align: center;">
+              {% if row.row_num < totals_row %}
+              <div class="btpl-row-actions">
+                <button type="button" class="btpl-row-act act-edit" title="Edit row" onclick="openModal({{ row.row_num }})">
+                  <i class="ti ti-pencil"></i>
+                </button>
+                <button type="button" class="btpl-row-act act-delete" title="Delete row" onclick="confirmDelete({{ row.row_num }})">
+                  <i class="ti ti-trash"></i>
+                </button>
+              </div>
+              {% else %}
+              <span style="font-size: 11px; color: var(--muted); font-weight: 700;">Σ</span>
+              {% endif %}
+            </td>
+            {% for cell in row.cells %}
+            <td>{{ cell }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="22" style="text-align: center; padding: 40px; color: var(--muted);"><i class="ti ti-mood-empty" style="font-size: 28px; display: block; margin-bottom: 8px;"></i>No rows to display</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Mobile Cards View -->
+  <div class="btpl-mobile-cards-wrap mobile-only" id="btplMobileCards">
+    <div style="text-align: center; padding: 32px; color: var(--muted);">
+      <i class="ti ti-loader animate-spin" style="font-size: 24px; display: block; margin: 0 auto 12px;"></i>
+      Loading shipments...
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <div class="btpl-pagination" id="btplPagination">
+    <span id="btplPageInfo">Page {{ preview.page }} of {{ preview.total_pages }}</span>
+    <div class="btpl-page-btns" id="btplPageBtns"></div>
+  </div>
+</div>
+
+<!-- ── Slide-in Modal ── -->
+<div class="btpl-modal-overlay" id="btplModal">
+  <div class="btpl-modal-panel" onclick="event.stopPropagation();">
+    <div class="btpl-modal-header">
+      <h3><i class="ti ti-edit" style="color: var(--cyan);"></i> <span id="modalTitle">Add Shipment</span></h3>
+      <button class="btpl-modal-close" onclick="closeModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="btpl-modal-body">
+      <form id="btplForm">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="save" />
+        <input type="hidden" name="row_num" id="fld_row_num" value="{{ next_row }}" />
+
+        <div class="btpl-form-section"><i class="ti ti-hash" style="color: var(--cyan);"></i> Identification & Logistics</div>
+        <div class="btpl-form-grid">
+          <div class="btpl-form-group">
+            <label>LR Number</label>
+            <input type="text" name="lr_number" id="fld_lr_number" />
+          </div>
+          <div class="btpl-form-group">
+            <label>Pickup Date</label>
+            <input type="date" name="pickup_date" id="fld_pickup_date" />
+          </div>
+          <div class="btpl-form-group">
+            <label>Delivered On</label>
+            <input type="date" name="delivered_on" id="fld_delivered_on" />
+          </div>
+          <div class="btpl-form-group">
+            <label>Status</label>
+            <input type="text" name="status" id="fld_status" />
+          </div>
+          <div class="btpl-form-group">
+            <label>TAT</label>
+            <input type="number" name="tat" id="fld_tat" />
+          </div>
+        </div>
+
+        <div class="btpl-form-section"><i class="ti ti-map-pin" style="color: var(--cyan);"></i> Consignee / Customer</div>
+        <div class="btpl-form-grid">
+          <div class="btpl-form-group full-width">
+            <label>Consignee/Customer Name</label>
+            <input type="text" name="name" id="fld_name" />
+          </div>
+          <div class="btpl-form-group full-width">
+            <label>Address</label>
+            <textarea name="address" id="fld_address" rows="2"></textarea>
+          </div>
+          <div class="btpl-form-group">
+            <label>City</label>
+            <input type="text" name="city" id="fld_city" />
+          </div>
+          <div class="btpl-form-group">
+            <label>State</label>
+            <input type="text" name="state" id="fld_state" />
+          </div>
+          <div class="btpl-form-group">
+            <label>Contact Person</label>
+            <input type="text" name="contact_person" id="fld_contact_person" />
+          </div>
+          <div class="btpl-form-group">
+            <label>Contact Number</label>
+            <input type="text" name="contact_number" id="fld_contact_number" />
+          </div>
+        </div>
+
+        <div class="btpl-form-section"><i class="ti ti-package" style="color: var(--cyan);"></i> Cargo & Rate</div>
+        <div class="btpl-form-grid">
+          <div class="btpl-form-group">
+            <label>No. of Boxes</label>
+            <input type="number" name="boxes" id="fld_boxes" />
+          </div>
+          <div class="btpl-form-group">
+            <label>Weight (EcoFleet)</label>
+            <input type="number" step="any" name="weight_ef" id="fld_weight_ef" />
+          </div>
+          <div class="btpl-form-group">
+            <label>Weight (Optlog)</label>
+            <input type="number" step="any" name="weight_opt" id="fld_weight_opt" />
+          </div>
+          <div class="btpl-form-group">
+            <label>Rate</label>
+            <input type="number" step="any" name="rate" id="fld_rate" />
+          </div>
+          <div class="btpl-form-group">
+            <label>Amount</label>
+            <input type="number" step="any" name="amount" id="fld_amount" />
+            <span class="btpl-form-hint">Leave blank for auto-formula (Rate × Weight)</span>
+          </div>
+        </div>
+
+        <div class="btpl-form-section"><i class="ti ti-truck-delivery" style="color: var(--cyan);"></i> Vendor & Payment</div>
+        <div class="btpl-form-grid">
+          <div class="btpl-form-group">
+            <label>Vendor</label>
+            <input type="text" name="vendor" id="fld_vendor" />
+          </div>
+          <div class="btpl-form-group">
+            <label>Vendor Rate</label>
+            <input type="number" step="any" name="vendor_rate" id="fld_vendor_rate" />
+          </div>
+          <div class="btpl-form-group full-width">
+            <label>CNG Paid & Vendor Payment</label>
+            <input type="number" step="any" name="vendor_payment" id="fld_vendor_payment" />
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="btpl-modal-footer">
+      <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-primary" id="modalSaveBtn" onclick="saveForm()">
+        <i class="ti ti-check"></i> Save Shipment
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation -->
+<div class="btpl-confirm-overlay" id="btplConfirm">
+  <div class="btpl-confirm-box">
+    <div style="color: var(--danger); font-size: 40px; margin-bottom: 12px;"><i class="ti ti-alert-triangle"></i></div>
+    <h4>Delete Shipment Row?</h4>
+    <p>This will clear all data in Row <strong id="confirmRowNum"></strong>. This action cannot be undone.</p>
+    <div class="btpl-confirm-actions">
+      <button class="btn-secondary" onclick="closeConfirm()">Cancel</button>
+      <button class="btn-primary" style="background: var(--danger); border-color: var(--danger);" id="confirmDeleteBtn" onclick="executeDelete()">
+        <i class="ti ti-trash"></i> Delete
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="btpl-toast" id="btplToast"><i class="ti ti-check"></i> <span id="toastMsg"></span></div>
 
 {% endif %}
+{% endblock %}
 
+{% block extra_js %}
+<script>
+const API = "{% url 'btpl_api' %}";
+const CSRF = "{{ csrf_token }}";
+let currentPage = {{ preview.page|default:"1" }};
+let totalPages = {{ preview.total_pages|default:"1" }};
+let totalsRow = {{ totals_row|default:"64" }};
+let nextRow = {{ next_row|default:"2" }};
+let deleteTargetRow = null;
+
+// ── Toast ──
+function showToast(msg, type) {
+  const t = document.getElementById('btplToast');
+  t.querySelector('span').textContent = msg;
+  t.className = 'btpl-toast toast-' + (type || 'success') + ' show';
+  t.querySelector('i').className = 'ti ti-' + (type === 'error' ? 'alert-circle' : 'circle-check');
+  setTimeout(() => { t.classList.remove('show'); }, 3500);
+}
+
+// ── Modal ──
+function openModal(rowNum) {
+  const overlay = document.getElementById('btplModal');
+  const title = document.getElementById('modalTitle');
+  clearForm();
+
+  if (rowNum) {
+    title.textContent = 'Edit Row ' + rowNum;
+    document.getElementById('fld_row_num').value = rowNum;
+    // Fetch row data via AJAX
+    fetch(API + '?action=get_row&row=' + rowNum)
+      .then(r => r.json())
+      .then(data => {
+        if (data.row_data) populateForm(data.row_data);
+      })
+      .catch(() => showToast('Failed to load row data', 'error'));
+  } else {
+    title.textContent = 'Add New Shipment';
+    document.getElementById('fld_row_num').value = nextRow || '';
+    // Fetch the latest next_row
+    fetch(API + '?action=next_row')
+      .then(r => r.json())
+      .then(data => {
+        if (data.next_row) {
+          nextRow = data.next_row;
+          document.getElementById('fld_row_num').value = data.next_row;
+        }
+      });
+  }
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('btplModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Close modal on overlay click
+document.getElementById('btplModal')?.addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+function clearForm() {
+  const fields = ['lr_number','pickup_date','name','address','contact_person','contact_number',
+    'city','state','boxes','weight_ef','weight_opt','status','delivered_on','tat','rate','amount',
+    'vendor','vendor_rate','vendor_payment'];
+  fields.forEach(f => {
+    const el = document.getElementById('fld_' + f);
+    if (el) el.value = '';
+  });
+}
+
+function populateForm(data) {
+  Object.keys(data).forEach(key => {
+    const el = document.getElementById('fld_' + key);
+    if (el && data[key] !== null && data[key] !== undefined) {
+      el.value = data[key];
+    }
+  });
+}
+
+// ── Save ──
+function saveForm() {
+  const btn = document.getElementById('modalSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btpl-spinner"></span> Saving…';
+
+  const form = document.getElementById('btplForm');
+  const fd = new FormData(form);
+  fd.set('action', 'save');
+
+  fetch(API, { method: 'POST', body: fd, headers: { 'X-CSRFToken': CSRF } })
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-check"></i> Save Shipment';
+      if (ok && data.success) {
+        showToast('Shipment saved — Row ' + data.row);
+        closeModal();
+        refreshTable(currentPage);
+      } else {
+        showToast(data.error || 'Failed to save', 'error');
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-check"></i> Save Shipment';
+      showToast('Network error', 'error');
+    });
+}
+
+// ── Delete ──
+function confirmDelete(rowNum) {
+  deleteTargetRow = rowNum;
+  document.getElementById('confirmRowNum').textContent = rowNum;
+  document.getElementById('btplConfirm').classList.add('open');
+}
+function closeConfirm() {
+  document.getElementById('btplConfirm').classList.remove('open');
+  deleteTargetRow = null;
+}
+function executeDelete() {
+  if (!deleteTargetRow) return;
+  const btn = document.getElementById('confirmDeleteBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btpl-spinner"></span> Deleting…';
+
+  const fd = new FormData();
+  fd.set('action', 'delete');
+  fd.set('row', deleteTargetRow);
+
+  fetch(API, { method: 'POST', body: fd, headers: { 'X-CSRFToken': CSRF } })
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-trash"></i> Delete';
+      closeConfirm();
+      if (ok && data.success) {
+        // Animate row removal
+        const row = document.querySelector(`tr[data-row="${data.row}"]`);
+        if (row) {
+          row.classList.add('btpl-row-removing');
+          setTimeout(() => refreshTable(currentPage), 450);
+        } else {
+          refreshTable(currentPage);
+        }
+        showToast('Row ' + data.row + ' deleted');
+      } else {
+        showToast(data.error || 'Failed to delete', 'error');
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-trash"></i> Delete';
+      closeConfirm();
+      showToast('Network error', 'error');
+    });
+}
+
+// ── Pagination & Table Refresh ──
+function loadPage(page) {
+  if (page < 1 || page > totalPages) return;
+  currentPage = page;
+  refreshTable(page);
+}
+
+function refreshTable(page) {
+  fetch(API + '?action=preview&page=' + (page || 1))
+    .then(r => r.json())
+    .then(data => {
+      if (!data.preview) return;
+      const p = data.preview;
+      currentPage = p.page;
+      totalPages = p.total_pages;
+      renderTable(p);
+      renderPagination(p);
+      document.getElementById('btplRowCount').textContent = p.total_rows + ' row' + (p.total_rows !== 1 ? 's' : '');
+    })
+    .catch(() => showToast('Failed to refresh table', 'error'));
+}
+
+let colMapping = { lr: -1, name: -1, city: -1, status: -1, boxes: -1, weight: -1, amount: -1 };
+
+function mapColumns(cols) {
+  colMapping = { lr: -1, name: -1, city: -1, status: -1, boxes: -1, weight: -1, amount: -1 };
+  cols.forEach((col, idx) => {
+    const name = col.toLowerCase().trim();
+    if (name.includes('lr number') || name.includes('lr no')) colMapping.lr = idx;
+    else if (name.includes('consignee/customer') || name.includes('customer name') || name.includes('consignee name') || name === 'name') colMapping.name = idx;
+    else if (name.includes('destination city') || name === 'city') colMapping.city = idx;
+    else if (name === 'status') colMapping.status = idx;
+    else if (name.includes('boxes') || name.includes('qty')) colMapping.boxes = idx;
+    else if (name.includes('weight as per ecofleet') || name.includes('weight (ecofleet)') || name === 'weight') colMapping.weight = idx;
+    else if (name === 'amount') colMapping.amount = idx;
+  });
+}
+
+function renderTable(p) {
+  const tbody = document.getElementById('btplTbody');
+  const mobdiv = document.getElementById('btplMobileCards');
+  
+  if (!p.rows || p.rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="22" style="text-align:center;padding:40px;color:var(--muted);"><i class="ti ti-mood-empty" style="font-size:28px;display:block;margin-bottom:8px;"></i>No rows to display</td></tr>';
+    if (mobdiv) mobdiv.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);"><i class="ti ti-mood-empty" style="font-size:28px;display:block;margin-bottom:8px;"></i>No shipments to display</div>';
+    return;
+  }
+  
+  // Map columns dynamically
+  mapColumns(p.columns);
+
+  let html = '';
+  let mobHtml = '';
+
+  p.rows.forEach(row => {
+    const isSummary = row.row_num >= totalsRow;
+    
+    // 1. Desktop Row
+    html += `<tr data-row="${row.row_num}" class="btpl-data-row ${isSummary ? 'btpl-summary-row' : ''}">`;
+    html += '<td style="text-align:center;">';
+    if (!isSummary) {
+      html += `<div class="btpl-row-actions">
+        <button type="button" class="btpl-row-act act-edit" title="Edit" onclick="openModal(${row.row_num})"><i class="ti ti-pencil"></i></button>
+        <button type="button" class="btpl-row-act act-delete" title="Delete" onclick="confirmDelete(${row.row_num})"><i class="ti ti-trash"></i></button>
+      </div>`;
+    } else {
+      html += '<span style="font-size:11px;color:var(--muted);font-weight:700;">Σ</span>';
+    }
+    html += '</td>';
+    row.cells.forEach(cell => {
+      html += `<td>${escHtml(cell)}</td>`;
+    });
+    html += '</tr>';
+
+    // 2. Mobile Card
+    if (isSummary) {
+      let summaryDetails = [];
+      row.cells.forEach((cell, idx) => {
+        const val = (cell || '').trim();
+        if (val !== '' && val !== '0' && val !== '0.00' && p.columns[idx] && !p.columns[idx].toLowerCase().includes('lr number') && !p.columns[idx].toLowerCase().includes('phone')) {
+          summaryDetails.push(`<span><strong>${p.columns[idx]}:</strong> ${escHtml(val)}</span>`);
+        }
+      });
+      mobHtml += `
+        <div class="btpl-mobile-card card-summary" data-row="${row.row_num}">
+          <div class="summary-card-inner">
+            <div class="summary-card-title"><i class="ti ti-sum"></i> Totals Summary</div>
+            <div class="summary-card-grid">
+              ${summaryDetails.join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      const lrVal = colMapping.lr !== -1 ? escHtml(row.cells[colMapping.lr]) : '—';
+      const nameVal = colMapping.name !== -1 ? escHtml(row.cells[colMapping.name]) : '—';
+      const cityVal = colMapping.city !== -1 ? escHtml(row.cells[colMapping.city]) : '—';
+      const statusVal = colMapping.status !== -1 ? escHtml(row.cells[colMapping.status]) : 'Pending';
+      const boxesVal = colMapping.boxes !== -1 ? escHtml(row.cells[colMapping.boxes]) : '0';
+      const weightVal = colMapping.weight !== -1 ? escHtml(row.cells[colMapping.weight]) : '0';
+      const amountVal = colMapping.amount !== -1 ? escHtml(row.cells[colMapping.amount]) : '0';
+
+      mobHtml += `
+        <div class="btpl-mobile-card" data-row="${row.row_num}">
+          <div class="card-lr-row">
+            <span class="card-lr"><i class="ti ti-barcode"></i> ${lrVal}</span>
+            <span class="card-status status-${statusVal.toLowerCase().replace(/\s+/g, '-')}">${statusVal}</span>
+          </div>
+          <div class="card-main-info">
+            <div class="card-name">${nameVal}</div>
+            <div class="card-destination"><i class="ti ti-map-pin"></i> ${cityVal}</div>
+          </div>
+          <div class="card-stats-row">
+            <div class="card-stat">
+              <span class="lbl">Boxes</span>
+              <span class="val">${boxesVal}</span>
+            </div>
+            <div class="card-stat">
+              <span class="lbl">Weight</span>
+              <span class="val">${weightVal} kg</span>
+            </div>
+            <div class="card-stat">
+              <span class="lbl">Amount</span>
+              <span class="val">₹${amountVal}</span>
+            </div>
+          </div>
+          <div class="card-actions-row">
+            <button type="button" class="btn-secondary btn-xs" style="padding: 6px 12px; font-size:11.5px; border-radius: 8px;" onclick="openModal(${row.row_num})">
+              <i class="ti ti-pencil"></i> Edit
+            </button>
+            <button type="button" class="btn-danger btn-xs" style="padding: 6px 12px; font-size:11.5px; border-radius: 8px;" onclick="confirmDelete(${row.row_num})">
+              <i class="ti ti-trash"></i> Delete
+            </button>
+          </div>
+        </div>
+      `;
+    }
+  });
+
+  tbody.innerHTML = html;
+  if (mobdiv) mobdiv.innerHTML = mobHtml;
+}
+
+function renderPagination(p) {
+  const info = document.getElementById('btplPageInfo');
+  const btns = document.getElementById('btplPageBtns');
+  info.textContent = 'Page ' + p.page + ' of ' + p.total_pages;
+  if (p.total_pages <= 1) { btns.innerHTML = ''; return; }
+
+  let html = `<button class="btpl-page-btn" onclick="loadPage(${p.page - 1})" ${p.page <= 1 ? 'disabled' : ''}><i class="ti ti-chevron-left"></i> Prev</button>`;
+  let start = Math.max(1, p.page - 2);
+  let end = Math.min(p.total_pages, start + 4);
+  start = Math.max(1, end - 4);
+  for (let i = start; i <= end; i++) {
+    html += `<button class="btpl-page-btn ${i === p.page ? 'active' : ''}" onclick="loadPage(${i})">${i}</button>`;
+  }
+  html += `<button class="btpl-page-btn" onclick="loadPage(${p.page + 1})" ${p.page >= p.total_pages ? 'disabled' : ''}>Next <i class="ti ti-chevron-right"></i></button>`;
+  btns.innerHTML = html;
+}
+
+// ── Client-side Search ──
+function filterRows() {
+  const q = document.getElementById('btplSearch').value.toLowerCase().trim();
+  
+  // Filter desktop table rows
+  const rows = document.querySelectorAll('#btplTbody .btpl-data-row');
+  rows.forEach(tr => {
+    if (!q) { tr.style.display = ''; return; }
+    const text = tr.textContent.toLowerCase();
+    tr.style.display = text.includes(q) ? '' : 'none';
+  });
+
+  // Filter mobile cards
+  const cards = document.querySelectorAll('#btplMobileCards .btpl-mobile-card');
+  cards.forEach(card => {
+    if (!q) { card.style.display = ''; return; }
+    const text = card.textContent.toLowerCase();
+    card.style.display = text.includes(q) ? '' : 'none';
+  });
+}
+
+// ── Helpers ──
+function escHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
+// Keyboard: Escape closes modals
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (document.getElementById('btplConfirm').classList.contains('open')) closeConfirm();
+    else if (document.getElementById('btplModal').classList.contains('open')) closeModal();
+  }
+});
+
+// Render initial pagination and fetch data on page load
+document.addEventListener('DOMContentLoaded', () => {
+  renderPagination({ page: currentPage, total_pages: totalPages });
+  refreshTable(currentPage);
+});
+</script>
 {% endblock %}

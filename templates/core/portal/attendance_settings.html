@@ -1,0 +1,109 @@
+{% extends 'core/portal/base.html' %}
+{% block title %}Attendance Settings — EcoFleet Express Portal{% endblock %}
+{% block heading %}Attendance Sheet Settings{% endblock %}
+{% block content %}
+
+<div class="cof-topbar" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; width: 100%;">
+  <div>
+    <span class="cof-next">Active Tab: <strong>{{ current_sheet|default:"None" }}</strong></span>
+    <span class="cof-meta">· Workbook: {{ wb.original_name|default:"None (Removed)" }}</span>
+  </div>
+  <div class="cof-topbar-actions">
+    {% if current_sheet %}
+    <a href="{% url 'attendance_sheet' %}" class="btn-secondary cof-history-link"><i class="ti ti-arrow-left"></i> Back to Attendance Grid</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if wb or current_sheet %}
+<div class="portal-card wb-active" style="margin-bottom: 24px;">
+  <div class="wb-active-head">
+    <div class="wb-ico" style="background: rgba(34,197,94,0.12); color: var(--success);"><i class="ti ti-file-spreadsheet"></i></div>
+    <div>
+      <h3>{{ wb.original_name|default:"Attendance_Sheet.xlsx" }}</h3>
+      <p>
+        {% if wb and wb.uploaded_by %}
+          Uploaded by {{ wb.uploaded_by.get_full_name|default:wb.uploaded_by.username }}
+          on {{ wb.uploaded_at|date:"d M Y, H:i" }}
+        {% else %}
+          System Default Workbook (Root Directory)
+        {% endif %}
+      </p>
+      <p class="wb-next">Active Month Tab: <strong>{{ current_sheet }}</strong></p>
+    </div>
+  </div>
+  <div class="wb-actions" style="margin-top: 18px; display: flex; gap: 12px; flex-wrap: wrap;">
+    <a href="{% url 'attendance_sheet' %}" class="btn-primary"><i class="ti ti-table"></i> View Attendance Grid</a>
+    <a href="{% url 'attendance_download' %}" class="btn-secondary"><i class="ti ti-download"></i> Download Workbook</a>
+    <form method="post" onsubmit="return confirm('Remove the active attendance workbook entirely from operations? You will need to upload a workbook or load the default template to use this tab.');" style="display:inline;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="remove" />
+      <button type="submit" class="btn-danger"><i class="ti ti-trash"></i> Remove Entire Sheet</button>
+    </form>
+  </div>
+</div>
+{% else %}
+<div class="portal-card wb-active" style="margin-bottom: 24px; border-left: 5px solid var(--danger);">
+  <div class="wb-active-head">
+    <div class="wb-ico" style="background: rgba(239,68,68,0.12); color: var(--danger);"><i class="ti ti-file-x"></i></div>
+    <div>
+      <h3>No Active Attendance Workbook</h3>
+      <p style="color: var(--muted); font-size: 14px; margin-top: 4px;">
+        The attendance tracker sheet has been removed entirely from active operations. 
+        Please load the default template or upload a new spreadsheet file below.
+      </p>
+    </div>
+  </div>
+  <div class="wb-actions" style="margin-top: 18px; display: flex; gap: 12px; flex-wrap: wrap;">
+    <form method="post" style="display:inline;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="load_default" />
+      <button type="submit" class="btn-primary"><i class="ti ti-refresh"></i> Load Default Template</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if wb or current_sheet %}
+<!-- Change Active Tab -->
+<form method="post" class="cof-form" style="margin-bottom: 24px;">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="change_sheet" />
+  <div class="cof-section">
+    <div class="cof-section-head"><i class="ti ti-tag"></i> Select Active Sheet Tab</div>
+    <div class="cof-grid">
+      <div class="cof-field">
+        <label for="id_active_sheet">Select Month Tab Name</label>
+        {{ form.active_sheet }}
+        <span class="cof-hint">Choose which worksheet tab (representing a month) should be loaded for attendance preview and edits (e.g. JUNE 2026, May 2026).</span>
+        {% if form.active_sheet.errors %}<span class="cof-err">{{ form.active_sheet.errors|striptags }}</span>{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="cof-actions">
+    <button type="submit" class="btn-primary"><i class="ti ti-check"></i> Change Active Tab</button>
+  </div>
+</form>
+{% endif %}
+
+<!-- Replace Workbook -->
+<form method="post" enctype="multipart/form-data" class="wb-upload-form">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="upload" />
+  <div class="cof-section">
+    <div class="cof-section-head"><i class="ti ti-upload"></i> Upload / Replace Attendance Workbook</div>
+    <div class="cof-grid">
+      <div class="cof-field">
+        <label for="id_workbook">Upload Excel File (.xlsx)</label>
+        {{ form.workbook }}
+        <span class="cof-hint">Upload a new or updated attendance workbook. Uploading a new sheet will automatically replace the existing active sheet.</span>
+        {% if form.workbook.errors %}<span class="cof-err">{{ form.workbook.errors|striptags }}</span>{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="cof-actions">
+    <button type="submit" class="btn-primary"><i class="ti ti-upload"></i> Upload Workbook</button>
+  </div>
+</form>
+
+{% endblock %}

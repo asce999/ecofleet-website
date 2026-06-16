@@ -120,6 +120,13 @@
       <p>Preview and append shipments to the BTPL shipments spreadsheet.</p>
     </a>
     {% endif %}
+    {% if request.user.profile.can_use_attendance %}
+    <a href="{% url 'attendance_sheet' %}" class="action-card">
+      <div class="action-ico ico-purple"><i class="ti ti-calendar-user"></i></div>
+      <h3>Attendance</h3>
+      <p>CRUD interface to mark, update, and track staff attendance.</p>
+    </a>
+    {% endif %}
   </div>
 
   <!-- Recent activity -->

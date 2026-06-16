@@ -18,18 +18,18 @@
     <div class="footer-col">
       <h4>Services</h4>
       <ul>
-        <li><a href="#">Surface Cargo</a></li>
-        <li><a href="#">ODA Delivery</a></li>
-        <li><a href="#">FTL</a></li>
-        <li><a href="#">Track Shipment</a></li>
+        <li><a href="{% url 'services' %}#surface">Surface Cargo</a></li>
+        <li><a href="{% url 'services' %}#oda">ODA Delivery</a></li>
+        <li><a href="{% url 'services' %}#ftl">FTL</a></li>
+        <li><a href="{% url 'home' %}#track-section">Track Shipment</a></li>
       </ul>
     </div>
     <div class="footer-col">
       <h4>Support</h4>
       <ul>
         <li><a href="{% url 'find_location' %}">Find Location</a></li>
-        <li><a href="#">Customer Login</a></li>
-        <li><a href="#">Track Shipment</a></li>
+        <li><a href="{% url 'portal_login' %}">Customer Login</a></li>
+        <li><a href="{% url 'home' %}#track-section">Track Shipment</a></li>
         <li><a href="{% url 'privacy' %}">Privacy Policy</a></li>
       </ul>
     </div>

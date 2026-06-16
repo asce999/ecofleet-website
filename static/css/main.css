@@ -1887,3 +1887,120 @@ h1 {
   -webkit-mask-composite: xor;
   mask-composite: exclude;
 }
+
+/* ── SCROLL REVEAL & TRANSITIONS ── */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.scroll-reveal.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scroll-reveal-stagger > * {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.scroll-reveal-stagger.revealed > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Mobile Nav Overlay */
+.mobile-nav-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 90;
+  transition: opacity 0.3s ease;
+}
+
+.mobile-nav-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Hamburger active animation */
+.nav-hamburger {
+  transition: transform 0.3s ease, color 0.2s ease;
+}
+.nav-hamburger.active {
+  transform: rotate(90deg) scale(1.1);
+  color: var(--cyan);
+}
+
+/* Transitions and hover effects for interactive elements */
+.nav-cta {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.nav-cta:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+  box-shadow: 0 4px 12px rgba(0, 174, 239, 0.3);
+}
+.nav-cta:active {
+  transform: translateY(1px);
+}
+
+.cookie-accept, .cookie-decline {
+  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.cookie-accept:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 174, 239, 0.2);
+}
+.cookie-decline:hover {
+  transform: translateY(-1px);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+.cookie-accept:active, .cookie-decline:active {
+  transform: translateY(0);
+}
+
+.cta-btn, .btn-primary, .btn-secondary, .track-btn, .contact-submit {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.cta-btn:hover, .btn-primary:hover, .track-btn:hover, .contact-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  filter: brightness(1.05);
+}
+.btn-secondary:hover {
+  transform: translateY(-2px);
+  background: var(--border);
+}
+.cta-btn:active, .btn-primary:active, .track-btn:active, .btn-secondary:active, .contact-submit:active {
+  transform: translateY(0);
+}
+
+/* Spin animation for loaders */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin {
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

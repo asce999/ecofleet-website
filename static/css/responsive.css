@@ -348,6 +348,7 @@
 }
 
 /* FIND LOCATION */
+@media (max-width: 768px) {
   .location-section {
     padding: 0 20px 48px;
   }
@@ -376,3 +377,4 @@
   .result-details {
     grid-template-columns: 1fr;
   }
+}
