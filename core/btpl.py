@@ -2,6 +2,7 @@ import datetime
 import openpyxl
 import os
 from openpyxl.utils import get_column_letter, column_index_from_string
+from django.core.cache import cache
 
 HEADER_MAP = {
     'lr_number': ['LR NUMBER', 'LR No.', 'LR NO'],
@@ -318,21 +319,30 @@ def evaluate_cell(sheet, row, col, memo=None):
         memo[cell_id] = val
         return val
 
-def get_btpl_preview(file_path, sheet_name='JUN 26', page=1, page_size=20, sheet=None, mapping=None, memo=None):
-    """Return paginated preview data. If sheet/mapping/memo are provided, reuse them (single-load)."""
-    close_wb = False
-    if sheet is None:
-        wb = openpyxl.load_workbook(file_path, data_only=False)
-        if sheet_name not in wb.sheetnames:
-            return {'columns': [], 'rows': [], 'total_rows': 0, 'page': 1, 'page_size': page_size, 'total_pages': 0}
-        sheet = wb[sheet_name]
-        close_wb = True
+def get_cached_btpl_raw_data(file_path, sheet_name):
+    import os
+    if not os.path.exists(file_path):
+        return None
+    mtime = os.path.getmtime(file_path)
+    # Cache invalidation strategy:
+    # We include `os.path.getmtime()` in the key. When the workbook is saved/edited,
+    # the mtime changes, causing an immediate cache miss and re-evaluation.
+    safe_sheet = sheet_name.replace(' ', '_')
+    cache_key = f"btpl_raw_data_{safe_sheet}_{mtime}"
+    cached = cache.get(cache_key)
+    
+    if cached:
+        return cached
 
-    if mapping is None:
-        mapping = get_column_mapping(sheet)
-    if memo is None:
-        memo = {}
-
+    wb = openpyxl.load_workbook(file_path, data_only=False)
+    if sheet_name not in wb.sheetnames:
+        return None
+    sheet = wb[sheet_name]
+    
+    mapping = get_column_mapping(sheet)
+    totals_row = find_totals_row(sheet, mapping)
+    memo = {}
+    
     max_col = max(mapping.values()) if mapping else 20
 
     def format_cell(val):
@@ -345,13 +355,11 @@ def get_btpl_preview(file_path, sheet_name='JUN 26', page=1, page_size=20, sheet
         else:
             return str(val)
 
-    # Get header row
     columns = []
     for c in range(1, max_col + 1):
         val = evaluate_cell(sheet, 1, c, memo)
         columns.append(format_cell(val))
 
-    # Collect all non-empty data rows (row 2 onwards)
     all_data_rows = []
     for r in range(2, sheet.max_row + 1):
         row_vals = []
@@ -364,70 +372,28 @@ def get_btpl_preview(file_path, sheet_name='JUN 26', page=1, page_size=20, sheet
                 has_data = True
         if has_data:
             all_data_rows.append({'row_num': r, 'cells': row_vals})
-
-    total_rows = len(all_data_rows)
-    total_pages = max(1, (total_rows + page_size - 1) // page_size)
-    page = max(1, min(page, total_pages))
-
-    start_idx = (page - 1) * page_size
-    end_idx = start_idx + page_size
-    page_rows = all_data_rows[start_idx:end_idx]
-
-    return {
-        'columns': columns,
-        'rows': page_rows,
-        'total_rows': total_rows,
-        'page': page,
-        'page_size': page_size,
-        'total_pages': total_pages,
-    }
-
-
-def get_btpl_page_data(file_path, sheet_name='JUN 26', target_row=None, page=1, page_size=20):
-    """
-    Single-load function: opens the workbook ONCE and returns all data needed
-    for the BTPL page (mapping, totals_row, next_row, row_values, preview).
-    """
-    wb = openpyxl.load_workbook(file_path, data_only=False)
-    if sheet_name not in wb.sheetnames:
-        return None
-
-    sheet = wb[sheet_name]
-    mapping = get_column_mapping(sheet)
-    totals_row = find_totals_row(sheet, mapping)
-    memo = {}
-
-    # Find next empty row
+            
     lr_col = mapping.get('lr_number', 3)
     auto_next_row = None
+    row_values_map = {}
+    
     for r in range(2, totals_row):
-        val = sheet.cell(row=r, column=lr_col).value
-        if val is None or str(val).strip() == "":
+        lr_val = sheet.cell(row=r, column=lr_col).value
+        if auto_next_row is None and (lr_val is None or str(lr_val).strip() == ""):
             auto_next_row = r
-            break
-
-    # Decide which row to target
-    next_row = None
-    if target_row and 2 <= target_row < totals_row:
-        next_row = target_row
-    else:
-        next_row = auto_next_row
-
-    # Get row values for the target row
-    row_values = {}
-    if next_row:
-        def get_val(key):
+            
+        def get_val(key, row=r):
             col = mapping.get(key)
             if col is None:
                 return None
-            return sheet.cell(row=next_row, column=col).value
-
+            return sheet.cell(row=row, column=col).value
+            
         amount_val = get_val('amount')
         if isinstance(amount_val, str) and amount_val.startswith('='):
             amount_val = None
-
-        row_values = {
-            'row_num': next_row,
+            
+        row_values_map[r] = {
+            'row_num': r,
             'lr_number': get_val('lr_number'),
             'pickup_date': get_val('pickup_date'),
             'name': get_val('name'),
@@ -449,13 +415,69 @@ def get_btpl_page_data(file_path, sheet_name='JUN 26', target_row=None, page=1, 
             'vendor_payment': get_val('vendor_payment'),
         }
 
-    # Get paginated preview (reuse same sheet object and memo)
-    preview = get_btpl_preview(
-        file_path, sheet_name=sheet_name,
-        page=page, page_size=page_size,
-        sheet=sheet, mapping=mapping, memo=memo
-    )
+    cached = {
+        'mapping': mapping,
+        'totals_row': totals_row,
+        'auto_next_row': auto_next_row,
+        'columns': columns,
+        'all_data_rows': all_data_rows,
+        'row_values_map': row_values_map,
+    }
+    
+    # Cache for 1 hour. It will invalidate early if the file changes due to mtime in the key.
+    cache.set(cache_key, cached, timeout=3600)
+    return cached
 
+def get_btpl_preview(file_path, sheet_name='JUN 26', page=1, page_size=20, sheet=None, mapping=None, memo=None):
+    """Return paginated preview data, reading from cache if possible."""
+    cached = get_cached_btpl_raw_data(file_path, sheet_name)
+    if not cached:
+        return {'columns': [], 'rows': [], 'total_rows': 0, 'page': 1, 'page_size': page_size, 'total_pages': 0}
+        
+    columns = cached['columns']
+    all_data_rows = cached['all_data_rows']
+    
+    total_rows = len(all_data_rows)
+    total_pages = max(1, (total_rows + page_size - 1) // page_size)
+    page = max(1, min(page, total_pages))
+
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    page_rows = all_data_rows[start_idx:end_idx]
+
+    return {
+        'columns': columns,
+        'rows': page_rows,
+        'total_rows': total_rows,
+        'page': page,
+        'page_size': page_size,
+        'total_pages': total_pages,
+    }
+
+def get_btpl_page_data(file_path, sheet_name='JUN 26', target_row=None, page=1, page_size=20):
+    """
+    Returns all data needed for the BTPL page (mapping, totals_row, next_row, row_values, preview).
+    Reads instantly from cache to avoid openpyxl parsing.
+    """
+    cached = get_cached_btpl_raw_data(file_path, sheet_name)
+    if not cached:
+        return None
+        
+    mapping = cached['mapping']
+    totals_row = cached['totals_row']
+    auto_next_row = cached['auto_next_row']
+    
+    if target_row and 2 <= target_row < totals_row:
+        next_row = target_row
+    else:
+        next_row = auto_next_row
+        
+    row_values = {}
+    if next_row:
+        row_values = cached['row_values_map'].get(next_row, {})
+        
+    preview = get_btpl_preview(file_path, sheet_name=sheet_name, page=page, page_size=page_size)
+    
     return {
         'mapping': mapping,
         'totals_row': totals_row,
