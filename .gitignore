@@ -7,3 +7,8 @@ efe_data/
 .agent
 .agents
 design-system
+db.sqlite3
+*.xlsx
+*.csv
+test_output.txt
+scratch_*.py
