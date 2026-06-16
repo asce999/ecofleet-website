@@ -5,8 +5,8 @@ from core.models import Pincode
 class PincodeTestCase(TestCase):
     def setUp(self):
         # Create a small isolated fixture dataset
-        Pincode.objects.create(pin="110001", city="New Delhi", state="Delhi", location_type="Non-ODA")
-        Pincode.objects.create(pin="175131", city="Manali", state="Himachal Pradesh", location_type="ODA")
+        Pincode.objects.get_or_create(pin="110001", defaults={"city": "New Delhi", "state": "Delhi", "location_type": "Non-ODA"})
+        Pincode.objects.get_or_create(pin="175131", defaults={"city": "Manali", "state": "Himachal Pradesh", "location_type": "ODA"})
 
     def test_available_pincode(self):
         """1. Available Pincode: Verify known pincode returns available"""

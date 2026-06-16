@@ -8,7 +8,7 @@ from django.core.files.base import ContentFile
 from core import pendency as pendency_logic
 import io
 import pandas as pd
-import datetime
+from django.http import Http404
 
 
 @staff_required

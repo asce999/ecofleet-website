@@ -1,16 +1,17 @@
 from django.views.decorators.cache import never_cache
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import FileResponse, Http404, JsonResponse
+from django.shortcuts import render, redirect
+from django.http import FileResponse, Http404
 from core.models import FtlWorkbook
 from core.forms import FtlShipmentForm, FtlWorkbookUploadForm
 from core.decorators import staff_required, tool_permission_required
 from core import ftl as ftl_logic
 import os
-import json
+from core.models import ToolRun
+from django.contrib import messages
+from django.conf import settings
 
 
 def get_active_ftl_workbook():
-    from .models import FtlWorkbook
     wb_count = FtlWorkbook.objects.count()
     if wb_count > 0:
         wb_obj = FtlWorkbook.active()
@@ -67,7 +68,6 @@ def ftl_sheet(request):
 @never_cache
 def ftl_api(request):
     """JSON API endpoint for AJAX FTL operations."""
-    import json
     from django.http import JsonResponse
 
     wb_obj, file_path, sheet_name = get_active_ftl_workbook()
