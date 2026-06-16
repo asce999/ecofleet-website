@@ -21,6 +21,7 @@ class ToolRun(models.Model):
     TOOL_PREV_MONTH = 'PREV_MONTH'
     TOOL_BTPL = 'BTPL'
     TOOL_ATTENDANCE = 'ATTENDANCE'
+    TOOL_FTL = 'FTL'
     TOOL_CHOICES = [
         (TOOL_COF, 'COF Generator'),
         (TOOL_MORNING, 'Morning Report'),
@@ -28,6 +29,7 @@ class ToolRun(models.Model):
         (TOOL_PREV_MONTH, 'Previous Month Update'),
         (TOOL_BTPL, 'BTPL Sheet'),
         (TOOL_ATTENDANCE, 'Attendance Tracker'),
+        (TOOL_FTL, 'FTL Tracker'),
     ]
 
     STATUS_SUCCESS = 'SUCCESS'
@@ -137,6 +139,28 @@ class AttendanceWorkbook(models.Model):
         return cls.objects.filter(is_active=True).first()
 
 
+class FtlWorkbook(models.Model):
+    """The team's active FTL shipment workbook."""
+    file = models.FileField(upload_to='ftl/')
+    original_name = models.CharField(max_length=255)
+    active_sheet = models.CharField(max_length=100, default='Sheet1')
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='ftl_workbooks')
+    is_active = models.BooleanField(default=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return f"{self.original_name} ({self.active_sheet}) ({'active' if self.is_active else 'archived'})"
+
+    @classmethod
+    def active(cls):
+        return cls.objects.filter(is_active=True).first()
+
+
 
 class UserProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
@@ -147,6 +171,7 @@ class UserProfile(models.Model):
     can_use_prev_month = models.BooleanField(default=True)
     can_use_btpl = models.BooleanField(default=True)
     can_use_attendance = models.BooleanField(default=True)
+    can_use_ftl = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.user.username} Profile ({self.role})"

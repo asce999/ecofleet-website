@@ -59,6 +59,9 @@
         {% if request.user.profile.can_use_attendance %}
         <a href="{% url 'attendance_sheet' %}" class="{% if active == 'attendance' %}active{% endif %}"><i class="ti ti-calendar-user"></i> Attendance</a>
         {% endif %}
+        {% if request.user.profile.can_use_ftl %}
+        <a href="{% url 'ftl_sheet' %}" class="{% if active == 'ftl' %}active{% endif %}"><i class="ti ti-truck-delivery"></i> FTL Tracker</a>
+        {% endif %}
         {% if request.user.profile.role == 'Director' %}
         <a href="{% url 'portal_users' %}" class="{% if active == 'users' %}active{% endif %}"><i class="ti ti-users"></i> User Permissions</a>
         {% endif %}

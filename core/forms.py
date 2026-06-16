@@ -283,3 +283,59 @@ class AttendanceWorkbookUploadForm(forms.Form):
         return f
 
 
+class FtlShipmentForm(forms.Form):
+    row_num = forms.IntegerField(widget=forms.HiddenInput())
+    booking_date = forms.DateField(
+        label="Date of Booking",
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date'}),
+    )
+    etd = forms.DateField(
+        label="ETD",
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date'}),
+    )
+    delivery_date = forms.DateField(
+        label="Date of Delivery",
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date'}),
+    )
+    consignor = forms.CharField(label="Consignor", required=False)
+    origin = forms.CharField(label="From Location (Origin)", required=False)
+    consignee = forms.CharField(label="Consignee", required=False)
+    lr_number = forms.CharField(label="LR Number", required=False)
+    destination = forms.CharField(label="To Location (Destination)", required=False)
+    vehicle_number = forms.CharField(label="Vehicle Number", required=False)
+    vendor = forms.CharField(label="Vendor", required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name, field in self.fields.items():
+            w = field.widget
+            if not isinstance(w, forms.HiddenInput):
+                css = 'portal-select' if isinstance(w, forms.Select) else 'portal-input'
+                w.attrs.setdefault('class', css)
+
+
+class FtlWorkbookUploadForm(forms.Form):
+    workbook = forms.FileField(label="FTL Shipment Workbook (.xlsx)", required=False)
+    active_sheet = forms.ChoiceField(label="Active Sheet Tab", required=False, choices=[])
+
+    def __init__(self, *args, **kwargs):
+        sheets = kwargs.pop('sheets', [])
+        super().__init__(*args, **kwargs)
+        self.fields['workbook'].widget.attrs.setdefault('class', 'portal-file')
+        self.fields['active_sheet'].widget.attrs.setdefault('class', 'portal-select')
+        if sheets:
+            self.fields['active_sheet'].choices = [(s, s) for s in sheets]
+        else:
+            self.fields['active_sheet'].choices = [('Sheet1', 'Sheet1')]
+
+    def clean_workbook(self):
+        f = self.cleaned_data.get('workbook')
+        if f and not f.name.lower().endswith('.xlsx'):
+            raise forms.ValidationError("Please upload an .xlsx Excel workbook.")
+        return f
+
+
+

@@ -57,6 +57,31 @@
     </div>
   </div>
 
+  <!-- FTL stats -->
+  <div class="section-title">FTL Tracker Metrics</div>
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-ico ico-cyan"><i class="ti ti-truck"></i></div>
+      <div class="stat-val">{{ ftl_total }}</div>
+      <div class="stat-label">Total Shipments</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-ico ico-green"><i class="ti ti-circle-check"></i></div>
+      <div class="stat-val">{{ ftl_delivered }}</div>
+      <div class="stat-label">Delivered</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-ico ico-orange"><i class="ti ti-route"></i></div>
+      <div class="stat-val">{{ ftl_in_transit }}</div>
+      <div class="stat-label">In Transit</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-ico ico-purple"><i class="ti ti-building-warehouse"></i></div>
+      <div class="stat-val">{{ ftl_vendors }}</div>
+      <div class="stat-label">Active Vendors</div>
+    </div>
+  </div>
+
   <!-- Charts -->
   <div class="section-title">Insights</div>
   <div class="chart-grid">
@@ -125,6 +150,13 @@
       <div class="action-ico ico-purple"><i class="ti ti-calendar-user"></i></div>
       <h3>Attendance</h3>
       <p>CRUD interface to mark, update, and track staff attendance.</p>
+    </a>
+    {% endif %}
+    {% if request.user.profile.can_use_ftl %}
+    <a href="{% url 'ftl_sheet' %}" class="action-card">
+      <div class="action-ico ico-cyan"><i class="ti ti-truck-delivery"></i></div>
+      <h3>FTL Tracker</h3>
+      <p>Preview, search, and manage FTL shipments from Excel workbook.</p>
     </a>
     {% endif %}
   </div>

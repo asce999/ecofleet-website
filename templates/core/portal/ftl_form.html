@@ -1,0 +1,729 @@
+{% extends 'core/portal/base.html' %}
+{% block title %}FTL Tracker — EcoFleet Express Portal{% endblock %}
+{% block heading %}FTL Shipment Tracker{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── FTL Overrides ── */
+.ftl-topbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.ftl-topbar-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ftl-topbar-meta .cof-next { font-size: 14px; }
+.ftl-topbar-actions { display: flex; gap: 8px; align-items: center; }
+
+/* Search + controls bar */
+.ftl-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 0; padding: 14px 18px; }
+.ftl-search { position: relative; flex: 0 1 280px; min-width: 180px; }
+.ftl-search input {
+  width: 100%; padding: 9px 14px 9px 36px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface-3); color: var(--text-main); font-size: 13px; font-family: inherit; outline: none;
+  transition: border-color 0.2s;
+}
+.ftl-search input:focus { border-color: var(--cyan); }
+.ftl-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 16px; pointer-events: none; }
+.ftl-row-count { font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+
+/* Compact table */
+.ftl-table-wrap { overflow-x: auto; overflow-y: auto; max-height: 520px; border-radius: 0 0 14px 14px; border-top: 1px solid var(--border); }
+.ftl-table { width: 100%; border-collapse: collapse; min-width: 900px; }
+.ftl-table thead { position: sticky; top: 0; z-index: 5; }
+.ftl-table th {
+  padding: 10px 12px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--border); white-space: nowrap; text-align: left;
+}
+.ftl-table td {
+  padding: 8px 12px; font-size: 12.5px; color: var(--text-main); border-bottom: 1px solid var(--border);
+  white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle;
+}
+.ftl-table tbody tr { transition: background 0.15s; }
+.ftl-table tbody tr:hover { background: rgba(var(--cyan-rgb, 0,174,239), 0.04); }
+.ftl-table tbody tr.ftl-summary-row { background: rgba(var(--purple-rgb), 0.04); font-weight: 600; }
+.ftl-table tbody tr.ftl-empty-row td { color: var(--hint); font-style: italic; }
+
+/* Row action buttons — hover reveal */
+.ftl-row-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }
+.ftl-table tbody tr:hover .ftl-row-actions { opacity: 1; }
+.ftl-row-act {
+  width: 30px; height: 30px; border-radius: 8px; border: none; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 15px;
+  transition: background 0.15s, color 0.15s; background: transparent; color: var(--muted);
+}
+.ftl-row-act:hover { background: var(--surface-3); }
+.ftl-row-act.act-edit:hover { color: var(--cyan); }
+.ftl-row-act.act-delete:hover { color: var(--danger); }
+
+/* Pagination */
+.ftl-pagination {
+  display: flex; justify-content: space-between; align-items: center; padding: 12px 18px;
+  border-top: 1px solid var(--border); font-size: 12.5px; color: var(--muted); flex-wrap: wrap; gap: 8px;
+}
+.ftl-page-btns { display: flex; gap: 4px; }
+.ftl-page-btn {
+  padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text-main); font-size: 12.5px; font-family: inherit; cursor: pointer; transition: all 0.15s;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.ftl-page-btn:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+.ftl-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.ftl-page-btn.active { background: var(--cyan); border-color: var(--cyan); color: #fff; font-weight: 600; }
+
+/* ── Slide-in Modal ── */
+.ftl-modal-overlay {
+  position: fixed; inset: 0; z-index: 900; background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
+  opacity: 0; visibility: hidden; transition: opacity 0.25s, visibility 0.25s;
+}
+.ftl-modal-overlay.open { opacity: 1; visibility: visible; }
+.ftl-modal-panel {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 910; width: 500px; max-width: 100%;
+  background: var(--surface-1); border-left: 1px solid var(--border); box-shadow: -8px 0 32px rgba(0,0,0,0.18);
+  display: flex; flex-direction: column; 
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+.ftl-modal-overlay.open .ftl-modal-panel { transform: translateX(0); }
+.ftl-modal-header {
+  display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.ftl-modal-header h3 { margin: 0; font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.ftl-modal-close {
+  width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--muted); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.ftl-modal-close:hover { color: var(--danger); border-color: var(--danger); }
+.ftl-modal-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
+.ftl-modal-footer {
+  padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+/* Modal form fields */
+.ftl-form-section {
+  font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em;
+  margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 6px;
+}
+.ftl-form-section:first-child { margin-top: 0; }
+.ftl-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+.ftl-form-group { display: flex; flex-direction: column; gap: 4px; }
+.ftl-form-group.full-width { grid-column: 1 / -1; }
+.ftl-form-group label { font-size: 11.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.ftl-form-group input, .ftl-form-group textarea {
+  padding: 9px 12px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface-3);
+  color: var(--text-main); font-size: 13.5px; font-family: inherit; outline: none; transition: border-color 0.2s;
+}
+.ftl-form-group input:focus, .ftl-form-group textarea:focus { border-color: var(--cyan); }
+.ftl-form-group textarea { resize: vertical; min-height: 48px; }
+.ftl-form-hint { font-size: 11px; color: var(--hint); margin-top: 2px; }
+
+/* Toast notifications */
+.ftl-toast {
+  position: fixed; bottom: 28px; right: 28px; z-index: 950; padding: 14px 22px; border-radius: 12px;
+  font-size: 13.5px; font-weight: 500; color: #fff; display: flex; align-items: center; gap: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(20px); opacity: 0;
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1); pointer-events: none;
+}
+.ftl-toast.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
+.ftl-toast.toast-success { background: linear-gradient(135deg, #22c55e, #16a34a); }
+.ftl-toast.toast-error { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.ftl-toast i { font-size: 20px; }
+
+/* Delete confirmation */
+.ftl-confirm-overlay {
+  position: fixed; inset: 0; z-index: 920; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.2s;
+}
+.ftl-confirm-overlay.open { opacity: 1; visibility: visible; }
+.ftl-confirm-box {
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: 16px;
+  padding: 28px 32px; max-width: 380px; width: 90%; text-align: center;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+}
+.ftl-confirm-box h4 { margin: 0 0 8px; font-size: 16px; }
+.ftl-confirm-box p { margin: 0 0 20px; color: var(--muted); font-size: 13.5px; }
+.ftl-confirm-actions { display: flex; gap: 10px; justify-content: center; }
+
+/* Loading spinner */
+.ftl-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: ftl-spin 0.6s linear infinite; }
+@keyframes ftl-spin { to { transform: rotate(360deg); } }
+
+/* Row fade-out animation */
+.ftl-row-removing { transition: opacity 0.4s, transform 0.4s; opacity: 0; transform: translateX(20px); }
+
+@media (max-width: 640px) {
+  .ftl-modal-panel { width: 100%; max-width: 100%; }
+  .ftl-form-grid { grid-template-columns: 1fr; }
+  .ftl-toolbar { flex-direction: column; align-items: stretch; }
+  .ftl-search { flex: 1; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% if no_sheet %}
+<div class="portal-card" style="border-left: 5px solid var(--danger); padding: 32px; text-align: center; max-width: 600px; margin: 40px auto;">
+  <div style="color: var(--danger); font-size: 56px; margin-bottom: 16px;"><i class="ti ti-file-x"></i></div>
+  <h3 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 700; color: var(--text-main);">No Active FTL Tracker Sheet</h3>
+  <p style="margin: 0 16px 24px 16px; color: var(--muted); font-size: 14.5px; line-height: 1.6;">
+    The FTL shipment workbook has been removed from active operations. 
+    You must upload a new Excel file or load the default system template workbook to continue.
+  </p>
+  <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
+    <a href="{% url 'ftl_settings' %}" class="btn-primary"><i class="ti ti-file-spreadsheet"></i> Go to Settings</a>
+  </div>
+</div>
+{% else %}
+
+<!-- Top Bar -->
+<div class="ftl-topbar">
+  <div class="ftl-topbar-meta">
+    <span class="cof-next">Active Tab: <strong>{{ sheet_name }}</strong></span>
+    <span class="cof-meta">· Workbook: {{ wb.original_name|default:"FTL_Shipment_Tracker.xlsx" }}</span>
+  </div>
+  <div class="ftl-topbar-actions">
+    <a href="{% url 'ftl_download' %}" class="btn-secondary btn-sm" style="font-size: 12.5px; padding: 7px 14px; display: inline-flex; align-items: center; gap: 5px;">
+      <i class="ti ti-download"></i> Download
+    </a>
+    <a href="{% url 'ftl_settings' %}" class="btn-secondary btn-sm" style="font-size: 12.5px; padding: 7px 14px; display: inline-flex; align-items: center; gap: 5px;">
+      <i class="ti ti-settings"></i> Settings
+    </a>
+    <button type="button" class="btn-primary btn-sm" onclick="openModal(null)" style="font-size: 12.5px; padding: 7px 14px; display: inline-flex; align-items: center; gap: 5px;">
+      <i class="ti ti-plus"></i> Add Shipment
+    </button>
+  </div>
+</div>
+
+<!-- Sheet Table Card -->
+<div class="portal-card ftl-card-container" style="padding: 0; overflow: hidden;">
+  <!-- Toolbar: Search + Row Count -->
+  <div class="ftl-toolbar">
+    <div class="ftl-search">
+      <i class="ti ti-search"></i>
+      <input type="text" id="ftlSearch" placeholder="Search by vehicle, LR, vendor, route…" oninput="filterRows()" />
+    </div>
+    <div class="ftl-row-count">
+      <i class="ti ti-table"></i>
+      <span id="ftlRowCount">{{ preview.total_rows }} shipment{{ preview.total_rows|pluralize }}</span>
+    </div>
+  </div>
+
+  <!-- Data Table -->
+  <div class="ftl-table-wrap desktop-only">
+    <table class="ftl-table" id="ftlTable">
+      <thead>
+        <tr>
+          <th style="width: 64px; text-align: center;"></th>
+          {% for col in preview.columns %}
+          <th>{{ col }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody id="ftlTbody">
+        {% if preview.rows %}
+          {% for row in preview.rows %}
+          <tr data-row="{{ row.row_num }}" class="ftl-data-row {% if row.row_num >= totals_row %}ftl-summary-row{% endif %}">
+            <td style="text-align: center;">
+              {% if row.row_num < totals_row %}
+              <div class="ftl-row-actions">
+                <button type="button" class="ftl-row-act act-edit" title="Edit row" onclick="openModal({{ row.row_num }})">
+                  <i class="ti ti-pencil"></i>
+                </button>
+                <button type="button" class="ftl-row-act act-delete" title="Delete row" onclick="confirmDelete({{ row.row_num }})">
+                  <i class="ti ti-trash"></i>
+                </button>
+              </div>
+              {% else %}
+              <span style="font-size: 11px; color: var(--muted); font-weight: 700;">Σ</span>
+              {% endif %}
+            </td>
+            {% for cell in row.cells %}
+            <td>{{ cell }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="12" style="text-align: center; padding: 40px; color: var(--muted);"><i class="ti ti-mood-empty" style="font-size: 28px; display: block; margin-bottom: 8px;"></i>No rows to display</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Mobile Cards View -->
+  <div class="btpl-mobile-cards-wrap mobile-only" id="ftlMobileCards">
+    <div style="text-align: center; padding: 32px; color: var(--muted);">
+      <i class="ti ti-loader animate-spin" style="font-size: 24px; display: block; margin: 0 auto 12px;"></i>
+      Loading shipments...
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <div class="ftl-pagination" id="ftlPagination">
+    <span id="ftlPageInfo">Page {{ preview.page }} of {{ preview.total_pages }}</span>
+    <div class="ftl-page-btns" id="ftlPageBtns"></div>
+  </div>
+</div>
+
+<!-- ── Slide-in Modal ── -->
+<div class="ftl-modal-overlay" id="ftlModal">
+  <div class="ftl-modal-panel" onclick="event.stopPropagation();">
+    <div class="ftl-modal-header">
+      <h3><i class="ti ti-edit" style="color: var(--cyan);"></i> <span id="modalTitle">Add Shipment</span></h3>
+      <button class="ftl-modal-close" onclick="closeModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="ftl-modal-body">
+      <form id="ftlForm">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="save" />
+        <input type="hidden" name="row_num" id="fld_row_num" value="{{ next_row }}" />
+
+        <div class="ftl-form-section"><i class="ti ti-hash" style="color: var(--cyan);"></i> Logistics details</div>
+        <div class="ftl-form-grid">
+          <div class="ftl-form-group">
+            <label>LR Number</label>
+            <input type="text" name="lr_number" id="fld_lr_number" />
+          </div>
+          <div class="ftl-form-group">
+            <label>Vehicle Number</label>
+            <input type="text" name="vehicle_number" id="fld_vehicle_number" />
+          </div>
+          <div class="ftl-form-group">
+            <label>Date of Booking</label>
+            <input type="date" name="booking_date" id="fld_booking_date" />
+          </div>
+          <div class="ftl-form-group">
+            <label>ETD</label>
+            <input type="date" name="etd" id="fld_etd" />
+          </div>
+          <div class="ftl-form-group">
+            <label>Date of Delivery</label>
+            <input type="date" name="delivery_date" id="fld_delivery_date" />
+          </div>
+          <div class="ftl-form-group">
+            <label>Vendor</label>
+            <input type="text" name="vendor" id="fld_vendor" />
+          </div>
+        </div>
+
+        <div class="ftl-form-section"><i class="ti ti-map-pins" style="color: var(--cyan);"></i> Route & Parties</div>
+        <div class="ftl-form-grid">
+          <div class="ftl-form-group">
+            <label>Consignor</label>
+            <input type="text" name="consignor" id="fld_consignor" />
+          </div>
+          <div class="ftl-form-group">
+            <label>From Location (Origin)</label>
+            <input type="text" name="origin" id="fld_origin" />
+          </div>
+          <div class="ftl-form-group">
+            <label>Consignee</label>
+            <input type="text" name="consignee" id="fld_consignee" />
+          </div>
+          <div class="ftl-form-group">
+            <label>To Location (Destination)</label>
+            <input type="text" name="destination" id="fld_destination" />
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="ftl-modal-footer">
+      <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-primary" id="modalSaveBtn" onclick="saveForm()">
+        <i class="ti ti-check"></i> Save Shipment
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation -->
+<div class="ftl-confirm-overlay" id="ftlConfirm">
+  <div class="ftl-confirm-box">
+    <div style="color: var(--danger); font-size: 40px; margin-bottom: 12px;"><i class="ti ti-alert-triangle"></i></div>
+    <h4>Delete Shipment Row?</h4>
+    <p>This will clear all data in Row <strong id="confirmRowNum"></strong>. This action cannot be undone.</p>
+    <div class="ftl-confirm-actions">
+      <button class="btn-secondary" onclick="closeConfirm()">Cancel</button>
+      <button class="btn-primary" style="background: var(--danger); border-color: var(--danger);" id="confirmDeleteBtn" onclick="executeDelete()">
+        <i class="ti ti-trash"></i> Delete
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="ftl-toast" id="ftlToast"><i class="ti ti-check"></i> <span id="toastMsg"></span></div>
+
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const API = "{% url 'ftl_api' %}";
+const CSRF = "{{ csrf_token }}";
+let currentPage = {{ preview.page|default:"1" }};
+let totalPages = {{ preview.total_pages|default:"1" }};
+let totalsRow = {{ totals_row|default:"1000" }};
+let nextRow = {{ next_row|default:"2" }};
+let deleteTargetRow = null;
+
+// ── Toast ──
+function showToast(msg, type) {
+  const t = document.getElementById('ftlToast');
+  t.querySelector('span').textContent = msg;
+  t.className = 'ftl-toast toast-' + (type || 'success') + ' show';
+  t.querySelector('i').className = 'ti ti-' + (type === 'error' ? 'alert-circle' : 'circle-check');
+  setTimeout(() => { t.classList.remove('show'); }, 3500);
+}
+
+// ── Modal ──
+function openModal(rowNum) {
+  const overlay = document.getElementById('ftlModal');
+  const title = document.getElementById('modalTitle');
+  clearForm();
+
+  if (rowNum) {
+    title.textContent = 'Edit Row ' + rowNum;
+    document.getElementById('fld_row_num').value = rowNum;
+    // Fetch row data via AJAX
+    fetch(API + '?action=get_row&row=' + rowNum)
+      .then(r => r.json())
+      .then(data => {
+        if (data.row_data) populateForm(data.row_data);
+      })
+      .catch(() => showToast('Failed to load row data', 'error'));
+  } else {
+    title.textContent = 'Add New Shipment';
+    document.getElementById('fld_row_num').value = nextRow || '';
+    // Fetch the latest next_row
+    fetch(API + '?action=next_row')
+      .then(r => r.json())
+      .then(data => {
+        if (data.next_row) {
+          nextRow = data.next_row;
+          document.getElementById('fld_row_num').value = data.next_row;
+        }
+      });
+  }
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('ftlModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Close modal on overlay click
+document.getElementById('ftlModal')?.addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+function clearForm() {
+  const fields = ['booking_date','etd','delivery_date','consignor','origin','consignee','lr_number','destination','vehicle_number','vendor'];
+  fields.forEach(f => {
+    const el = document.getElementById('fld_' + f);
+    if (el) el.value = '';
+  });
+}
+
+function populateForm(data) {
+  Object.keys(data).forEach(key => {
+    const el = document.getElementById('fld_' + key);
+    if (el && data[key] !== null && data[key] !== undefined) {
+      el.value = data[key];
+    }
+  });
+}
+
+// ── Save ──
+function saveForm() {
+  const btn = document.getElementById('modalSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="ftl-spinner"></span> Saving…';
+
+  const form = document.getElementById('ftlForm');
+  const fd = new FormData(form);
+  fd.set('action', 'save');
+
+  fetch(API, { method: 'POST', body: fd, headers: { 'X-CSRFToken': CSRF } })
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-check"></i> Save Shipment';
+      if (ok && data.success) {
+        showToast('Shipment saved — Row ' + data.row);
+        closeModal();
+        refreshTable(currentPage);
+      } else {
+        showToast(data.error || 'Failed to save', 'error');
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-check"></i> Save Shipment';
+      showToast('Network error', 'error');
+    });
+}
+
+// ── Delete ──
+function confirmDelete(rowNum) {
+  deleteTargetRow = rowNum;
+  document.getElementById('confirmRowNum').textContent = rowNum;
+  document.getElementById('ftlConfirm').classList.add('open');
+}
+function closeConfirm() {
+  document.getElementById('ftlConfirm').classList.remove('open');
+  deleteTargetRow = null;
+}
+function executeDelete() {
+  if (!deleteTargetRow) return;
+  const btn = document.getElementById('confirmDeleteBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="ftl-spinner"></span> Deleting…';
+
+  const fd = new FormData();
+  fd.set('action', 'delete');
+  fd.set('row', deleteTargetRow);
+
+  fetch(API, { method: 'POST', body: fd, headers: { 'X-CSRFToken': CSRF } })
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-trash"></i> Delete';
+      closeConfirm();
+      if (ok && data.success) {
+        // Animate row removal
+        const row = document.querySelector(`tr[data-row="${data.row}"]`);
+        if (row) {
+          row.classList.add('ftl-row-removing');
+          setTimeout(() => refreshTable(currentPage), 450);
+        } else {
+          refreshTable(currentPage);
+        }
+        showToast('Row ' + data.row + ' deleted');
+      } else {
+        showToast(data.error || 'Failed to delete', 'error');
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-trash"></i> Delete';
+      closeConfirm();
+      showToast('Network error', 'error');
+    });
+}
+
+// ── Pagination & Table Refresh ──
+function loadPage(page) {
+  if (page < 1 || page > totalPages) return;
+  currentPage = page;
+  refreshTable(page);
+}
+
+function refreshTable(page) {
+  fetch(API + '?action=preview&page=' + (page || 1))
+    .then(r => r.json())
+    .then(data => {
+      if (!data.preview) return;
+      const p = data.preview;
+      currentPage = p.page;
+      totalPages = p.total_pages;
+      renderTable(p);
+      renderPagination(p);
+      document.getElementById('ftlRowCount').textContent = p.total_rows + ' shipment' + (p.total_rows !== 1 ? 's' : '');
+    })
+    .catch(() => showToast('Failed to refresh table', 'error'));
+}
+
+let colMapping = { booking_date: -1, etd: -1, delivery_date: -1, consignor: -1, origin: -1, consignee: -1, lr_number: -1, destination: -1, vehicle_number: -1, vendor: -1 };
+
+function mapColumns(cols) {
+  colMapping = { booking_date: -1, etd: -1, delivery_date: -1, consignor: -1, origin: -1, consignee: -1, lr_number: -1, destination: -1, vehicle_number: -1, vendor: -1 };
+  cols.forEach((col, idx) => {
+    const name = col.toLowerCase().trim();
+    if (name.includes('booking') || name === 'date of booking') colMapping.booking_date = idx;
+    else if (name === 'etd') colMapping.etd = idx;
+    else if (name.includes('delivery') || name === 'date of delivery') colMapping.delivery_date = idx;
+    else if (name === 'consignor') colMapping.consignor = idx;
+    else if (name.includes('from location') || name === 'origin' || name === 'from') colMapping.origin = idx;
+    else if (name === 'consignee') colMapping.consignee = idx;
+    else if (name.includes('lr number') || name.includes('lr no')) colMapping.lr_number = idx;
+    else if (name.includes('to location') || name === 'destination' || name === 'to') colMapping.destination = idx;
+    else if (name.includes('vehicle number') || name.includes('vehicle no')) colMapping.vehicle_number = idx;
+    else if (name === 'vendor') colMapping.vendor = idx;
+  });
+}
+
+function renderTable(p) {
+  const tbody = document.getElementById('ftlTbody');
+  const mobdiv = document.getElementById('ftlMobileCards');
+  
+  if (!p.rows || p.rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--muted);"><i class="ti ti-mood-empty" style="font-size:28px;display:block;margin-bottom:8px;"></i>No rows to display</td></tr>';
+    if (mobdiv) mobdiv.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);"><i class="ti ti-mood-empty" style="font-size:28px;display:block;margin-bottom:8px;"></i>No shipments to display</div>';
+    return;
+  }
+  
+  mapColumns(p.columns);
+
+  let html = '';
+  let mobHtml = '';
+
+  p.rows.forEach(row => {
+    const isSummary = row.row_num >= totalsRow;
+    
+    // Desktop Row
+    html += `<tr data-row="${row.row_num}" class="ftl-data-row ${isSummary ? 'ftl-summary-row' : ''}">`;
+    html += '<td style="text-align:center;">';
+    if (!isSummary) {
+      html += `<div class="ftl-row-actions">
+        <button type="button" class="ftl-row-act act-edit" title="Edit" onclick="openModal(${row.row_num})"><i class="ti ti-pencil"></i></button>
+        <button type="button" class="ftl-row-act act-delete" title="Delete" onclick="confirmDelete(${row.row_num})"><i class="ti ti-trash"></i></button>
+      </div>`;
+    } else {
+      html += '<span style="font-size:11px;color:var(--muted);font-weight:700;">Σ</span>';
+    }
+    html += '</td>';
+    row.cells.forEach(cell => {
+      html += `<td>${escHtml(cell)}</td>`;
+    });
+    html += '</tr>';
+
+    // Mobile Card
+    if (isSummary) {
+      let summaryDetails = [];
+      row.cells.forEach((cell, idx) => {
+        const val = (cell || '').trim();
+        if (val !== '' && val !== '0' && p.columns[idx] && !p.columns[idx].toLowerCase().includes('lr number')) {
+          summaryDetails.push(`<span><strong>${p.columns[idx]}:</strong> ${escHtml(val)}</span>`);
+        }
+      });
+      mobHtml += `
+        <div class="ftl-mobile-card card-summary" data-row="${row.row_num}">
+          <div class="summary-card-inner">
+            <div class="summary-card-title"><i class="ti ti-sum"></i> Totals Summary</div>
+            <div class="summary-card-grid">
+              ${summaryDetails.join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      const bookingDateVal = colMapping.booking_date !== -1 ? escHtml(row.cells[colMapping.booking_date]) : '—';
+      const etdVal = colMapping.etd !== -1 ? escHtml(row.cells[colMapping.etd]) : '—';
+      const deliveryDateVal = colMapping.delivery_date !== -1 ? escHtml(row.cells[colMapping.delivery_date]) : '—';
+      const consignorVal = colMapping.consignor !== -1 ? escHtml(row.cells[colMapping.consignor]) : '—';
+      const originVal = colMapping.origin !== -1 ? escHtml(row.cells[colMapping.origin]) : '—';
+      const consigneeVal = colMapping.consignee !== -1 ? escHtml(row.cells[colMapping.consignee]) : '—';
+      const lrVal = colMapping.lr_number !== -1 ? escHtml(row.cells[colMapping.lr_number]) : '—';
+      const destVal = colMapping.destination !== -1 ? escHtml(row.cells[colMapping.destination]) : '—';
+      const vehicleVal = colMapping.vehicle_number !== -1 ? escHtml(row.cells[colMapping.vehicle_number]) : '—';
+      const vendorVal = colMapping.vendor !== -1 ? escHtml(row.cells[colMapping.vendor]) : '—';
+
+      // status calculation
+      let statusVal = "Booked";
+      if (deliveryDateVal && deliveryDateVal.trim() !== "" && deliveryDateVal.trim() !== "—") {
+        statusVal = "Delivered";
+      } else if (etdVal && etdVal.trim() !== "" && etdVal.trim() !== "—") {
+        statusVal = "In Transit";
+      }
+
+      mobHtml += `
+        <div class="btpl-mobile-card" data-row="${row.row_num}">
+          <div class="card-lr-row">
+            <span class="card-lr" style="color:var(--cyan)"><i class="ti ti-truck"></i> ${vehicleVal}</span>
+            <span class="card-status status-${statusVal.toLowerCase().replace(/\s+/g, '-')}">${statusVal}</span>
+          </div>
+          <div class="card-main-info">
+            <div class="card-name" style="font-size: 13.5px;"><strong style="color:var(--muted)">LR:</strong> ${lrVal} · <strong style="color:var(--muted)">Vendor:</strong> ${vendorVal}</div>
+            <div class="card-destination"><i class="ti ti-route"></i> ${originVal} <i class="ti ti-arrow-narrow-right"></i> ${destVal}</div>
+          </div>
+          <div class="card-stats-row" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px;">
+            <div class="card-stat">
+              <span class="lbl">Booking Date</span>
+              <span class="val" style="font-size: 12px;">${bookingDateVal}</span>
+            </div>
+            <div class="card-stat">
+              <span class="lbl">ETD</span>
+              <span class="val" style="font-size: 12px;">${etdVal}</span>
+            </div>
+            <div class="card-stat">
+              <span class="lbl">Delivery Date</span>
+              <span class="val" style="font-size: 12px;">${deliveryDateVal}</span>
+            </div>
+          </div>
+          <div class="card-actions-row" style="margin-top: 12px;">
+            <button type="button" class="btn-secondary btn-xs" style="padding: 6px 12px; font-size:11.5px; border-radius: 8px;" onclick="openModal(${row.row_num})">
+              <i class="ti ti-pencil"></i> Edit
+            </button>
+            <button type="button" class="btn-danger btn-xs" style="padding: 6px 12px; font-size:11.5px; border-radius: 8px;" onclick="confirmDelete(${row.row_num})">
+              <i class="ti ti-trash"></i> Delete
+            </button>
+          </div>
+        </div>
+      `;
+    }
+  });
+
+  tbody.innerHTML = html;
+  if (mobdiv) mobdiv.innerHTML = mobHtml;
+}
+
+function renderPagination(p) {
+  const info = document.getElementById('ftlPageInfo');
+  const btns = document.getElementById('ftlPageBtns');
+  info.textContent = 'Page ' + p.page + ' of ' + p.total_pages;
+  if (p.total_pages <= 1) { btns.innerHTML = ''; return; }
+
+  let html = `<button class="ftl-page-btn" onclick="loadPage(${p.page - 1})" ${p.page <= 1 ? 'disabled' : ''}><i class="ti ti-chevron-left"></i> Prev</button>`;
+  let start = Math.max(1, p.page - 2);
+  let end = Math.min(p.total_pages, start + 4);
+  start = Math.max(1, end - 4);
+  for (let i = start; i <= end; i++) {
+    html += `<button class="ftl-page-btn ${i === p.page ? 'active' : ''}" onclick="loadPage(${i})">${i}</button>`;
+  }
+  html += `<button class="ftl-page-btn" onclick="loadPage(${p.page + 1})" ${p.page >= p.total_pages ? 'disabled' : ''}>Next <i class="ti ti-chevron-right"></i></button>`;
+  btns.innerHTML = html;
+}
+
+// ── Client-side Search ──
+function filterRows() {
+  const q = document.getElementById('ftlSearch').value.toLowerCase().trim();
+  
+  // Filter desktop table rows
+  const rows = document.querySelectorAll('#ftlTbody .ftl-data-row');
+  rows.forEach(tr => {
+    if (!q) { tr.style.display = ''; return; }
+    const text = tr.textContent.toLowerCase();
+    tr.style.display = text.includes(q) ? '' : 'none';
+  });
+
+  // Filter mobile cards
+  const cards = document.querySelectorAll('#ftlMobileCards .btpl-mobile-card');
+  cards.forEach(card => {
+    if (!q) { card.style.display = ''; return; }
+    const text = card.textContent.toLowerCase();
+    card.style.display = text.includes(q) ? '' : 'none';
+  });
+}
+
+function escHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (document.getElementById('ftlConfirm').classList.contains('open')) closeConfirm();
+    else if (document.getElementById('ftlModal').classList.contains('open')) closeModal();
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderPagination({ page: currentPage, total_pages: totalPages });
+  refreshTable(currentPage);
+});
+</script>
+{% endblock %}
