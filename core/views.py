@@ -20,6 +20,7 @@ from django.core.files.base import ContentFile
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import never_cache
+from django.core.cache import cache
 
 from .forms import CofForm, WorkbookUploadForm, PendencyForm, MorningForm, PrevMonthUpdateForm, BtplShipmentForm, BtplWorkbookUploadForm, AttendanceWorkbookUploadForm, FtlShipmentForm, FtlWorkbookUploadForm
 from . import cof, pendency, morning, prev_month, btpl, attendance, ftl
@@ -191,7 +192,22 @@ def dashboard(request):
     ftl_delivered = 0
     ftl_in_transit = 0
     ftl_vendors = 0
-    if ftl_file_path and os.path.exists(ftl_file_path):
+    
+    # --- CACHE IMPLEMENTATION ---
+    # Cache Invalidation Strategy:
+    # 1. We include `ftl_wb_obj.id` so the cache invalidates instantly if a new active workbook is set.
+    # 2. We include `os.path.getmtime()` to instantly invalidate if the existing file is edited externally.
+    # 3. Timeout is set to 900s (15 mins) as a passive fallback.
+    cache_key = None
+    if ftl_wb_obj and ftl_file_path and os.path.exists(ftl_file_path):
+        mtime = os.path.getmtime(ftl_file_path)
+        cache_key = f"ftl_metrics_active_{ftl_wb_obj.id}_{mtime}"
+        
+    cached_metrics = cache.get(cache_key) if cache_key else None
+    
+    if cached_metrics:
+        ftl_total, ftl_delivered, ftl_in_transit, ftl_vendors = cached_metrics
+    elif ftl_file_path and os.path.exists(ftl_file_path):
         try:
             import openpyxl
             wb_ftl = openpyxl.load_workbook(ftl_file_path, read_only=True)
@@ -230,6 +246,9 @@ def dashboard(request):
                     if v_val is not None and str(v_val).strip() != "":
                         vendors_set.add(str(v_val).strip())
                 ftl_vendors = len(vendors_set)
+                
+                if cache_key:
+                    cache.set(cache_key, (ftl_total, ftl_delivered, ftl_in_transit, ftl_vendors), timeout=900)
         except Exception:
             pass
 
