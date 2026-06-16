@@ -4,3 +4,6 @@ __pycache__/
 *.pyc
 media/
 efe_data/
+.agent
+.agents
+design-system
