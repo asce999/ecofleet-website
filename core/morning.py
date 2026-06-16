@@ -84,13 +84,13 @@ def find_lr_col(df):
     raise ReportError("Could not find the 'Lr No.' column in a master report sheet.")
 
 
-def load_pincode_map(master_bytes, vehicle_type):
+def load_pincode_map(all_sheets, vehicle_type):
     sheet_name = "Pin-Code" if vehicle_type == "2W" else "Pin-Codes"
-    try:
-        df = pd.read_excel(io.BytesIO(master_bytes), sheet_name=sheet_name, dtype=str)
-    except ValueError:
+    if sheet_name not in all_sheets:
         raise ReportError(
             f'The {vehicle_type} master has no "{sheet_name}" sheet — is it the right file?')
+    df = all_sheets[sheet_name].copy()
+    df = df.astype(str)
     df.columns = df.columns.str.strip()
 
     pincode_col = find_pincode_col(df, ["Consignee - Pincode", "Pincode", "Pin Code", "PIN"], "Pincode")
@@ -154,13 +154,12 @@ def clean_delhivery(file):
     return df
 
 
-def load_master(master_bytes, vehicle_type):
+def load_master(all_sheets, vehicle_type):
     sheet = "2W Report" if vehicle_type == "2W" else "CV Report"
-    try:
-        df = pd.read_excel(io.BytesIO(master_bytes), sheet_name=sheet, dtype=object)
-    except ValueError:
+    if sheet not in all_sheets:
         raise ReportError(
             f'The {vehicle_type} master has no "{sheet}" sheet — is it the right file?')
+    df = all_sheets[sheet].copy()
 
     lr_col_actual = find_lr_col(df)
     if lr_col_actual != "Lr No. ":
@@ -344,10 +343,14 @@ def save_master(master_df, pincode_df, vehicle_type):
 
 # ── Per-vehicle orchestration ────────────────────────────────────────
 def process_vehicle_type(vehicle_type, delhivery_df, master_bytes):
-    master_df   = load_master(master_bytes, vehicle_type)
-    pincode_map = load_pincode_map(master_bytes, vehicle_type)
+    all_sheets = pd.read_excel(io.BytesIO(master_bytes), sheet_name=None, dtype=object)
+    
+    master_df   = load_master(all_sheets, vehicle_type)
+    pincode_map = load_pincode_map(all_sheets, vehicle_type)
     pincode_sheet = "Pin-Code" if vehicle_type == "2W" else "Pin-Codes"
-    pincode_df_full = pd.read_excel(io.BytesIO(master_bytes), sheet_name=pincode_sheet)
+    if pincode_sheet not in all_sheets:
+        raise ReportError(f"The master file is missing the required '{pincode_sheet}' sheet.")
+    pincode_df_full = all_sheets[pincode_sheet].copy()
 
     existing_lrs = set(master_df["Lr No. "].astype(str).str.strip())
 
