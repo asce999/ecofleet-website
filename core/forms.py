@@ -3,6 +3,44 @@ import re
 from django import forms
 
 from . import cof
+import zipfile
+import logging
+
+logger = logging.getLogger('core')
+
+def validate_xlsx_upload(f):
+    if not f:
+        return f
+        
+    max_size = 10 * 1024 * 1024 # 10 MB
+    if f.size > max_size:
+        logger.warning(f"Upload rejected: {f.name} exceeds 10MB.")
+        raise forms.ValidationError("File too large. Maximum size is 10MB.")
+        
+    name = f.name.lower()
+    
+    # Check for multiple executable extensions (e.g., .xlsx.exe)
+    parts = name.split('.')
+    if len(parts) > 2 and parts[-1] in ('exe', 'sh', 'bat', 'cmd', 'js', 'vbs', 'php'):
+        logger.warning(f"Upload rejected: {f.name} has dangerous trailing extension.")
+        raise forms.ValidationError("Dangerous file extension detected.")
+        
+    if not name.endswith('.xlsx'):
+        logger.warning(f"Upload rejected: {f.name} is not an .xlsx file.")
+        raise forms.ValidationError("Please upload a valid .xlsx Excel workbook.")
+        
+    try:
+        f.seek(0)
+        if not zipfile.is_zipfile(f):
+            logger.warning(f"Upload rejected: {f.name} is not a valid ZIP/XLSX archive.")
+            raise forms.ValidationError("File is corrupted or not a valid Excel archive.")
+        f.seek(0)
+    except Exception as e:
+        logger.warning(f"Upload rejected: {f.name} could not be read: {e}")
+        raise forms.ValidationError("File is corrupted or cannot be read.")
+    
+    return f
+
 
 
 class WorkbookUploadForm(forms.Form):
@@ -13,10 +51,7 @@ class WorkbookUploadForm(forms.Form):
         self.fields['workbook'].widget.attrs.setdefault('class', 'portal-file')
 
     def clean_workbook(self):
-        f = self.cleaned_data['workbook']
-        if not f.name.lower().endswith('.xlsx'):
-            raise forms.ValidationError("Please upload the .xlsx tracking workbook.")
-        return f
+        return validate_xlsx_upload(self.cleaned_data.get('workbook'))
 
 
 class CofForm(forms.Form):
@@ -130,9 +165,7 @@ class PendencyForm(forms.Form):
                 w.attrs.setdefault('class', 'portal-input')
 
     def _check_xlsx(self, f):
-        if not f.name.lower().endswith('.xlsx'):
-            raise forms.ValidationError("Please upload an .xlsx file.")
-        return f
+        return validate_xlsx_upload(f)
 
     def clean_file_2w(self):
         return self._check_xlsx(self.cleaned_data['file_2w'])
@@ -166,9 +199,7 @@ class MorningForm(forms.Form):
             field.widget.attrs.setdefault('class', 'portal-file')
 
     def _check_xlsx(self, f):
-        if not f.name.lower().endswith('.xlsx'):
-            raise forms.ValidationError("Please upload an .xlsx file.")
-        return f
+        return validate_xlsx_upload(f)
 
     def clean_file_2w(self):
         return self._check_xlsx(self.cleaned_data['file_2w'])
@@ -187,9 +218,7 @@ class PrevMonthUpdateForm(forms.Form):
             field.widget.attrs.setdefault('class', 'portal-file')
 
     def _check_xlsx(self, f):
-        if not f.name.lower().endswith('.xlsx'):
-            raise forms.ValidationError("Please upload an .xlsx file.")
-        return f
+        return validate_xlsx_upload(f)
 
     def clean_file_2w(self):
         return self._check_xlsx(self.cleaned_data['file_2w'])
@@ -256,10 +285,20 @@ class BtplWorkbookUploadForm(forms.Form):
             self.fields['active_sheet'].choices = [('JUN 26', 'JUN 26')]
 
     def clean_workbook(self):
-        f = self.cleaned_data.get('workbook')
-        if f and not f.name.lower().endswith('.xlsx'):
-            raise forms.ValidationError("Please upload an .xlsx Excel workbook.")
-        return f
+        return validate_xlsx_upload(self.cleaned_data.get('workbook'))
+
+
+from .models import SalaryConfig
+
+class SalaryConfigForm(forms.ModelForm):
+    class Meta:
+        model = SalaryConfig
+        fields = '__all__'
+        
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name, field in self.fields.items():
+            field.widget.attrs.setdefault('class', 'portal-input')
 
 
 class AttendanceWorkbookUploadForm(forms.Form):
@@ -277,10 +316,7 @@ class AttendanceWorkbookUploadForm(forms.Form):
             self.fields['active_sheet'].choices = [('JUNE 2026', 'JUNE 2026')]
 
     def clean_workbook(self):
-        f = self.cleaned_data.get('workbook')
-        if f and not f.name.lower().endswith('.xlsx'):
-            raise forms.ValidationError("Please upload an .xlsx Excel workbook.")
-        return f
+        return validate_xlsx_upload(self.cleaned_data.get('workbook'))
 
 
 class FtlShipmentForm(forms.Form):
@@ -332,10 +368,7 @@ class FtlWorkbookUploadForm(forms.Form):
             self.fields['active_sheet'].choices = [('Sheet1', 'Sheet1')]
 
     def clean_workbook(self):
-        f = self.cleaned_data.get('workbook')
-        if f and not f.name.lower().endswith('.xlsx'):
-            raise forms.ValidationError("Please upload an .xlsx Excel workbook.")
-        return f
+        return validate_xlsx_upload(self.cleaned_data.get('workbook'))
 
 
 

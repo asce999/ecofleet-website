@@ -1,0 +1,46 @@
+<div class="ops-timeline-item">
+    <!-- Timeline Vertical Line -->
+    {% if not is_last %}
+    <div class="ops-timeline-line"></div>
+    {% endif %}
+    
+    <div class="ops-timeline-row">
+        <!-- Icon -->
+        <div class="ops-timeline-icon" style="
+            {% if event.severity == 40 %}border-color: var(--red); color: var(--red);
+            {% elif event.severity == 30 %}border-color: var(--orange); color: var(--orange);
+            {% else %}border-color: var(--cyan); color: var(--cyan);{% endif %}">
+            {% if event.severity == 40 %}
+                <i class="ti ti-x" style="font-size: 14px;"></i>
+            {% elif event.severity == 30 %}
+                <i class="ti ti-alert-triangle" style="font-size: 14px;"></i>
+            {% else %}
+                <i class="ti ti-check" style="font-size: 14px;"></i>
+            {% endif %}
+        </div>
+
+        <!-- Content -->
+        <div class="ops-timeline-content">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <span class="ops-timeline-title" style="color: var(--text);">{{ event.title }}</span>
+                    <span class="ops-timeline-tag">{{ event.component }}</span>
+                </div>
+                <span class="ops-timeline-time">{{ event.timestamp|date:"H:i:s" }}</span>
+            </div>
+            
+            {% if event.description %}
+            <p class="ops-timeline-desc">{{ event.description }}</p>
+            {% endif %}
+            
+            {% if event.metadata %}
+            <details class="ops-timeline-details">
+                <summary>
+                    <i class="ti ti-terminal" style="color: var(--muted); font-size: 14px;"></i> View payload
+                </summary>
+                <div>{{ event.metadata|pprint }}</div>
+            </details>
+            {% endif %}
+        </div>
+    </div>
+</div>

@@ -65,6 +65,7 @@
         {% if request.user.profile.role == 'Director' %}
         <a href="{% url 'portal_users' %}" class="{% if active == 'users' %}active{% endif %}"><i class="ti ti-users"></i> User Permissions</a>
         {% endif %}
+        <a href="{% url 'operations_center' %}" class="{% if active == 'operations' %}active{% endif %}"><i class="ti ti-activity-heartbeat"></i> Operations Center</a>
     </nav>
 
     <div class="portal-sidebar-foot">

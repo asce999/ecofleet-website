@@ -9,6 +9,10 @@ import os
 from core.models import ToolRun
 from django.contrib import messages
 from django.conf import settings
+import logging
+
+logger = logging.getLogger('core')
+
 
 
 def get_active_ftl_workbook():
@@ -109,8 +113,10 @@ def ftl_api(request):
                     reference=f"LR: {row_data.get('lr_number') or ''}",
                     detail=f"Row: {target_row} · Sheet: {sheet_name} · Vehicle: {row_data.get('vehicle_number') or ''}"
                 )
+                logger.info(f"FTL generated for LR: {row_data.get('lr_number')}")
                 return JsonResponse({'success': True, 'run_id': run.pk, 'row': target_row})
             except Exception as e:
+                logger.error(f"Error generating FTL row {target_row}: {e}")
                 ToolRun.objects.create(
                     user=request.user,
                     tool=ToolRun.TOOL_FTL,
@@ -120,6 +126,7 @@ def ftl_api(request):
                 return JsonResponse({'error': str(e)}, status=500)
         else:
             errors = {k: v[0] for k, v in form.errors.items()}
+            logger.warning(f"Validation failure during FTL generation: {errors}")
             return JsonResponse({'error': 'Validation failed', 'field_errors': errors}, status=400)
 
     # POST: delete row
@@ -249,6 +256,7 @@ def ftl_settings(request):
             if form.is_valid():
                 upload = request.FILES.get('workbook')
                 if upload:
+                    logger.info(f"FTL upload started: {upload.name}")
                     new_wb = FtlWorkbook.objects.create(
                         file=upload, original_name=upload.name,
                         uploaded_by=request.user, is_active=False
@@ -259,7 +267,8 @@ def ftl_settings(request):
                         temp_wb = openpyxl.load_workbook(new_wb.file.path, read_only=True)
                         uploaded_sheets = temp_wb.sheetnames
                         default_sheet = uploaded_sheets[0] if uploaded_sheets else 'Sheet1'
-                    except Exception:
+                    except Exception as e:
+                        logger.error(f"Excel parsing failed for FTL {upload.name}: {e}")
                         default_sheet = 'Sheet1'
                         
                     new_wb.active_sheet = default_sheet
@@ -269,9 +278,11 @@ def ftl_settings(request):
                     new_wb.is_active = True
                     new_wb.save(update_fields=['is_active'])
                     
+                    logger.info(f"FTL upload completed: {upload.name}")
                     messages.success(request, f"Uploaded workbook '{upload.name}' is now the active FTL shipment workbook.")
                     return redirect('ftl_settings')
                 else:
+                    logger.warning("FTL file upload failed: No file provided.")
                     messages.error(request, "Please choose a valid .xlsx file to upload.")
     else:
         form = FtlWorkbookUploadForm(initial={'active_sheet': current_sheet_name}, sheets=sheets)

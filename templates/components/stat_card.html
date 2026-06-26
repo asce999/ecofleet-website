@@ -1,0 +1,21 @@
+<div class="df-card animate-slide-up">
+    <div class="df-flex df-items-start df-justify-between df-mb-2">
+        <span class="df-text-subheading">{{ title }}</span>
+        {% if icon %}
+        <div class="df-card-icon" style="background: var(--color-bg-surface-hover); padding: var(--spacing-2); border-radius: var(--radius-md);">
+            <i class="ti ti-{{ icon }}"></i>
+        </div>
+        {% endif %}
+    </div>
+    <div class="df-text-display {% if count_up %}df-count-up{% endif %} df-mb-1" style="color: var(--color-text-primary);">
+        {{ value }}
+    </div>
+    <div class="df-flex df-items-center df-gap-2">
+        {% if trend %}
+        <span class="df-badge df-badge-neutral">{{ trend }}</span>
+        {% endif %}
+        {% if subtitle %}
+        <span class="df-text-caption">{{ subtitle }}</span>
+        {% endif %}
+    </div>
+</div>

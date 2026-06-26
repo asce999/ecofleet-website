@@ -1,0 +1,8 @@
+{% extends "admin/base.html" %}
+
+{% block nav-global %}
+    {{ block.super }}
+    <div id="user-tools" style="float: right; margin-right: 15px;">
+        <a href="{% url 'admin:diagnostics' %}"><strong>System Diagnostics</strong></a> |
+    </div>
+{% endblock %}

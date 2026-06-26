@@ -1,0 +1,12 @@
+{% include "components/section_header.html" with title="Feature Health" subtitle="Business modules operational status" %}
+<div class="action-grid" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); margin-bottom: 28px;">
+    {% include "components/project_card.html" with title="Attendance" icon="calendar-user" color="purple" provider=providers_dict.attendance %}
+    
+    {% include "components/project_card.html" with title="Salary" icon="cash" color="green" provider=providers_dict.salary %}
+    
+    {% include "components/project_card.html" with title="BTPL" icon="table" color="cyan" provider=providers_dict.btpl %}
+    
+    {% include "components/project_card.html" with title="FTL" icon="truck-delivery" color="cyan" provider=providers_dict.ftl %}
+    
+    {% include "components/project_card.html" with title="COF" icon="file-certificate" color="orange" provider=providers_dict.cof %}
+</div>

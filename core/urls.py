@@ -10,6 +10,12 @@ urlpatterns = [
     re_path(r'^sitemap\.xml/?$', views.sitemap, name='sitemap'),
     path('find-location/', views.find_location, name='find_location'),
 
+    # ── Observability ──
+    path('health/', views.health_check, name='health_check'),
+    path('sentry-debug/', views.sentry_debug, name='sentry_debug'),
+    path('portal/operations-center/', views.operations_center, name='operations_center'),
+
+
     # ── Employee Portal ──
     path('portal/login/', views.portal_login, name='portal_login'),
     path('portal/logout/', views.portal_logout, name='portal_logout'),
@@ -41,4 +47,6 @@ urlpatterns = [
     path('portal/attendance/', views.attendance_sheet, name='attendance_sheet'),
     path('portal/attendance/download/', views.attendance_download, name='attendance_download'),
     path('portal/attendance/settings/', views.attendance_settings, name='attendance_settings'),
+    path('portal/attendance/salary/', views.salary_calculator, name='salary_calculator'),
+    path('portal/attendance/salary/export/', views.salary_calculator_export, name='salary_calculator_export'),
 ]

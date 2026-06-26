@@ -1,0 +1,411 @@
+/*
+ * Operations Center — Page-Specific Styles
+ * Layered on top of portal.css + main.css
+ */
+
+/* ── HERO LAYOUT ─────────────────────────────────────────────────────────── */
+.ops-hero-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+@media (min-width: 900px) {
+    .ops-hero-row {
+        grid-template-columns: 2fr 1fr;
+    }
+}
+
+.ops-hero-main {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-width: 0;
+}
+
+.ops-hero-side {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-width: 0;
+}
+
+/* ── HEALTH SCORE ─────────────────────────────────────────────────────────── */
+.ops-health-score {
+    font-size: 64px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+}
+
+.ops-health-suffix {
+    font-size: 22px;
+    color: var(--muted);
+    padding-bottom: 8px;
+    font-weight: 600;
+}
+
+/* ── SCORE BREAKDOWN ──────────────────────────────────────────────────────── */
+.ops-breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+@media (max-width: 600px) {
+    .ops-breakdown-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.ops-breakdown-item {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    padding: 12px 14px;
+    border-radius: 12px;
+}
+
+.ops-breakdown-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 4px;
+}
+
+.ops-breakdown-val {
+    font-weight: 700;
+    font-size: 14px;
+}
+
+/* ── ENVIRONMENT SUMMARY ──────────────────────────────────────────────────── */
+.ops-env-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.ops-env-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 3px;
+}
+
+.ops-env-val {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+/* ── INFRASTRUCTURE GRID ──────────────────────────────────────────────────── */
+.ops-infra-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+@media (max-width: 600px) {
+    .ops-infra-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── COLLECTING HISTORY PLACEHOLDER ──────────────────────────────────────── */
+.ops-collecting {
+    background: var(--surface-2);
+    border: 1px dashed var(--border);
+    padding: 10px 14px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    font-style: italic;
+}
+
+/* ── INSIGHT ITEMS ────────────────────────────────────────────────────────── */
+.ops-insight-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+}
+
+.ops-insight-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ops-insight-text {
+    font-weight: 500;
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+/* ── NEEDS ATTENTION ──────────────────────────────────────────────────────── */
+.ops-attention-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--orange);
+    border-radius: 18px;
+    padding: 20px 24px;
+}
+
+.ops-attention-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--surface-2);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+}
+
+/* ── EXECUTIVE BRIEFING ───────────────────────────────────────────────────── */
+.ops-briefing-card {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+}
+
+.ops-briefing-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.ops-briefing-item:last-child {
+    padding-bottom: 0;
+    margin-bottom: 0;
+    border-bottom: none;
+}
+
+.ops-briefing-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 2px;
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+}
+
+/* ── INFRA SYNC ROW ───────────────────────────────────────────────────────── */
+.ops-sync-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding-top: 16px;
+    margin-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+.ops-sync-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* ── CHART WRAPPER ────────────────────────────────────────────────────────── */
+.ops-chart-wrapper {
+    position: relative;
+    height: 260px;
+}
+
+/* ── STATUS DOT WITH PULSE ────────────────────────────────────────────────── */
+@keyframes ops-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.3; transform: scale(1.5); }
+}
+
+.ops-status-dot {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 8px;
+    height: 8px;
+}
+
+.ops-status-dot .ops-dot-ping {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    opacity: 0.4;
+    animation: ops-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.ops-status-dot .ops-dot-core {
+    position: relative;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+/* ── TIMELINE ─────────────────────────────────────────────────────────────── */
+.ops-timeline-item {
+    position: relative;
+    padding-bottom: 18px;
+}
+
+.ops-timeline-line {
+    position: absolute;
+    left: 15px;
+    top: 32px;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
+    z-index: 1;
+}
+
+.ops-timeline-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+.ops-timeline-icon {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--surface-1);
+    border: 2px solid var(--border);
+}
+
+.ops-timeline-content {
+    flex-grow: 1;
+    padding-top: 6px;
+}
+
+.ops-timeline-title {
+    font-weight: 600;
+    font-size: 13.5px;
+}
+
+.ops-timeline-tag {
+    font-size: 11px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    padding: 2px 6px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+}
+
+.ops-timeline-time {
+    font-size: 11px;
+    color: var(--muted);
+}
+
+.ops-timeline-desc {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 4px;
+    line-height: 1.5;
+}
+
+.ops-timeline-details {
+    margin-top: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.ops-timeline-details summary {
+    cursor: pointer;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--surface-3);
+    border-bottom: 1px solid var(--border);
+    outline: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ops-timeline-details > div {
+    padding: 12px;
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--muted);
+    overflow-x: auto;
+    white-space: pre;
+}
+
+/* ── SECTION HEADERS ──────────────────────────────────────────────────────── */
+.ops-section-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 28px 0 14px;
+}
+
+.ops-section-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 4px;
+}
+
+/* ── EMPTY / MISSING DATA STATES ──────────────────────────────────────────── */
+
+/* Hide chart card completely when JS marks it as empty */
+.chart-card[data-empty="true"] {
+    display: none;
+}
+
+/* When a chart-grid has no visible children, collapse it too */
+.chart-grid:not(:has(.chart-card:not([data-empty="true"]))) {
+    display: none;
+}
+
+/* Hide the Business Activity section wrapper when the chart card inside is hidden */
+.chart-grid + *,
+.chart-grid {
+    /* Handled by JS — CSS :has() fallback for supported browsers */
+}
+
+/* Prevent canvas from creating phantom height before Chart.js paints */
+.chart-box canvas {
+    display: block;
+}
+
+.chart-box:empty {
+    display: none;
+}
+
+/* ── PROJECT CARD FOOTER ──────────────────────────────────────────────────── */
+.ops-project-footer {
+    margin-top: auto;
+    padding: 12px 20px;
+    background: var(--surface-2);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--muted);
+}

@@ -1,0 +1,24 @@
+{% if critical_messages or warning_messages %}
+<div class="ops-attention-card">
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+        <i class="ti ti-alert-triangle" style="color: var(--orange); font-size: 20px;"></i>
+        <h3 style="margin: 0; font-size: 15.5px; font-weight: 700;">Needs Attention</h3>
+    </div>
+    
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+        {% for msg in critical_messages %}
+        <div class="ops-attention-item">
+            <i class="ti ti-x" style="color: var(--danger); margin-top: 2px;"></i>
+            <span style="font-weight: 500; font-size: 13.5px;">{{ msg }}</span>
+        </div>
+        {% endfor %}
+
+        {% for msg in warning_messages %}
+        <div class="ops-attention-item">
+            <i class="ti ti-alert-triangle" style="color: var(--orange); margin-top: 2px;"></i>
+            <span style="font-weight: 500; font-size: 13.5px;">{{ msg }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}

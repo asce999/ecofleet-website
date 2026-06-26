@@ -8,9 +8,10 @@
     <span class="cof-next">Active Tab: <strong>{{ current_sheet|default:"None" }}</strong></span>
     <span class="cof-meta">· Workbook: {{ wb.original_name|default:"None (Removed)" }}</span>
   </div>
-  <div class="cof-topbar-actions">
+  <div class="cof-topbar-actions" style="display: flex; gap: 10px; align-items: center;">
     {% if current_sheet %}
     <a href="{% url 'attendance_sheet' %}" class="btn-secondary cof-history-link"><i class="ti ti-arrow-left"></i> Back to Attendance Grid</a>
+    <a href="{% url 'salary_calculator' %}" class="btn-secondary" style="height: 36px; display: inline-flex; align-items: center;"><i class="ti ti-calculator"></i> Salary Calculator</a>
     {% endif %}
   </div>
 </div>
@@ -103,6 +104,30 @@
   </div>
   <div class="cof-actions">
     <button type="submit" class="btn-primary"><i class="ti ti-upload"></i> Upload Workbook</button>
+  </div>
+</form>
+
+<!-- Global Salary Configuration -->
+<form method="post" class="cof-form" style="margin-top: 24px;">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="update_salary_config" />
+  <div class="cof-section">
+    <div class="cof-section-head" style="color:var(--primary);"><i class="ti ti-settings-dollar"></i> Global Payroll Configuration</div>
+    <div class="cof-grid">
+      {% for field in salary_form %}
+      <div class="cof-field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}
+        <span class="cof-hint">{{ field.help_text }}</span>
+        {% endif %}
+        {% if field.errors %}<span class="cof-err">{{ field.errors|striptags }}</span>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="cof-actions">
+    <button type="submit" class="btn-primary" style="background:var(--success);"><i class="ti ti-device-floppy"></i> Save Configuration</button>
   </div>
 </form>
 

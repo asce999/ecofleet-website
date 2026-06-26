@@ -151,6 +151,35 @@
     <a href="{% url 'attendance_settings' %}" class="btn-primary"><i class="ti ti-file-spreadsheet"></i> Go to Settings</a>
   </div>
 </div>
+{% elif requires_manual_date %}
+<div class="portal-card" style="border-left: 5px solid var(--warning); padding: 32px; text-align: center; max-width: 600px; margin: 40px auto;">
+  <div style="color: var(--warning); font-size: 56px; margin-bottom: 16px;"><i class="ti ti-calendar-question"></i></div>
+  <h3 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 700; color: var(--text-main);">Invalid Worksheet Name</h3>
+  <p style="margin: 0 16px 24px 16px; color: var(--muted); font-size: 14.5px; line-height: 1.6;">
+    The active tab name <strong>"{{ sheet_name }}"</strong> does not contain a valid Month and Year (e.g., "June 2026"). The attendance sheet grid cannot be correctly displayed.
+  </p>
+  <form method="get" action="">
+    <div style="display: flex; gap: 14px; justify-content: center; align-items: center; flex-wrap: wrap;">
+      <select name="manual_month" class="salary-input" style="width: auto; height: 38px;" required>
+        <option value="">Select Month...</option>
+        <option value="1">January</option>
+        <option value="2">February</option>
+        <option value="3">March</option>
+        <option value="4">April</option>
+        <option value="5">May</option>
+        <option value="6">June</option>
+        <option value="7">July</option>
+        <option value="8">August</option>
+        <option value="9">September</option>
+        <option value="10">October</option>
+        <option value="11">November</option>
+        <option value="12">December</option>
+      </select>
+      <input type="number" name="manual_year" class="salary-input" placeholder="Year (e.g. 2026)" value="2026" min="2000" max="2100" style="width: 120px; height: 38px;" required />
+      <button type="submit" class="btn-primary" style="height: 38px;"><i class="ti ti-check"></i> Continue</button>
+    </div>
+  </form>
+</div>
 {% else %}
 
 <div class="cof-topbar" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; width: 100%;">
@@ -172,6 +201,7 @@
     </form>
     
     <a href="{% url 'attendance_settings' %}" class="btn-secondary cof-history-link" style="height: 36px; display: inline-flex; align-items: center;"><i class="ti ti-file-spreadsheet"></i> Settings</a>
+    <a href="{% url 'salary_calculator' %}" class="btn-secondary" style="height: 36px; display: inline-flex; align-items: center;"><i class="ti ti-calculator"></i> Salary Calculator</a>
     <a href="{% url 'attendance_download' %}" class="btn-secondary" style="height: 36px; display: inline-flex; align-items: center;"><i class="ti ti-download"></i> Download</a>
   </div>
 </div>
@@ -193,6 +223,8 @@
 
 <form method="post" id="attendanceForm">
   {% csrf_token %}
+  {% if manual_year %}<input type="hidden" name="manual_year" value="{{ manual_year }}" />{% endif %}
+  {% if manual_month %}<input type="hidden" name="manual_month" value="{{ manual_month }}" />{% endif %}
   
   <div class="portal-card attendance-card-container" style="padding: 16px;">
     <!-- Desktop Table View -->

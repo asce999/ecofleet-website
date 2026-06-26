@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import FileResponse, Http404
-from core.models import ToolRun, CofWorkbook
+from core.models import ToolRun, CofWorkbook, ToolRunFile
+from django.core.files.base import ContentFile
 from core.forms import CofForm, WorkbookUploadForm
 from core.decorators import staff_required, tool_permission_required
 from core.views.common import download_file
@@ -8,9 +9,11 @@ from core import cof as cof_logic
 import io
 import os
 from django.conf import settings
-from core.models import ToolRun
 from django.contrib import messages
-from django.conf import settings
+import logging
+
+logger = logging.getLogger('core')
+
 
 
 @staff_required
@@ -36,8 +39,10 @@ def cof_generator(request):
                 result = cof_logic.generate_cof(data, wb_path)
             except (cof_logic.COFLockTimeout, cof_logic.WorkbookInUse,
                     cof_logic.WorkbookInvalid, cof_logic.AssetMissing) as e:
+                logger.error(f"Validation or lock error during COF generation: {e}")
                 messages.error(request, str(e))
             except Exception as e:
+                logger.error(f"Unexpected error generating COF: {e}")
                 ToolRun.objects.create(
                     user=request.user, tool=ToolRun.TOOL_COF,
                     status=ToolRun.STATUS_FAILED,
@@ -52,9 +57,12 @@ def cof_generator(request):
                 ToolRunFile.objects.create(
                     run=run, label="COF document", download_name=result['docx_name'],
                     file=ContentFile(result['docx'].getvalue(), name=result['docx_name']))
+                
+                logger.info(f"COF generated successfully: {result['cof_number']}")
                 messages.success(request, f"{result['cof_number']} generated successfully.")
                 return redirect('cof_success', pk=run.pk)
         else:
+            logger.warning("Validation failure during COF form submission.")
             messages.error(request, "Please fix the highlighted fields.")
     else:
         form = CofForm()
@@ -83,12 +91,14 @@ def cof_workbook(request):
         form = WorkbookUploadForm(request.POST, request.FILES)
         if form.is_valid():
             upload = form.cleaned_data['workbook']
+            logger.info(f"COF workbook upload started: {upload.name}")
             new = CofWorkbook.objects.create(
                 file=upload, original_name=upload.name,
                 uploaded_by=request.user, is_active=False)
             try:
                 cof_logic.validate_workbook(new.file.path)
             except cof_logic.WorkbookInvalid as e:
+                logger.error(f"COF workbook validation failed for {upload.name}: {e}")
                 new.file.delete(save=False)
                 new.delete()
                 messages.error(request, str(e))
@@ -96,9 +106,12 @@ def cof_workbook(request):
             CofWorkbook.objects.filter(is_active=True).update(is_active=False)
             new.is_active = True
             new.save(update_fields=['is_active'])
+            
+            logger.info(f"COF workbook upload completed: {upload.name}")
             messages.success(request, f"“{upload.name}” is now the active tracking workbook.")
             return redirect('cof_generator')
         else:
+            logger.warning("COF workbook upload failed: Invalid file.")
             messages.error(request, "Please choose a valid .xlsx file.")
     else:
         form = WorkbookUploadForm()

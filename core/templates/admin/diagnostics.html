@@ -1,0 +1,61 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}System Diagnostics | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+&rsaquo; System Diagnostics
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <h1>System Diagnostics Dashboard</h1>
+    
+    <div class="module">
+        <h2>System Status</h2>
+        <table style="width: 100%;">
+            <tr><th>Application Version</th><td>{{ version }}</td></tr>
+            <tr><th>Database Status</th><td><strong style="color: {% if db_status == 'ok' %}green{% else %}red{% endif %};">{{ db_status|upper }}</strong></td></tr>
+        </table>
+    </div>
+
+    <div class="module">
+        <h2>Latest Operations</h2>
+        <table style="width: 100%;">
+            <tr>
+                <th>Operation</th>
+                <th>Last Uploaded / Generated</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>Attendance Upload</td>
+                <td>{{ last_attendance.uploaded_at|default:"Never" }}</td>
+                <td>{% if last_attendance.is_active %}<span style="color:green;">Active</span>{% else %}-{% endif %}</td>
+            </tr>
+            <tr>
+                <td>BTPL Generation</td>
+                <td>{{ last_btpl.created_at|default:"Never" }}</td>
+                <td>{{ last_btpl.file_name|default:"-" }}</td>
+            </tr>
+            <tr>
+                <td>FTL Generation</td>
+                <td>{{ last_ftl.created_at|default:"Never" }}</td>
+                <td>{{ last_ftl.file_name|default:"-" }}</td>
+            </tr>
+            <tr>
+                <td>COF Generation</td>
+                <td>{{ last_cof.uploaded_at|default:"Never" }}</td>
+                <td>{{ last_cof.original_name|default:"-" }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="module">
+        <h2>Recent Errors (errors.log)</h2>
+        <pre style="background: #f8f8f8; padding: 10px; max-height: 300px; overflow-y: auto;">{% if recent_errors %}{{ recent_errors }}{% else %}No recent errors found.{% endif %}</pre>
+    </div>
+</div>
+{% endblock %}

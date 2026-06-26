@@ -1,0 +1,10 @@
+<div class="df-card" style="border-color: var(--color-danger); background-color: var(--color-danger-bg);">
+    <div class="df-card-header df-mb-2">
+        <span class="df-card-title" style="color: var(--color-danger);">
+            <i class="ti ti-alert-circle"></i> {{ provider_name }} Error
+        </span>
+        {% include "components/status_badge.html" with status="critical" %}
+    </div>
+    <p class="df-text-body" style="color: var(--color-danger);">This provider failed to load gracefully. Check application logs for stack traces.</p>
+    <div class="df-text-caption df-mt-2">Failed at: {{ timestamp }}</div>
+</div>

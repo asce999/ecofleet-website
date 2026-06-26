@@ -1,0 +1,10 @@
+{% load core_extras %}
+<div class="stat-grid">
+    {% include "components/kpi_card.html" with title="Total Users" value=providers_dict.business.metrics|get_item:"Total Users"|default:"--" icon="users" color="cyan" %}
+    
+    {% include "components/kpi_card.html" with title="Avg Response" value=providers_dict.performance.metrics|get_item:"Avg Latency"|default:"--" icon="activity" color="green" %}
+    
+    {% include "components/kpi_card.html" with title="System Events" value=providers_dict.activity.metrics|get_item:"Events (24h)"|default:"--" icon="list-details" color="purple" %}
+    
+    {% include "components/kpi_card.html" with title="DB Size" value=providers_dict.database.metrics|get_item:"File Size"|default:"--" icon="database" color="orange" %}
+</div>

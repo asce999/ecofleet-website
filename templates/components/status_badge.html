@@ -1,0 +1,9 @@
+{% if status == "healthy" %}
+<span class="pill pill-success"><i class="ti ti-check" style="margin-right: 4px;"></i> Healthy</span>
+{% elif status == "warning" %}
+<span class="pill" style="background: rgba(247,148,29,0.12); color: var(--orange);"><i class="ti ti-alert-triangle" style="margin-right: 4px;"></i> Warning</span>
+{% elif status == "critical" %}
+<span class="pill pill-failed"><i class="ti ti-alert-circle" style="margin-right: 4px;"></i> Critical</span>
+{% else %}
+<span class="pill" style="background: var(--surface-3); color: var(--muted);"><i class="ti ti-help" style="margin-right: 4px;"></i> Unknown</span>
+{% endif %}

@@ -1,0 +1,181 @@
+/*
+ * EcoFleet Dashboard Component Library
+ * 
+ * Reusable component styles (Cards, Badges, Headers, Alerts).
+ */
+
+/* Premium Card Base */
+.df-card {
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-6);
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+    position: relative;
+    overflow: hidden;
+}
+
+.df-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.df-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-4);
+}
+
+.df-card-title {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+.df-card-icon {
+    color: var(--color-text-muted);
+}
+
+/* Typography Hierarchy classes */
+.df-text-display { font-size: var(--font-size-3xl); font-weight: var(--font-weight-bold); letter-spacing: -0.02em; }
+.df-text-heading { font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); letter-spacing: -0.01em; }
+.df-text-subheading { font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+.df-text-body { font-size: var(--font-size-base); color: var(--color-text-secondary); }
+.df-text-caption { font-size: var(--font-size-sm); color: var(--color-text-muted); }
+.df-text-mono { font-family: var(--font-family-mono); font-size: var(--font-size-sm); }
+
+/* Badges - Subtle semantic backgrounds */
+.df-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+
+.df-badge-success { background: var(--color-success-bg); color: var(--color-success); border: 1px solid rgba(16, 185, 129, 0.2); }
+.df-badge-warning { background: var(--color-warning-bg); color: var(--color-warning); border: 1px solid rgba(245, 158, 11, 0.2); }
+.df-badge-danger { background: var(--color-danger-bg); color: var(--color-danger); border: 1px solid rgba(239, 68, 68, 0.2); }
+.df-badge-info { background: var(--color-info-bg); color: var(--color-info); border: 1px solid rgba(59, 130, 246, 0.2); }
+.df-badge-neutral { background: var(--color-bg-surface-hover); color: var(--color-text-secondary); border: 1px solid var(--color-border); }
+
+/* Alert Banner - Minimal and focused */
+.df-alert-banner {
+    width: 100%;
+    padding: var(--spacing-4) var(--spacing-6);
+    border-radius: var(--radius-md);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--font-size-sm);
+    animation: slideUpFade var(--transition-slow) forwards;
+}
+
+.df-alert-banner.critical {
+    background: var(--color-danger);
+    color: white;
+    box-shadow: 0 4px 14px 0 rgba(239, 68, 68, 0.39);
+}
+
+/* Service Health Card Items */
+.df-health-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-3) 0;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.df-health-row:last-child {
+    border-bottom: none;
+}
+
+/* GitHub/Datadog Style Vertical Timeline */
+.df-timeline {
+    position: relative;
+    padding-left: 2rem;
+    margin-top: var(--spacing-4);
+}
+
+.df-timeline::before {
+    content: '';
+    position: absolute;
+    left: 0.75rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--color-border);
+}
+
+.df-timeline-item {
+    position: relative;
+    padding-bottom: var(--spacing-6);
+}
+
+.df-timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.df-timeline-icon {
+    position: absolute;
+    left: -2rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: var(--color-bg-surface);
+    border: 2px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.df-timeline-item.danger .df-timeline-icon { border-color: var(--color-danger); color: var(--color-danger); }
+.df-timeline-item.warning .df-timeline-icon { border-color: var(--color-warning); color: var(--color-warning); }
+.df-timeline-item.success .df-timeline-icon { border-color: var(--color-success); color: var(--color-success); }
+.df-timeline-item.info .df-timeline-icon { border-color: var(--color-info); color: var(--color-info); }
+
+.df-timeline-content {
+    background: var(--color-bg-surface-hover);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-4);
+    border: 1px solid var(--color-border-light);
+}
+
+/* Skeletons */
+.df-skeleton {
+    background: linear-gradient(90deg, var(--color-bg-surface-hover) 25%, var(--color-border) 50%, var(--color-bg-surface-hover) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: var(--radius-sm);
+}
+
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Empty States */
+.df-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-8);
+    text-align: center;
+    color: var(--color-text-muted);
+}
+.df-empty-icon {
+    font-size: var(--font-size-4xl);
+    margin-bottom: var(--spacing-4);
+    opacity: 0.5;
+}

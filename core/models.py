@@ -139,6 +139,61 @@ class AttendanceWorkbook(models.Model):
         return cls.objects.filter(is_active=True).first()
 
 
+class SalaryConfig(models.Model):
+    """Singleton model to store global payroll rates and settings."""
+    basic_rate_per_day = models.DecimalField(max_digits=10, decimal_places=2, default=492.12)
+    sp_allowance_rate_per_day = models.DecimalField(max_digits=10, decimal_places=2, default=96.58)
+    standard_month_days = models.IntegerField(default=26)
+    other_allowance_pct = models.DecimalField(max_digits=5, decimal_places=2, default=10.00, help_text="Percentage (e.g. 10.00)")
+    other_allowance_eligible_departments = models.CharField(max_length=255, default="CV-SUPERVISOR,CV-DEO", help_text="Comma-separated list of departments")
+    hra_pct = models.DecimalField(max_digits=5, decimal_places=2, default=5.00, help_text="Percentage (e.g. 5.00)")
+    
+    leave_payment_threshold_days = models.DecimalField(max_digits=5, decimal_places=2, default=19.90)
+    leave_payment_amount = models.DecimalField(max_digits=10, decimal_places=2, default=589.00)
+    extra_day_rate = models.DecimalField(max_digits=10, decimal_places=2, default=589.00)
+    
+    pf_wage_ceiling = models.DecimalField(max_digits=10, decimal_places=2, default=15000.00)
+    pf_rate = models.DecimalField(max_digits=5, decimal_places=2, default=12.00, help_text="Percentage (e.g. 12.00)")
+    esic_employee_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.75, help_text="Percentage (e.g. 0.75)")
+    
+    pt_slab_1_max = models.DecimalField(max_digits=10, decimal_places=2, default=7499.00)
+    pt_slab_2_max = models.DecimalField(max_digits=10, decimal_places=2, default=9999.00)
+    pt_slab_3_amount = models.DecimalField(max_digits=10, decimal_places=2, default=300.00, help_text="Usually 200, but 300 in Feb")
+    
+    canteen_rate_per_day = models.DecimalField(max_digits=10, decimal_places=2, default=14.00)
+    
+    reporting_pf_cost_rate = models.DecimalField(max_digits=5, decimal_places=2, default=25.00, help_text="Percentage (e.g. 25.00)")
+    reporting_esic_cost_rate = models.DecimalField(max_digits=5, decimal_places=2, default=4.00, help_text="Percentage (e.g. 4.00)")
+
+    def __str__(self):
+        return "Salary Configuration"
+
+    @classmethod
+    def get_solo(cls):
+        obj, created = cls.objects.get_or_create(id=1)
+        return obj
+
+
+class EmployeeSalaryOverride(models.Model):
+    """Stores manual overrides for an employee for the Salary Calculator."""
+    employee_name = models.CharField(max_length=255, unique=True)
+    adhoc_salary_increase_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, help_text="Percentage (e.g. 25.00 for 25%)")
+    adhoc_allowance_monthly_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    advance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    lwf = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    other_deduction = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    cash_payment = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['employee_name']
+
+    def __str__(self):
+        return f"{self.employee_name} Overrides"
+
+
 class FtlWorkbook(models.Model):
     """The team's active FTL shipment workbook."""
     file = models.FileField(upload_to='ftl/')
@@ -187,3 +242,32 @@ def create_or_save_user_profile(sender, instance, created, **kwargs):
     else:
         if not hasattr(instance, 'profile'):
             UserProfile.objects.create(user=instance)
+
+
+class SystemEvent(models.Model):
+    """Event log for all meaningful operational and business activities."""
+    SEVERITY_INFO = 'INFO'
+    SEVERITY_WARNING = 'WARNING'
+    SEVERITY_CRITICAL = 'CRITICAL'
+    SEVERITY_CHOICES = [
+        (SEVERITY_INFO, 'Info'),
+        (SEVERITY_WARNING, 'Warning'),
+        (SEVERITY_CRITICAL, 'Critical'),
+    ]
+
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default=SEVERITY_INFO)
+    component = models.CharField(max_length=50)
+    event_type = models.CharField(max_length=100)
+    title = models.CharField(max_length=200)
+    message = models.TextField(blank=True)
+    request_id = models.CharField(max_length=100, blank=True, null=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    tool = models.CharField(max_length=50, blank=True, null=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"[{self.severity}] {self.component} - {self.title} at {self.timestamp}"

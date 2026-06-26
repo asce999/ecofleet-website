@@ -1,0 +1,122 @@
+/*
+ * EcoFleet Dashboard Layout System
+ * Bento Grid Architecture
+ */
+
+ .df-container {
+    width: 100%;
+    max-width: 1400px; /* Tighter max-width for better readability */
+    margin: 0 auto;
+    padding: var(--spacing-6) var(--spacing-8);
+}
+
+/* Bento Grid Core */
+.df-grid {
+    display: grid;
+    gap: var(--spacing-6);
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.df-grid-row {
+    display: grid;
+    gap: var(--spacing-6);
+    width: 100%;
+}
+
+/* Base Spans (Mobile First: everything spans 12 columns) */
+.col-span-12 { grid-column: span 12 / span 12; }
+.col-span-8  { grid-column: span 12 / span 12; }
+.col-span-6  { grid-column: span 12 / span 12; }
+.col-span-4  { grid-column: span 12 / span 12; }
+.col-span-3  { grid-column: span 12 / span 12; }
+
+/* Responsive Grid Spans */
+@media (min-width: 768px) {
+    /* Tablet & Desktop */
+    .md\:col-span-12 { grid-column: span 12 / span 12; }
+    .md\:col-span-8  { grid-column: span 8 / span 8; }
+    .md\:col-span-6  { grid-column: span 6 / span 6; }
+    .md\:col-span-4  { grid-column: span 4 / span 4; }
+    .md\:col-span-3  { grid-column: span 3 / span 3; }
+}
+
+@media (min-width: 1024px) {
+    /* Large Desktop */
+    .lg\:col-span-12 { grid-column: span 12 / span 12; }
+    .lg\:col-span-8  { grid-column: span 8 / span 8; }
+    .lg\:col-span-6  { grid-column: span 6 / span 6; }
+    .lg\:col-span-4  { grid-column: span 4 / span 4; }
+    .lg\:col-span-3  { grid-column: span 3 / span 3; }
+}
+
+@media (max-width: 768px) {
+    .df-container {
+        padding: var(--spacing-4);
+    }
+}
+
+/* Flex Utilities */
+.df-flex { display: flex; }
+.df-flex-col { flex-direction: column; }
+.df-items-center { align-items: center; }
+.df-items-start { align-items: flex-start; }
+.df-items-end { align-items: flex-end; }
+.df-justify-center { justify-content: center; }
+.df-justify-between { justify-content: space-between; }
+.df-justify-end { justify-content: flex-end; }
+.df-flex-wrap { flex-wrap: wrap; }
+.df-flex-1 { flex: 1 1 0%; }
+
+/* Gap Utilities */
+.df-gap-1 { gap: var(--spacing-1); }
+.df-gap-2 { gap: var(--spacing-2); }
+.df-gap-3 { gap: var(--spacing-3); }
+.df-gap-4 { gap: var(--spacing-4); }
+.df-gap-6 { gap: var(--spacing-6); }
+.df-gap-8 { gap: var(--spacing-8); }
+
+/* Spacing Utilities */
+.df-mt-1 { margin-top: var(--spacing-1); }
+.df-mt-2 { margin-top: var(--spacing-2); }
+.df-mt-4 { margin-top: var(--spacing-4); }
+.df-mt-6 { margin-top: var(--spacing-6); }
+.df-mt-8 { margin-top: var(--spacing-8); }
+
+.df-mb-1 { margin-bottom: var(--spacing-1); }
+.df-mb-2 { margin-bottom: var(--spacing-2); }
+.df-mb-4 { margin-bottom: var(--spacing-4); }
+.df-mb-6 { margin-bottom: var(--spacing-6); }
+.df-mb-8 { margin-bottom: var(--spacing-8); }
+
+.df-p-4 { padding: var(--spacing-4); }
+.df-p-6 { padding: var(--spacing-6); }
+.df-py-2 { padding-top: var(--spacing-2); padding-bottom: var(--spacing-2); }
+.df-px-4 { padding-left: var(--spacing-4); padding-right: var(--spacing-4); }
+
+/* Responsive Grid Columns */
+.df-grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+.df-grid-cols-2 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+.df-grid-cols-3 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+.df-grid-cols-4 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+
+@media (min-width: 768px) {
+    .df-grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .df-grid-cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .df-grid-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    
+    .md\:df-flex-row { flex-direction: row; }
+    .md\:df-flex-col { flex-direction: column; }
+}
+
+@media (min-width: 1024px) {
+    .df-grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .df-grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    
+    .lg\:df-grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lg\:df-grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .lg\:df-grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    
+    .lg\:df-flex { display: flex; }
+    .lg\:df-flex-row { flex-direction: row; }
+    .lg\:df-items-stretch { align-items: stretch; }
+}

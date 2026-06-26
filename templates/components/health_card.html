@@ -1,0 +1,46 @@
+<div class="df-card df-p-6 animate-slide-up hover-elevate" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%; transition: transform 0.2s, box-shadow 0.2s;">
+    <div class="df-flex df-items-center df-justify-between df-mb-4">
+        <div class="df-flex df-items-center df-gap-3">
+            {% if icon %}
+            <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; background: var(--color-bg-base); border: 1px solid var(--color-border); color: var(--color-text-primary);">
+                <i class="ti ti-{{ icon }}" style="font-size: 1.25rem;"></i>
+            </div>
+            {% endif %}
+            <div>
+                <div class="df-text-heading" style="font-size: 1rem; font-weight: 600;">{{ title }}</div>
+                <div style="font-size: 0.75rem; color: var(--color-text-muted);">{{ provider.summary|truncatechars:30 }}</div>
+            </div>
+        </div>
+        
+        <!-- Radial Progress for Health Score -->
+        <div style="position: relative; width: 48px; height: 48px;">
+            <svg viewBox="0 0 36 36" style="width: 100%; height: 100%; transform: rotate(-90deg);">
+                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--color-border)" stroke-width="3" />
+                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" 
+                    stroke="{% if provider.health_score >= 90 %}var(--color-success){% elif provider.health_score >= 70 %}var(--color-warning){% else %}var(--color-danger){% endif %}" 
+                    stroke-width="3" stroke-dasharray="{{ provider.health_score }}, 100" />
+            </svg>
+            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: var(--color-text-primary);">
+                {{ provider.health_score }}
+            </div>
+        </div>
+    </div>
+    
+    {% if provider.metrics %}
+    <div class="df-flex-col df-gap-2 df-mb-4" style="flex-grow: 1;">
+        {% for key, val in provider.metrics.items|slice:":2" %}
+        <div class="df-flex df-items-center df-justify-between">
+            <span style="font-size: 0.8125rem; color: var(--color-text-secondary);">{{ key }}</span>
+            <span style="font-size: 0.8125rem; font-weight: 600; color: var(--color-text-primary);">{{ val }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="df-flex df-items-center df-justify-between" style="padding-top: 1rem; border-top: 1px solid var(--color-border);">
+        <div style="font-size: 0.75rem; color: var(--color-text-muted);">
+            Checked {{ provider.last_updated|timesince }} ago
+        </div>
+        {% include "components/status_badge.html" with status=provider.status %}
+    </div>
+</div>

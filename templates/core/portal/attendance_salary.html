@@ -1,0 +1,299 @@
+{% extends 'core/portal/base.html' %}
+{% block title %}Salary Calculator — EcoFleet Express Portal{% endblock %}
+{% block heading %}Attendance Tracker{% endblock %}
+{% block content %}
+
+<style>
+  .salary-table-wrap {
+    overflow-x: auto;
+    max-width: 100%;
+    margin-top: 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+  }
+  .salary-table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  .salary-table th, .salary-table td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: center;
+    font-size: 13px;
+    vertical-align: middle;
+  }
+  .salary-table th {
+    background: var(--surface-2);
+    color: var(--text-main);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .salary-table td.staff-name-col {
+    position: sticky;
+    left: 0;
+    background: var(--surface-1);
+    z-index: 10;
+    text-align: left;
+    font-weight: 500;
+    border-right: 2px solid var(--border);
+    min-width: 180px;
+    white-space: nowrap;
+  }
+  .salary-table th.staff-name-header {
+    position: sticky;
+    left: 0;
+    background: var(--surface-2);
+    z-index: 11;
+    text-align: left;
+    border-right: 2px solid var(--border);
+    min-width: 180px;
+    white-space: nowrap;
+  }
+  .salary-input {
+    width: 80px;
+    padding: 4px 6px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 13px;
+    text-align: right;
+    background: var(--surface-1);
+    color: var(--text-main);
+  }
+  .salary-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  }
+  .totals-row td {
+    font-weight: bold;
+    background: var(--surface-2);
+  }
+  .summary-boxes {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .summary-box {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    flex: 1;
+    min-width: 130px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  }
+  .summary-box-title {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .summary-box-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+  .currency-symbol {
+    color: var(--muted);
+    font-size: 14px;
+    margin-right: 2px;
+  }
+</style>
+
+{% if no_sheet %}
+<div class="portal-card" style="border-left: 5px solid var(--danger); padding: 32px; text-align: center; max-width: 600px; margin: 40px auto;">
+  <div style="color: var(--danger); font-size: 56px; margin-bottom: 16px;"><i class="ti ti-calendar-cancel"></i></div>
+  <h3 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 700; color: var(--text-main);">No Active Attendance Sheet</h3>
+  <p style="margin: 0 16px 24px 16px; color: var(--muted); font-size: 14.5px; line-height: 1.6;">
+    The attendance tracking workbook has been removed from active operations. 
+    You must upload a new Excel file or load the default system template workbook to continue.
+  </p>
+  <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
+    <a href="{% url 'attendance_settings' %}" class="btn-primary"><i class="ti ti-file-spreadsheet"></i> Go to Settings</a>
+  </div>
+</div>
+{% elif requires_manual_date %}
+<div class="portal-card" style="border-left: 5px solid var(--warning); padding: 32px; text-align: center; max-width: 600px; margin: 40px auto;">
+  <div style="color: var(--warning); font-size: 56px; margin-bottom: 16px;"><i class="ti ti-calendar-question"></i></div>
+  <h3 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 700; color: var(--text-main);">Invalid Worksheet Name</h3>
+  <p style="margin: 0 16px 24px 16px; color: var(--muted); font-size: 14.5px; line-height: 1.6;">
+    The active tab name <strong>"{{ sheet_name }}"</strong> does not contain a valid Month and Year (e.g., "June 2026"). Payroll calculation cannot proceed automatically.
+  </p>
+  <form method="get" action="">
+    <div style="display: flex; gap: 14px; justify-content: center; align-items: center; flex-wrap: wrap;">
+      <select name="manual_month" class="salary-input" style="width: auto; height: 38px;" required>
+        <option value="">Select Month...</option>
+        <option value="1">January</option>
+        <option value="2">February</option>
+        <option value="3">March</option>
+        <option value="4">April</option>
+        <option value="5">May</option>
+        <option value="6">June</option>
+        <option value="7">July</option>
+        <option value="8">August</option>
+        <option value="9">September</option>
+        <option value="10">October</option>
+        <option value="11">November</option>
+        <option value="12">December</option>
+      </select>
+      <input type="number" name="manual_year" class="salary-input" placeholder="Year (e.g. 2026)" value="2026" min="2000" max="2100" style="width: 120px; height: 38px;" required />
+      <button type="submit" class="btn-primary" style="height: 38px;"><i class="ti ti-check"></i> Continue</button>
+    </div>
+  </form>
+</div>
+{% else %}
+
+<div class="cof-topbar" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; width: 100%;">
+  <div>
+    <span class="cof-next">Salary Calculator: <strong>{{ sheet_name }}</strong></span>
+    <span class="cof-meta">· Workbook: {{ wb.original_name|default:"Attendance_Sheet.xlsx" }}</span>
+  </div>
+  <div class="cof-topbar-actions" style="display: flex; gap: 10px; align-items: center;">
+    <a href="{% url 'attendance_sheet' %}" class="btn-secondary" style="height: 36px; display: inline-flex; align-items: center;"><i class="ti ti-calendar-user"></i> Attendance</a>
+    <a href="{% url 'attendance_settings' %}" class="btn-secondary cof-history-link" style="height: 36px; display: inline-flex; align-items: center;"><i class="ti ti-settings"></i> Settings</a>
+  </div>
+</div>
+
+<div class="summary-boxes">
+    <div class="summary-box">
+        <div class="summary-box-title">Total Man Days</div>
+        <div class="summary-box-value">{{ salary_data.total_man_days|floatformat:1 }}</div>
+    </div>
+    <div class="summary-box">
+        <div class="summary-box-title">Net Payment</div>
+        <div class="summary-box-value"><span class="currency-symbol">₹</span>{{ salary_data.total_net_payment }}</div>
+    </div>
+    <div class="summary-box">
+        <div class="summary-box-title">Total Cash Pymt</div>
+        <div class="summary-box-value"><span class="currency-symbol">₹</span>{{ salary_data.total_payment|add:"-"|add:salary_data.total_net_payment }}</div>
+    </div>
+    <div class="summary-box">
+        <div class="summary-box-title">Employer ESIC (4%)</div>
+        <div class="summary-box-value"><span class="currency-symbol">₹</span>{{ salary_data.total_esic_cost }}</div>
+    </div>
+    <div class="summary-box">
+        <div class="summary-box-title">Employer PF (25%)</div>
+        <div class="summary-box-value"><span class="currency-symbol">₹</span>{{ salary_data.total_pf_cost }}</div>
+    </div>
+    <div class="summary-box">
+        <div class="summary-box-title">Total PT Tax</div>
+        <div class="summary-box-value"><span class="currency-symbol">₹</span>{{ salary_data.total_pt_tax }}</div>
+    </div>
+    <div class="summary-box">
+        <div class="summary-box-title">TOTAL COST</div>
+        <div class="summary-box-value" style="color: var(--danger);"><span class="currency-symbol">₹</span>{{ salary_data.total_cost }}</div>
+    </div>
+</div>
+
+<div class="portal-card" style="padding: 16px;">
+    
+  <form method="post" action="{% url 'salary_calculator' %}">
+    {% csrf_token %}
+    {% if manual_year %}<input type="hidden" name="manual_year" value="{{ manual_year }}" />{% endif %}
+    {% if manual_month %}<input type="hidden" name="manual_month" value="{{ manual_month }}" />{% endif %}
+    <div class="salary-table-wrap">
+      <table class="salary-table">
+        <thead>
+          <tr>
+            <th class="staff-name-header">Employee Name</th>
+            <th>Dept</th>
+            <th>Payable<br>Days</th>
+            <th>Extra<br>Days</th>
+            <th>Basic</th>
+            <th style="background:var(--surface-3);">Adhoc Inc %</th>
+            <th>Adhoc Inc<br>Amt</th>
+            <th>SP<br>Allow</th>
+            <th style="background:var(--surface-3);">Adhoc Allow<br>Amt/mo</th>
+            <th>Adhoc Allow<br>Amt</th>
+            <th>TOTAL (A)</th>
+            <th>Other<br>Allow</th>
+            <th>HRA</th>
+            <th>Leave<br>Pymt</th>
+            <th>Extra<br>Pymt</th>
+            <th>TOTAL (B)</th>
+            <th>PF</th>
+            <th>ESIC</th>
+            <th>P.Tax</th>
+            <th style="background:var(--surface-3);">Advance</th>
+            <th style="background:var(--surface-3);">LWF</th>
+            <th>Canteen</th>
+            <th style="background:var(--surface-3);">Other Ded</th>
+            <th>Sub Total</th>
+            <th>NET PYMT</th>
+            <th style="background:var(--surface-3);">Cash Pymt</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for emp in salary_data.employees %}
+          <tr>
+            <td class="staff-name-col">{{ emp.name }}</td>
+            <td>{{ emp.department }}</td>
+            <td>{{ emp.payable_days|floatformat:1 }}</td>
+            <td>{{ emp.extra_days|floatformat:1 }}</td>
+            <td>{{ emp.basic }}</td>
+            <td style="background:var(--surface-3);">
+                <input type="number" step="0.01" name="override_inc_{{ emp.name }}" class="salary-input" style="width:60px;" value="{{ emp.adhoc_salary_increase_pct|default:'0.00' }}" />
+            </td>
+            <td>{{ emp.adhoc_salary_increase }}</td>
+            <td>{{ emp.sp_allowance }}</td>
+            <td style="background:var(--surface-3);">
+                <input type="number" step="0.01" name="override_allow_{{ emp.name }}" class="salary-input" value="{{ emp.adhoc_allowance_monthly_amount|default:'0.00' }}" />
+            </td>
+            <td>{{ emp.adhoc_allowance }}</td>
+            <td style="font-weight:600;">{{ emp.total_a }}</td>
+            <td>{{ emp.other_allowance }}</td>
+            <td>{{ emp.hra }}</td>
+            <td>{{ emp.leave_payment }}</td>
+            <td>{{ emp.extra_payment }}</td>
+            <td style="font-weight:600;">{{ emp.total_b }}</td>
+            <td>{{ emp.pf }}</td>
+            <td>{{ emp.esic_employee }}</td>
+            <td>{{ emp.pt }}</td>
+            <td style="background:var(--surface-3);">
+                <input type="number" step="0.01" name="override_adv_{{ emp.name }}" class="salary-input" style="width:60px;" value="{{ emp.advance|default:'0.00' }}" />
+            </td>
+            <td style="background:var(--surface-3);">
+                <input type="number" step="0.01" name="override_lwf_{{ emp.name }}" class="salary-input" style="width:60px;" value="{{ emp.lwf|default:'0.00' }}" />
+            </td>
+            <td>{{ emp.canteen }}</td>
+            <td style="background:var(--surface-3);">
+                <input type="number" step="0.01" name="override_other_{{ emp.name }}" class="salary-input" style="width:60px;" value="{{ emp.other_deduction|default:'0.00' }}" />
+            </td>
+            <td style="color:var(--danger);">{{ emp.sub_total_deductions }}</td>
+            <td style="font-weight:700; color:var(--success);">₹ {{ emp.net_payment }}</td>
+            <td style="background:var(--surface-3);">
+                <input type="number" step="0.01" name="override_cash_{{ emp.name }}" class="salary-input" style="width:70px;" value="{{ emp.cash_payment|default:'0.00' }}" />
+            </td>
+          </tr>
+          {% endfor %}
+          <tr class="totals-row">
+            <td class="staff-name-col">TOTAL</td>
+            <td colspan="3">{{ salary_data.total_employees }} Employees</td>
+            <td colspan="20"></td>
+            <td style="font-weight:700; color:var(--success);">₹ {{ salary_data.total_net_payment }}</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: space-between; flex-wrap: wrap;">
+      <div>
+        <a href="{% url 'salary_calculator_export' %}" class="btn-secondary" style="height: 38px; display: inline-flex; align-items: center;"><i class="ti ti-download"></i> Export Salary Report</a>
+      </div>
+      <div style="display: flex; gap: 12px;">
+        <a href="{% url 'salary_calculator' %}" class="btn-secondary" style="height: 38px; display: inline-flex; align-items: center;"><i class="ti ti-rotate"></i> Discard Changes</a>
+        <button type="submit" class="btn-primary" style="height: 38px;"><i class="ti ti-device-floppy"></i> Save Overrides & Recalculate</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+{% endif %}
+
+{% endblock %}

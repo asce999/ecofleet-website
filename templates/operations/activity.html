@@ -1,0 +1,16 @@
+<div class="portal-card">
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+        <i class="ti ti-activity" style="font-size: 20px; color: var(--cyan);"></i>
+        <h2 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text);">Activity Timeline</h2>
+    </div>
+    
+    {% if events %}
+        <div style="position: relative; margin-top: 14px;">
+            {% for event in events %}
+                {% include "components/timeline_item.html" with event=event is_last=forloop.last %}
+            {% endfor %}
+        </div>
+    {% else %}
+        {% include "components/empty_state.html" with message="No recent system events." icon="list" %}
+    {% endif %}
+</div>

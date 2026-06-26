@@ -11,6 +11,10 @@ import datetime
 from core.models import ToolRun
 from django.contrib import messages
 from django.conf import settings
+import logging
+
+logger = logging.getLogger('core')
+
 
 
 def get_active_btpl_workbook():
@@ -115,8 +119,10 @@ def btpl_api(request):
                     reference=f"LR: {row_data.get('lr_number') or ''}",
                     detail=f"Row: {target_row} · Sheet: {sheet_name} · Consignee: {row_data.get('name') or ''}"
                 )
+                logger.info(f"BTPL generated for LR: {row_data.get('lr_number')}")
                 return JsonResponse({'success': True, 'run_id': run.pk, 'row': target_row})
             except Exception as e:
+                logger.error(f"Error generating BTPL row {target_row}: {e}")
                 ToolRun.objects.create(
                     user=request.user,
                     tool=ToolRun.TOOL_BTPL,
@@ -126,6 +132,7 @@ def btpl_api(request):
                 return JsonResponse({'error': str(e)}, status=500)
         else:
             errors = {k: v[0] for k, v in form.errors.items()}
+            logger.warning(f"Validation failure during BTPL generation: {errors}")
             return JsonResponse({'error': 'Validation failed', 'field_errors': errors}, status=400)
 
     # POST: delete row
@@ -259,6 +266,7 @@ def btpl_settings(request):
             if form.is_valid():
                 upload = request.FILES.get('workbook')
                 if upload:
+                    logger.info(f"BTPL upload started: {upload.name}")
                     # Create new workbook record
                     new_wb = BtplWorkbook.objects.create(
                         file=upload, original_name=upload.name,
@@ -271,7 +279,8 @@ def btpl_settings(request):
                         temp_wb = openpyxl.load_workbook(new_wb.file.path, read_only=True)
                         uploaded_sheets = temp_wb.sheetnames
                         default_sheet = uploaded_sheets[0] if uploaded_sheets else 'JUN 26'
-                    except Exception:
+                    except Exception as e:
+                        logger.error(f"Excel parsing failed for BTPL {upload.name}: {e}")
                         default_sheet = 'JUN 26'
                         
                     new_wb.active_sheet = default_sheet
@@ -282,9 +291,11 @@ def btpl_settings(request):
                     new_wb.is_active = True
                     new_wb.save(update_fields=['is_active'])
                     
+                    logger.info(f"BTPL upload completed: {upload.name}")
                     messages.success(request, f"Uploaded workbook '{upload.name}' is now the active BTPL shipment workbook.")
                     return redirect('btpl_settings')
                 else:
+                    logger.warning("BTPL file upload failed: No file provided.")
                     messages.error(request, "Please choose a valid .xlsx file to upload.")
     else:
         form = BtplWorkbookUploadForm(initial={'active_sheet': current_sheet_name}, sheets=sheets)

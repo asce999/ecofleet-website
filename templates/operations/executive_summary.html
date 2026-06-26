@@ -1,0 +1,22 @@
+{% if executive_summary %}
+<div>
+    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; color: var(--muted); margin-bottom: 10px;">Executive Briefing</div>
+    <div class="ops-briefing-card">
+        <div style="display: flex; align-items: flex-start; gap: 14px;">
+            <div class="stat-ico ico-purple" style="width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;">
+                <i class="ti ti-bulb" style="font-size: 18px;"></i>
+            </div>
+            <div style="flex-grow: 1;">
+                {% for item in executive_summary %}
+                <div class="ops-briefing-item">
+                    <div class="ops-briefing-icon" style="color: var(--{{ item.color }});">
+                        <i class="ti ti-{{ item.icon }}" style="font-size: 11px;"></i>
+                    </div>
+                    <span style="font-size: 13.5px; font-weight: 500; line-height: 1.5;">{{ item.text }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}

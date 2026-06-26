@@ -1,0 +1,15 @@
+<div class="chart-card">
+    <h3 style="display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px;">
+        {% if icon %}<i class="ti ti-{{ icon }}" style="color: var(--cyan); font-size: 18px;"></i>{% endif %}
+        {{ title }}
+    </h3>
+    <div class="chart-sub">{{ subtitle|default:"System metric telemetry" }}</div>
+    
+    {% if empty %}
+        {% include "components/empty_state.html" with message="No chart data available" icon="chart-bar-off" %}
+    {% else %}
+        <div class="chart-box">
+            <canvas id="{{ chart_id }}"></canvas>
+        </div>
+    {% endif %}
+</div>

@@ -1,0 +1,62 @@
+{% extends 'core/portal/base.html' %}
+{% load static core_extras %}
+
+{% block title %}Operations Center — EcoFleet Express Portal{% endblock %}
+{% block heading %}Operations Center{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/operations_center.css' %}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<!-- Data Context for JS -->
+<script type="application/json" id="chart-data-performance">
+    {{ providers_dict.performance.metrics|to_json|safe }}
+</script>
+<script type="application/json" id="chart-data-storage">
+    {{ providers_dict.storage.metrics|to_json|safe }}
+</script>
+<script type="application/json" id="chart-data-activity">
+    {{ providers_dict.activity.metrics|to_json|safe }}
+</script>
+
+{% if has_critical %}
+    {% include "components/alert_banner.html" with messages=critical_messages|default:'' %}
+{% endif %}
+
+<!-- Hero Row: Health (8) + Sidebar (4) -->
+<div class="ops-hero-row">
+    <div class="ops-hero-main">
+        {% include "operations/hero.html" %}
+        {% include "operations/needs_attention.html" %}
+        {% include "operations/executive_summary.html" %}
+    </div>
+    <div class="ops-hero-side">
+        {% include "operations/predictive_insights.html" %}
+        {% include "operations/activity.html" %}
+    </div>
+</div>
+
+<!-- KPI Stats -->
+{% include "operations/metrics.html" %}
+
+<!-- Infrastructure -->
+{% include "operations/infrastructure.html" %}
+
+<!-- Performance Charts -->
+{% include "operations/performance.html" %}
+
+<!-- Feature Health -->
+{% include "operations/feature_health.html" %}
+
+<!-- Business Activity -->
+{% include "operations/business_activity.html" %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/chart-manager.js' %}"></script>
+<script src="{% static 'js/dashboard.js' %}"></script>
+<script src="{% static 'js/operations_center.js' %}"></script>
+{% endblock %}

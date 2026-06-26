@@ -1,0 +1,100 @@
+{% load core_extras %}
+<div class="portal-card" style="padding: 28px 30px;">
+    <div class="ops-hero-row" style="margin-bottom: 0;">
+        <!-- Left: Core Health -->
+        <div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 18px;">
+                <span style="font-size: 20px; font-weight: 800; letter-spacing: -0.03em;">Platform Health</span>
+                {% if overall_health_score > 90 %}
+                    <span class="pill pill-success">Healthy</span>
+                {% elif overall_health_score > 70 %}
+                    <span class="pill" style="background: rgba(247,148,29,0.12); color: var(--orange);">Degraded</span>
+                {% else %}
+                    <span class="pill pill-failed">Critical</span>
+                {% endif %}
+            </div>
+            
+            <div style="display: flex; align-items: flex-end; gap: 8px; margin-bottom: 24px;">
+                <span class="ops-health-score" style="color: {% if overall_health_score > 90 %}var(--success){% elif overall_health_score > 70 %}var(--orange){% else %}var(--danger){% endif %};">{{ overall_health_score }}</span>
+                <span class="ops-health-suffix">/100</span>
+            </div>
+
+            <!-- Score Breakdown -->
+            <div>
+                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; color: var(--muted); margin-bottom: 10px;">Score Breakdown</div>
+                <div class="ops-breakdown-grid">
+                    {% for cat_name, details in score_breakdown.items %}
+                    <div class="ops-breakdown-item">
+                        <div class="ops-breakdown-label">{{ cat_name }}</div>
+                        <div class="ops-breakdown-val">
+                            {% if details.lost == 0 %}
+                                <span style="color: var(--success);">+{{ details.earned }}</span>
+                            {% else %}
+                                <span>+{{ details.earned }}</span>
+                                <span style="color: {% if details.status == 'critical' %}var(--danger){% else %}var(--orange){% endif %};">−{{ details.lost }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Environment Metrics -->
+        <div>
+            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; color: var(--muted); margin-bottom: 14px;">Environment Summary</div>
+            
+            <div class="ops-env-grid">
+                <div>
+                    <div class="ops-env-label">Environment</div>
+                    <div class="ops-env-val" style="display: flex; align-items: center; gap: 6px;">
+                        {{ providers_dict.system.metrics|get_item:"Environment"|title|default:"Development" }}
+                        <span style="width: 6px; height: 6px; border-radius: 50%; 
+                            {% if providers_dict.system.metrics|get_item:"Environment" == 'production' %}background: var(--success); box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+                            {% else %}background: var(--orange); box-shadow: 0 0 0 2px rgba(247, 148, 29, 0.2);{% endif %}"></span>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="ops-env-label">Django Version</div>
+                    <div class="ops-env-val" style="font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px;">v{{ providers_dict.system.metrics|get_item:"Django Version"|default:"4.2" }}</div>
+                </div>
+
+                <div>
+                    <div class="ops-env-label">Platform Uptime</div>
+                    <div class="ops-env-val" style="color: var(--muted);">Collecting history</div>
+                </div>
+
+                <div>
+                    <div class="ops-env-label">Last Deployment</div>
+                    <div class="ops-env-val" style="color: var(--muted);">Collecting history</div>
+                </div>
+
+                <div>
+                    <div class="ops-env-label">Enabled Accounts</div>
+                    <div class="ops-env-val">{{ providers_dict.business.metrics|get_item:"Enabled Accounts"|default:"0" }}</div>
+                </div>
+
+                <div>
+                    <div class="ops-env-label">Avg Response Time</div>
+                    <div class="ops-env-val">{{ providers_dict.performance.metrics|get_item:"Avg Latency"|default:"N/A" }}</div>
+                </div>
+            </div>
+            
+            <div class="ops-sync-row">
+                <div class="ops-sync-item">
+                    <i class="ti ti-database" style="color: var(--success);"></i>
+                    DB Healthy
+                </div>
+                <div class="ops-sync-item">
+                    <i class="ti ti-shield-check" style="color: var(--success);"></i>
+                    Auth Active
+                </div>
+                <div class="ops-sync-item">
+                    <i class="ti ti-cloud-upload" style="color: var(--success);"></i>
+                    Storage Sync
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -12,3 +12,8 @@ db.sqlite3
 *.csv
 test_output.txt
 scratch_*.py
+patch*.py
+test_*.py
+.env
+logs/
+backups/
