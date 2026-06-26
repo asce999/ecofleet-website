@@ -5,6 +5,7 @@ from django.db import connection
 from django.db.utils import OperationalError
 from core.models import AttendanceWorkbook
 from django.utils import timezone
+from core.decorators import staff_required
 
 def health_check(request):
     status = {
@@ -59,6 +60,7 @@ def health_check(request):
     return JsonResponse(status, status=http_status)
 
 
+@staff_required
 def sentry_debug(request):
     if not settings.DEBUG:
         from django.http import Http404
@@ -69,14 +71,13 @@ def sentry_debug(request):
     return JsonResponse({"status": "unreachable"})
 
 from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
 from core.models import SystemEvent
 import pkgutil
 import importlib
 import inspect
 from core.operations.providers.base import BaseProvider
 
-@login_required
+@staff_required
 def operations_center(request):
     """
     Operations Center Dashboard.

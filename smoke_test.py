@@ -35,7 +35,7 @@ routes = [
     '/portal/attendance/',
     '/portal/morning-report/',
     '/portal/pendency/',
-    '/portal/prev-month/',
+    '/portal/prev-month-update/',
 ]
 
 errors = False

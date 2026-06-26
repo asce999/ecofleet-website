@@ -3,6 +3,7 @@ from django.contrib.auth import login as auth_login, logout as auth_logout
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
 import logging
 
 sec_logger = logging.getLogger('django.security')
@@ -33,6 +34,7 @@ def portal_login(request):
     return render(request, 'core/portal/login.html', {'form': form})
 
 
+@require_POST
 def portal_logout(request):
     user = request.user.username if request.user.is_authenticated else 'unknown'
     auth_logout(request)

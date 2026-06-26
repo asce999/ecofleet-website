@@ -27,31 +27,31 @@ def sitemap(request):
     xml_content = '''<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>http://ecofleetexpress.com/</loc>
+    <loc>https://ecofleetexpress.com/</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>http://ecofleetexpress.com/about/</loc>
+    <loc>https://ecofleetexpress.com/about/</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>http://ecofleetexpress.com/services/</loc>
+    <loc>https://ecofleetexpress.com/services/</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>http://ecofleetexpress.com/contact/</loc>
+    <loc>https://ecofleetexpress.com/contact/</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>http://ecofleetexpress.com/privacy/</loc>
+    <loc>https://ecofleetexpress.com/privacy/</loc>
     <lastmod>2026-06-07</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>

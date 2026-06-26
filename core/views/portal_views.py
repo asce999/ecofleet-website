@@ -20,9 +20,35 @@ def dashboard(request):
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
     # ── Pincode coverage ──
-    total_pincodes = Pincode.objects.count()
-    oda = Pincode.objects.filter(location_type__iexact='ODA').count()
-    non_oda = total_pincodes - oda
+    pincode_stats = cache.get('pincode_dashboard_stats')
+    if not pincode_stats:
+        total_pincodes = Pincode.objects.count()
+        oda = Pincode.objects.filter(location_type__iexact='ODA').count()
+        non_oda = total_pincodes - oda
+        states_served = Pincode.objects.values('state').distinct().count()
+
+        top_states = list(
+            Pincode.objects.values('state')
+            .annotate(c=Count('id')).order_by('-c')[:8])
+        state_labels = [s['state'] or 'Unknown' for s in top_states]
+        state_data = [s['c'] for s in top_states]
+        
+        pincode_stats = {
+            'total_pincodes': total_pincodes,
+            'oda': oda,
+            'non_oda': non_oda,
+            'states_served': states_served,
+            'state_labels': state_labels,
+            'state_data': state_data,
+        }
+        cache.set('pincode_dashboard_stats', pincode_stats, 86400)
+    
+    total_pincodes = pincode_stats['total_pincodes']
+    oda = pincode_stats['oda']
+    non_oda = pincode_stats['non_oda']
+    state_labels = pincode_stats['state_labels']
+    state_data = pincode_stats['state_data']
+    states_served = pincode_stats['states_served']
 
     # ── Operational counts (light up as the tools come online) ──
     cofs_month = ToolRun.objects.filter(
@@ -33,13 +59,6 @@ def dashboard(request):
         status=ToolRun.STATUS_SUCCESS, created_at__gte=month_start).count()
     total_runs = ToolRun.objects.count()
     team_members = User.objects.filter(is_staff=True, is_active=True).count()
-
-    # ── Top states by coverage ──
-    top_states = list(
-        Pincode.objects.values('state')
-        .annotate(c=Count('id')).order_by('-c')[:8])
-    state_labels = [s['state'] or 'Unknown' for s in top_states]
-    state_data = [s['c'] for s in top_states]
 
     # ── Tool activity, last 14 days ──
     since = (now - datetime.timedelta(days=13)).date()
@@ -142,7 +161,7 @@ def dashboard(request):
         'total_pincodes': total_pincodes,
         'oda': oda,
         'non_oda': non_oda,
-        'states_served': Pincode.objects.values('state').distinct().count(),
+        'states_served': states_served,
         'cofs_month': cofs_month,
         'reports_month': reports_month,
         'total_runs': total_runs,

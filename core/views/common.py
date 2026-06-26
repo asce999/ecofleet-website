@@ -37,7 +37,16 @@ def download_file(request, file_id):
 def tool_result(request, pk):
     run = get_object_or_404(ToolRun.objects.prefetch_related('files'),
                             pk=pk, status=ToolRun.STATUS_SUCCESS)
-    active = {'COF': 'cof', 'MORNING': 'morning', 'PENDENCY': 'pendency', 'PREV_MONTH': 'prev_month'}.get(run.tool, '')
+    tool_map = {
+        'COF': 'cof',
+        'MORNING': 'morning',
+        'PENDENCY': 'pendency',
+        'PREV_MONTH': 'prev_month',
+        'BTPL': 'btpl',
+        'ATTENDANCE': 'attendance',
+        'FTL': 'ftl',
+    }
+    active = tool_map.get(run.tool, '')
 
     # Check permissions
     from core.models import UserProfile

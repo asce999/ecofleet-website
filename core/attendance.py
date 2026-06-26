@@ -228,6 +228,14 @@ def save_attendance(file_path, sheet_name, post_data):
             staff_col = c
             break
 
+    # Get valid bounds for server-side validation
+    attendance_data = get_attendance_data(file_path, sheet_name)
+    if not attendance_data:
+        return False
+    valid_rows = {emp['row_idx'] for emp in attendance_data.get('employees', [])}
+    days_in_month = calendar.monthrange(attendance_data['year'], attendance_data['month'])[1]
+    valid_days = set(range(1, days_in_month + 1))
+
     # Look for inputs like: attendance_{row_idx}_{day}
     modified = False
     for key, val in post_data.items():
@@ -237,6 +245,10 @@ def save_attendance(file_path, sheet_name, post_data):
                 try:
                     row_idx = int(parts[1])
                     day = int(parts[2])
+                    
+                    if row_idx not in valid_rows or day not in valid_days:
+                        continue  # silently skip malformed/out-of-bounds keys
+                        
                     col_idx = day + staff_col
                     
                     # Clean the status value

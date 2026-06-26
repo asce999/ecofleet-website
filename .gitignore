@@ -17,3 +17,7 @@ test_*.py
 .env
 logs/
 backups/
+staticfiles/
+cache/
+db.sqlite3-wal
+db.sqlite3-shm

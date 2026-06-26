@@ -30,10 +30,10 @@
   <meta property="og:title" content="{% block og_title %}EcoFleet Express — Surface Cargo & Logistics{% endblock %}" />
   <meta property="og:description" content="{% block og_description %}Pan-India B2B surface cargo and logistics. 22,000+ pincodes, ODA delivery specialists, FTL solutions from Kothrud, Pune.{% endblock %}" />
   <meta property="og:image" content="{% block og_image %}{% static 'images/logo.png' %}{% endblock %}" />
-  <meta property="og:url" content="{% block og_url %}http://ecofleetexpress.com{% endblock %}" />
+  <meta property="og:url" content="{% block og_url %}https://ecofleetexpress.com{% endblock %}" />
 
   <!-- Canonical -->
-  <link rel="canonical" href="{% block canonical %}http://ecofleetexpress.com{% endblock %}" />
+  <link rel="canonical" href="{% block canonical %}https://ecofleetexpress.com{% endblock %}" />
 
   <!-- Sitemap -->
   <link rel="sitemap" type="application/xml" href="{% url 'sitemap' %}" />
@@ -51,6 +51,8 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <!-- TODO(SECURITY): Tabler icons version pinning gives 404 for @3.24.0 and @3.19.0, reverted to @latest temporarily. Needs further investigation -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
   <link rel="stylesheet" href="{% static 'css/main.css' %}" />
   <link rel="stylesheet" href="{% static 'css/responsive.css' %}" />

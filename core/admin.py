@@ -50,7 +50,7 @@ def diagnostics_view(request):
     # Last operations
     context['last_attendance'] = AttendanceWorkbook.objects.order_by('-uploaded_at').first()
     context['last_btpl'] = BtplWorkbook.objects.order_by('-created_at').first()
-    context['last_ftl'] = FtlWorkbook.objects.order_by('-created_at').first()
+    context['last_ftl'] = FtlWorkbook.objects.order_by('-uploaded_at').first()
     context['last_cof'] = CofWorkbook.objects.order_by('-uploaded_at').first()
     
     # Recent errors from log file

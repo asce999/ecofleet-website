@@ -22,6 +22,8 @@
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicons/favicon-32x32.png' %}">
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <!-- TODO(SECURITY): Tabler icons version pinning gives 404 for @3.24.0 and @3.19.0, reverted to @latest temporarily. Needs further investigation -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
     <link rel="stylesheet" href="{% static 'css/main.css' %}" />
     <link rel="stylesheet" href="{% static 'css/portal.css' %}" />
@@ -69,7 +71,12 @@
     </nav>
 
     <div class="portal-sidebar-foot">
-        <a href="{% url 'portal_logout' %}" class="portal-logout"><i class="ti ti-logout"></i> Log Out</a>
+        <form method="post" action="{% url 'portal_logout' %}" style="display:inline; margin:0; padding:0; width:100%;">
+            {% csrf_token %}
+            <button type="submit" class="portal-logout" style="border:none;background:none;width:100%;text-align:left;cursor:pointer;font:inherit;">
+                <i class="ti ti-logout"></i> Log Out
+            </button>
+        </form>
     </div>
 </aside>
 <div class="portal-sidebar-overlay" id="portalSidebarOverlay"></div>
