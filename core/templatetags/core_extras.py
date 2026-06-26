@@ -7,7 +7,8 @@ register = template.Library()
 def get_item(dictionary, key):
     """Safely get an item from a dictionary."""
     if isinstance(dictionary, dict):
-        return dictionary.get(key)
+        val = dictionary.get(key)
+        return val if val is not None else None
     return None
 
 @register.filter

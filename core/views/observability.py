@@ -139,7 +139,10 @@ def operations_center(request):
     providers_dict = {}
     for p in providers_data:
         title = p.get('title', '').lower()
-        if 'system' in title: providers_dict['system'] = p
+        # NOTE: check 'activity' before 'system' — ActivityProvider's title is
+        # "System Activity", which would otherwise be swallowed by the 'system' branch.
+        if 'activity' in title: providers_dict['activity'] = p
+        elif 'system' in title: providers_dict['system'] = p
         elif 'database' in title: providers_dict['database'] = p
         elif 'backups' in title: providers_dict['backups'] = p
         elif 'storage' in title: providers_dict['storage'] = p
@@ -151,7 +154,6 @@ def operations_center(request):
         elif 'security' in title: providers_dict['security'] = p
         elif 'performance' in title: providers_dict['performance'] = p
         elif 'business' in title: providers_dict['business'] = p
-        elif 'activity' in title: providers_dict['activity'] = p
 
     # Gather critical messages and construct Score Breakdown
     critical_messages = []

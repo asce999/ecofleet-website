@@ -7,12 +7,12 @@
     <div class="ops-timeline-row">
         <!-- Icon -->
         <div class="ops-timeline-icon" style="
-            {% if event.severity == 40 %}border-color: var(--red); color: var(--red);
-            {% elif event.severity == 30 %}border-color: var(--orange); color: var(--orange);
+            {% if event.severity == 'CRITICAL' %}border-color: var(--red); color: var(--red);
+            {% elif event.severity == 'WARNING' %}border-color: var(--orange); color: var(--orange);
             {% else %}border-color: var(--cyan); color: var(--cyan);{% endif %}">
-            {% if event.severity == 40 %}
+            {% if event.severity == 'CRITICAL' %}
                 <i class="ti ti-x" style="font-size: 14px;"></i>
-            {% elif event.severity == 30 %}
+            {% elif event.severity == 'WARNING' %}
                 <i class="ti ti-alert-triangle" style="font-size: 14px;"></i>
             {% else %}
                 <i class="ti ti-check" style="font-size: 14px;"></i>
@@ -29,8 +29,8 @@
                 <span class="ops-timeline-time">{{ event.timestamp|date:"H:i:s" }}</span>
             </div>
             
-            {% if event.description %}
-            <p class="ops-timeline-desc">{{ event.description }}</p>
+            {% if event.message %}
+            <p class="ops-timeline-desc">{{ event.message }}</p>
             {% endif %}
             
             {% if event.metadata %}

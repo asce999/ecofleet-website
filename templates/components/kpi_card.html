@@ -1,5 +1,5 @@
 <div class="stat-card">
     <div class="stat-ico ico-{{ color|default:'cyan' }}"><i class="ti ti-{{ icon|default:'chart-line' }}"></i></div>
-    <div class="stat-val">{{ value|default:"--" }}</div>
+    <div class="stat-val">{{ value|default_if_none:"--" }}</div>
     <div class="stat-label">{{ title }}</div>
 </div>
