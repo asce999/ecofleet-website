@@ -21,3 +21,9 @@ staticfiles/
 cache/
 db.sqlite3-wal
 db.sqlite3-shm
+test.db
+graphify-out/
+.playwright-mcp/
+prompt.md
+rendered_ops.html
+build_graph.py
