@@ -1,16 +1,17 @@
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from .base import BaseProvider
+from .base import BaseProvider, ProviderResult, CheckResult
 from core.models import UserProfile
 
 User = get_user_model()
 
 class BusinessProvider(BaseProvider):
-    def __init__(self, request=None):
-        super().__init__(request)
-        self.title = "Business Users"
+    category = "Business Modules"
+    key = "business"
+    title = "Business Users"
+    summary = "Platform user statistics and roles."
 
-    def _fetch_data(self):
+    def _fetch_data(self) -> ProviderResult:
         status = "healthy"
         checks = []
         metrics = {}
@@ -25,19 +26,15 @@ class BusinessProvider(BaseProvider):
         
         if directors == 0:
             status = "warning"
-            checks.append({"name": "Directors", "status": "warning", "message": "No directors configured"})
+            checks.append(CheckResult(name="Directors", status="warning", message="No directors configured"))
         else:
-            checks.append({"name": "Directors", "status": "healthy", "message": f"{directors} loaded"})
+            checks.append(CheckResult(name="Directors", status="healthy", message=f"{directors} loaded"))
 
-        return {
-            "status": status,
-            "title": self.title,
-            "summary": "Platform user statistics and roles.",
-            "checks": checks,
-            "metrics": metrics,
-            "health_score": 100 if status == "healthy" else (80 if status == "warning" else 0),
-            "warnings": [],
-            "errors": [],
-            "technical_details": None,
-            "last_updated": timezone.now()
-        }
+        return ProviderResult(
+            status=status,
+            title=self.title,
+            summary=self.summary,
+            checks=checks,
+            metrics=metrics,
+            health_score=100 if status == "healthy" else (80 if status == "warning" else 0)
+        )

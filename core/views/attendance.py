@@ -12,7 +12,7 @@ from django.conf import settings
 from django.urls import reverse
 import logging
 
-logger = logging.getLogger('core')
+logger = logging.getLogger(__name__)
 
 @staff_required
 @tool_permission_required('attendance')
@@ -109,12 +109,16 @@ def attendance_sheet(request):
 @staff_required
 @tool_permission_required('attendance')
 def attendance_download(request):
+    from core.services.workbook_manager import WorkbookManager
     wb_obj, file_path, sheet_name = attendance_logic.get_active_attendance_workbook()
-    if not file_path or not os.path.exists(file_path):
+    
+    stream = WorkbookManager.get_file_stream(wb_obj, 'Attendance_Sheet.xlsx')
+    if not stream:
         raise Http404("Attendance workbook file not found.")
         
     filename = wb_obj.original_name if wb_obj else "Attendance_Sheet.xlsx"
-    response = FileResponse(open(file_path, 'rb'), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    logger.info(f"Report downloaded: Attendance Tracker '{filename}' by user '{request.user.username}'")
+    response = FileResponse(stream, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 
@@ -126,14 +130,10 @@ def attendance_settings(request):
     wb_obj, file_path, current_sheet_name = attendance_logic.get_active_attendance_workbook()
     
     # Read sheets from Excel if file_path exists
-    sheets = []
-    if file_path and os.path.exists(file_path):
-        try:
-            import openpyxl
-            wb = openpyxl.load_workbook(file_path, read_only=True)
-            sheets = wb.sheetnames
-        except Exception:
-            sheets = ['JUNE 2026']
+    from core.services.sheet_parser import get_sheet_names
+    sheets = get_sheet_names(file_path)
+    if not sheets:
+        sheets = ['JUNE 2026']
     else:
         sheets = ['JUNE 2026']
         
@@ -149,18 +149,16 @@ def attendance_settings(request):
                     uploaded_by=request.user,
                     is_active=False
                 )
+            logger.info(f"Workbook archived/removed: Attendance Tracker by user '{request.user.username}'")
             messages.success(request, "Attendance sheet removed entirely. Portal is now in empty state.")
             return redirect('attendance_settings')
             
         elif action == 'load_default':
-            import shutil
-            root_file_path = os.path.join(settings.BASE_DIR, 'Attendance_Sheet.xlsx')
-            target_dir = os.path.join(settings.MEDIA_ROOT, 'attendance')
-            os.makedirs(target_dir, exist_ok=True)
-            dest_path = os.path.join(target_dir, 'Attendance_Sheet.xlsx')
-            shutil.copy2(root_file_path, dest_path)
+            from core.services.workbook_manager import WorkbookManager
             
             AttendanceWorkbook.objects.filter(is_active=True).update(is_active=False)
+            
+            file_name = WorkbookManager.load_default_template('attendance', 'Attendance_Sheet.xlsx')
             
             wb_obj = AttendanceWorkbook.objects.create(
                 original_name='Attendance_Sheet.xlsx',
@@ -168,17 +166,17 @@ def attendance_settings(request):
                 uploaded_by=request.user,
                 is_active=True
             )
-            wb_obj.file.name = 'attendance/Attendance_Sheet.xlsx'
+            wb_obj.file.name = file_name
             wb_obj.save(update_fields=['file'])
             
-            try:
-                wb = openpyxl.load_workbook(dest_path, read_only=True)
-                if wb.sheetnames:
-                    wb_obj.active_sheet = wb.sheetnames[-1]
+            from core.services.sheet_parser import get_sheet_names
+            if wb_obj.file:
+                sheetnames = get_sheet_names(wb_obj.file.path)
+                if sheetnames:
+                    wb_obj.active_sheet = sheetnames[-1]
                     wb_obj.save(update_fields=['active_sheet'])
-            except Exception:
-                pass
                 
+            logger.info(f"Workbook activated: Default Attendance Tracker loaded by user '{request.user.username}'")
             messages.success(request, "Default attendance workbook loaded successfully.")
             return redirect('attendance_settings')
             
@@ -190,12 +188,8 @@ def attendance_settings(request):
                     wb_obj.active_sheet = sheet_sel
                     wb_obj.save(update_fields=['active_sheet'])
                 else:
-                    import shutil
-                    root_file_path = os.path.join(settings.BASE_DIR, 'Attendance_Sheet.xlsx')
-                    target_dir = os.path.join(settings.MEDIA_ROOT, 'attendance')
-                    os.makedirs(target_dir, exist_ok=True)
-                    dest_path = os.path.join(target_dir, 'Attendance_Sheet.xlsx')
-                    shutil.copy2(root_file_path, dest_path)
+                    from core.services.workbook_manager import WorkbookManager
+                    file_name = WorkbookManager.load_default_template('attendance', 'Attendance_Sheet.xlsx')
                     
                     wb_obj = AttendanceWorkbook.objects.create(
                         original_name='Attendance_Sheet.xlsx',
@@ -203,7 +197,7 @@ def attendance_settings(request):
                         uploaded_by=request.user,
                         is_active=True
                     )
-                    wb_obj.file.name = 'attendance/Attendance_Sheet.xlsx'
+                    wb_obj.file.name = file_name
                     wb_obj.save(update_fields=['file'])
                     
                 messages.success(request, f"Active sheet tab changed to '{sheet_sel}'.")
@@ -212,34 +206,29 @@ def attendance_settings(request):
         elif action == 'upload':
             form = AttendanceWorkbookUploadForm(request.POST, request.FILES, sheets=sheets)
             if form.is_valid():
+                upload = request.FILES.get('workbook')
                 if upload:
-                    logger.info(f"Attendance workbook upload started: {upload.name}")
                     new_wb = AttendanceWorkbook.objects.create(
                         file=upload, original_name=upload.name,
                         uploaded_by=request.user, is_active=False
                     )
                     
-                    try:
-                        import openpyxl
-                        temp_wb = openpyxl.load_workbook(new_wb.file.path, read_only=True)
-                        uploaded_sheets = temp_wb.sheetnames
-                        default_sheet = uploaded_sheets[-1] if uploaded_sheets else 'JUNE 2026'
-                    except Exception as e:
-                        logger.error(f"Excel parsing failed for {upload.name}: {e}")
-                        default_sheet = 'JUNE 2026'
-                        
-                    new_wb.active_sheet = default_sheet
-                    new_wb.save(update_fields=['active_sheet'])
+                    from core.services.sheet_parser import get_sheet_names
+                    if new_wb.file:
+                        sheetnames = get_sheet_names(new_wb.file.path)
+                        if sheetnames:
+                            new_wb.active_sheet = sheetnames[-1]
+                            new_wb.save(update_fields=['active_sheet'])
                     
                     AttendanceWorkbook.objects.filter(is_active=True).update(is_active=False)
                     new_wb.is_active = True
                     new_wb.save(update_fields=['is_active'])
                     
-                    logger.info(f"Attendance workbook upload completed: {upload.name}")
+                    logger.info(f"Workbook uploaded: Attendance Tracker '{upload.name}' by user '{request.user.username}'")
                     messages.success(request, f"Uploaded workbook '{upload.name}' is now the active attendance workbook.")
                     return redirect('attendance_settings')
                 else:
-                    logger.warning("Attendance file upload failed: No file provided.")
+                    logger.warning(f"Workbook validation failure: No file provided for Attendance upload by user '{request.user.username}'")
                     messages.error(request, "Please choose a valid .xlsx file to upload.")
                     
         elif action == 'update_salary_config':
@@ -333,10 +322,9 @@ def salary_calculator(request):
                         }
                     )
                 except Exception as e:
-                    logger.error(f"Validation failure for salary overrides of {emp_name}: {e}")
+                    logger.error(f"Workbook processing failure for salary overrides of {emp_name}: {e}")
                     messages.error(request, f"Invalid override values for {emp_name}: {e}")
                     
-        logger.info(f"Salary calculation completed for sheet: {sheet_name}")
         messages.success(request, "Salaries saved successfully.")
         manual_year = request.POST.get('manual_year')
         manual_month = request.POST.get('manual_month')
@@ -369,12 +357,12 @@ def salary_calculator(request):
 @staff_required
 @tool_permission_required('attendance')
 def salary_calculator_export(request):
-    import io
     from django.http import HttpResponse
-    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from core.services.exports.attendance import generate_salary_export
+    from pathlib import Path
 
     wb_obj, file_path, sheet_name = attendance_logic.get_active_attendance_workbook()
-    if not file_path or not os.path.exists(file_path):
+    if not file_path or not Path(file_path).exists():
         messages.error(request, "Attendance workbook file not found.")
         return redirect('salary_calculator')
 
@@ -388,105 +376,9 @@ def salary_calculator_export(request):
 
     salary_data = attendance_logic.calculate_salary_data(data)
 
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = f"Salary_{sheet_name}"
-
-    # Add the top header rows to match BTPL
-    ws.cell(row=1, column=2, value="CV DISTRIBUTIONS")
-    ws.cell(row=2, column=2, value="BARAMATI TRADE PVT LTD")
-    ws.cell(row=3, column=2, value="D-16 MIDC AREA BARAMATI,DIST-PUNE")
-
-    headers = [
-        (2, "Sr No"), (3, "Department"), (4, "EmpID"), (5, "ESIC NO"), (6, "PF NO."), (7, "UAN NO"), 
-        (8, "Name of the  Employee"), (9, "Aadhar Card no"), (10, "DOB"), (11, "Doj"), (12, "Mobile No"), 
-        (13, "Cosmos Account No"), (14, "Payble Days"), (15, "Extra Days"), (16, "BASIC=    492.12"), 
-        (17, "Adhoc Salary Increase"), (18, "SP.ALLOWANCE = 96.58"), (19, "ADHOC ALLOWANCE"), (20, "TOTAL (A)"), 
-        (21, "OTHER ALLOWANCE"), (22, "H.R.A. 5% BASIC+SPL ALL"), (23, "Leave Payment"), (24, "EXTRA PAYMENT"), 
-        (25, "TOTAL (B)"), (26, "P.F.12% ON Basic +Spl All.Total(A)"), (27, "Esic 0.75% Total "), (28, "P.Tax On Total (B)"), 
-        (29, "Advance"), (30, "LWF"), (31, "Canteen"), (32, "Other"), (33, "Sub Total"), (34, "Payment")
-    ]
-    
-    header_fill = PatternFill(start_color='1F2937', end_color='1F2937', fill_type='solid')
-    header_font = Font(color='FFFFFF', bold=True)
-    border_side = Side(border_style='thin', color='E5E7EB')
-    thin_border = Border(left=border_side, right=border_side, top=border_side, bottom=border_side)
-    center_align = Alignment(horizontal='center', vertical='center')
-
-    for col_idx, header_title in headers:
-        cell = ws.cell(row=4, column=col_idx, value=header_title)
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.border = thin_border
-        cell.alignment = center_align
-
-    for i, emp in enumerate(salary_data['employees']):
-        r = i + 5
-        
-        def write_cell(col, val, fmt=None):
-            c = ws.cell(row=r, column=col, value=val)
-            c.border = thin_border
-            if fmt:
-                c.number_format = fmt
-            return c
-
-        write_cell(2, i + 1)
-        write_cell(3, emp.get('department', ''))
-        write_cell(4, emp.get('emp_id', ''))
-        write_cell(5, emp.get('esic_no', ''))
-        write_cell(6, emp.get('pf_no', ''))
-        write_cell(7, emp.get('uan_no', ''))
-        write_cell(8, emp.get('name', ''))
-        write_cell(9, '')
-        write_cell(10, '')
-        write_cell(11, '')
-        write_cell(12, emp.get('phone', ''))
-        write_cell(13, '')
-        write_cell(14, float(emp.get('payable_days', 0)))
-        write_cell(15, float(emp.get('extra_days', 0)))
-        
-        write_cell(16, float(emp.get('basic', 0)), '#,##0.00')
-        write_cell(17, float(emp.get('adhoc_salary_increase', 0)), '#,##0.00')
-        write_cell(18, float(emp.get('sp_allowance', 0)), '#,##0.00')
-        write_cell(19, float(emp.get('adhoc_allowance', 0)), '#,##0.00')
-        write_cell(20, float(emp.get('total_a', 0)), '#,##0.00')
-        
-        write_cell(21, float(emp.get('other_allowance', 0)), '#,##0.00')
-        write_cell(22, float(emp.get('hra', 0)), '#,##0.00')
-        write_cell(23, float(emp.get('leave_payment', 0)), '#,##0.00')
-        write_cell(24, float(emp.get('extra_payment', 0)), '#,##0.00')
-        c = write_cell(25, float(emp.get('total_b', 0)), '#,##0.00')
-        c.font = Font(bold=True)
-        
-        write_cell(26, float(emp.get('pf', 0)), '#,##0.00')
-        write_cell(27, float(emp.get('esic_employee', 0)), '#,##0.00')
-        write_cell(28, float(emp.get('pt', 0)), '#,##0.00')
-        write_cell(29, float(emp.get('advance', 0)), '#,##0.00')
-        write_cell(30, float(emp.get('lwf', 0)), '#,##0.00')
-        write_cell(31, float(emp.get('canteen', 0)), '#,##0.00')
-        write_cell(32, float(emp.get('other_deduction', 0)), '#,##0.00')
-        c = write_cell(33, float(emp.get('sub_total_deductions', 0)), '#,##0.00')
-        c.font = Font(color='FF0000')
-        
-        c = write_cell(34, float(emp.get('net_payment', 0)), '#,##0.00')
-        c.font = Font(bold=True, color='008000')
-
-    for col in ws.columns:
-        max_length = 0
-        column = col[0].column_letter
-        for cell in col:
-            try:
-                if len(str(cell.value)) > max_length:
-                    max_length = len(cell.value)
-            except:
-                pass
-        adjusted_width = (max_length + 2)
-        ws.column_dimensions[column].width = adjusted_width
-
-    buffer = io.BytesIO()
-    wb.save(buffer)
-    buffer.seek(0)
+    buffer = generate_salary_export(sheet_name, salary_data)
     
     response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename="Salary_{sheet_name}.xlsx"'
+    logger.info(f"Report generated and downloaded: Salary '{sheet_name}' by user '{request.user.username}'")
     return response

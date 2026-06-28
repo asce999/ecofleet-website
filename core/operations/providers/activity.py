@@ -1,14 +1,15 @@
 from django.utils import timezone
-from .base import BaseProvider
+from .base import BaseProvider, ProviderResult, CheckResult
 from core.models import SystemEvent
 import datetime
 
 class ActivityProvider(BaseProvider):
-    def __init__(self, request=None):
-        super().__init__(request)
-        self.title = "System Activity"
+    category = "Performance"
+    key = "activity"
+    title = "System Activity"
+    summary = "Recent system event activity logs."
 
-    def _fetch_data(self):
+    def _fetch_data(self) -> ProviderResult:
         status = "healthy"
         checks = []
         metrics = {}
@@ -27,12 +28,12 @@ class ActivityProvider(BaseProvider):
         
         if crit_24h > 0:
             status = "critical"
-            checks.append({"name": "Critical Events", "status": "critical", "message": f"{crit_24h} in 24h"})
+            checks.append(CheckResult(name="Critical Events", status="critical", message=f"{crit_24h} in 24h"))
         elif warn_24h > 10:
             status = "warning"
-            checks.append({"name": "Warning Events", "status": "warning", "message": f"{warn_24h} in 24h"})
+            checks.append(CheckResult(name="Warning Events", status="warning", message=f"{warn_24h} in 24h"))
         else:
-            checks.append({"name": "Event Volume", "status": "healthy", "message": "Normal"})
+            checks.append(CheckResult(name="Event Volume", status="healthy", message="Normal"))
 
         # Chart labels and datasets (Line chart showing last 24 hours of events in 6 intervals)
         labels = []
@@ -73,15 +74,11 @@ class ActivityProvider(BaseProvider):
             {"label": "Errors", "data": err_data}
         ]
 
-        return {
-            "status": status,
-            "title": self.title,
-            "summary": "Recent system event activity logs.",
-            "checks": checks,
-            "metrics": metrics,
-            "health_score": 100 if status == "healthy" else (80 if status == "warning" else 0),
-            "warnings": [],
-            "errors": [],
-            "technical_details": None,
-            "last_updated": timezone.now()
-        }
+        return ProviderResult(
+            status=status,
+            title=self.title,
+            summary=self.summary,
+            checks=checks,
+            metrics=metrics,
+            health_score=100 if status == "healthy" else (80 if status == "warning" else 0)
+        )

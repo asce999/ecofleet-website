@@ -3,7 +3,7 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.db import connection
 from django.db.utils import OperationalError
-from core.models import AttendanceWorkbook
+
 from django.utils import timezone
 from core.decorators import staff_required
 
@@ -14,8 +14,7 @@ def health_check(request):
             'django': 'ok',
             'database': 'unknown',
             'media': 'unknown',
-            'static': 'unknown',
-            'attendance_workbook': 'unknown'
+            'static': 'unknown'
         }
     }
 
@@ -46,14 +45,7 @@ def health_check(request):
         # In development STATIC_ROOT might not exist yet, so we just warn or ok if DIRS exists
         status['components']['static'] = 'warning'
 
-    # 4. Attendance Workbook
-    try:
-        if AttendanceWorkbook.objects.filter(is_active=True).exists():
-            status['components']['attendance_workbook'] = 'ok'
-        else:
-            status['components']['attendance_workbook'] = 'missing'
-    except Exception:
-        status['components']['attendance_workbook'] = 'error'
+
 
     # Final response
     http_status = 200 if status['status'] == 'ok' else 503
@@ -75,23 +67,25 @@ from core.models import SystemEvent
 import pkgutil
 import importlib
 import inspect
-from core.operations.providers.base import BaseProvider
+from core.operations.providers.base import BaseProvider, ProviderResult, CheckResult
 
 @staff_required
 def operations_center(request):
     """
     Operations Center Dashboard.
-    Aggregates data from all providers in core.operations.providers and fetches recent events.
+    Thin view that acts as an orchestrator.
     """
-    providers_data = []
+    from core.operations.services.insights import InsightsService
+    from core.operations.viewmodels.dashboard import (
+        OperationsDashboard, QuickAction, ProviderDiagnostic
+    )
+    
+    providers_dict = {}
     has_critical = False
     has_warning = False
-    total_health = 0
-    provider_count = 0
     
-    # Dynamically discover and instantiate all concrete providers
+    # 1. Discover Providers
     import core.operations.providers as provider_package
-    
     for _, module_name, _ in pkgutil.iter_modules(provider_package.__path__):
         if module_name == 'base':
             continue
@@ -101,187 +95,120 @@ def operations_center(request):
             module = importlib.import_module(full_module_name)
             for name, obj in inspect.getmembers(module, inspect.isclass):
                 if issubclass(obj, BaseProvider) and obj is not BaseProvider:
-                    provider_instance = obj(request)
+                    provider_instance = obj()
                     data = provider_instance.get_data()
-                    providers_data.append(data)
                     
-                    status = data.get('status')
-                    if status == 'critical' or status == 'unavailable':
+                    providers_dict[provider_instance.key] = data
+                    
+                    status = data.status
+                    if status in ('critical', 'unavailable'):
                         has_critical = True
                     elif status == 'warning':
                         has_warning = True
-                        
-                    total_health += data.get('health_score', 0)
-                    provider_count += 1
         except Exception as e:
-            # If the module entirely fails to load, create a placeholder critical provider
-            providers_data.append({
-                "status": "unavailable",
-                "health_score": 0,
-                "title": f"Provider Module: {module_name}",
-                "summary": f"Failed to load provider module.",
-                "checks": [{"name": "Load", "status": "critical", "message": str(e)}],
-                "metrics": {},
-                "warnings": [],
-                "errors": [],
-                "technical_details": str(e),
-                "last_updated": timezone.now()
-            })
+            fallback = ProviderResult(
+                status="unavailable",
+                health_score=0,
+                title=f"Provider Module: {module_name}",
+                summary="Failed to load provider module.",
+                checks=[CheckResult(name="Load", status="critical", message=str(e))],
+                metrics={},
+                technical_details=str(e)
+            )
+            providers_dict[f"failed_{module_name}"] = fallback
             has_critical = True
-            provider_count += 1
 
-    overall_health_score = int(total_health / provider_count) if provider_count > 0 else 0
-
-    # Get recent system events
-    events = SystemEvent.objects.all()[:20]
-
-    # Map providers by a normalized key for specific component placement
-    providers_dict = {}
-    for p in providers_data:
-        title = p.get('title', '').lower()
-        # NOTE: check 'activity' before 'system' — ActivityProvider's title is
-        # "System Activity", which would otherwise be swallowed by the 'system' branch.
-        if 'activity' in title: providers_dict['activity'] = p
-        elif 'system' in title: providers_dict['system'] = p
-        elif 'database' in title: providers_dict['database'] = p
-        elif 'backups' in title: providers_dict['backups'] = p
-        elif 'storage' in title: providers_dict['storage'] = p
-        elif 'attendance' in title: providers_dict['attendance'] = p
-        elif 'salary' in title: providers_dict['salary'] = p
-        elif 'btpl' in title: providers_dict['btpl'] = p
-        elif 'ftl' in title: providers_dict['ftl'] = p
-        elif 'cof' in title: providers_dict['cof'] = p
-        elif 'security' in title: providers_dict['security'] = p
-        elif 'performance' in title: providers_dict['performance'] = p
-        elif 'business' in title: providers_dict['business'] = p
-
-    # Gather critical messages and construct Score Breakdown
-    critical_messages = []
-    warning_messages = []
+    # 2. Activity Feed (SSR Filtering & Pagination)
+    query = request.GET.get('q', '')
+    severity = request.GET.get('severity', '')
     
-    # Categorize providers for Breakdown
-    categories = {
-        'Infrastructure': ['system', 'database'],
-        'Business Modules': ['attendance', 'salary', 'btpl', 'ftl', 'cof', 'business'],
-        'Security': ['security'],
-        'Performance': ['performance', 'activity'],
-        'Storage & Backups': ['storage', 'backups']
+    events_qs = SystemEvent.objects.all()
+    if query:
+        events_qs = events_qs.filter(message__icontains=query)
+    if severity and severity != 'all':
+        events_qs = events_qs.filter(severity=severity)
+        
+    events = events_qs[:50]
+
+    # 3. Quick Actions
+    quick_actions = [
+        QuickAction(title="Upload Workbook", icon="ti-upload", url="#", permission="admin"),
+        QuickAction(title="Attendance", icon="ti-calendar", url="#", permission="admin"),
+        QuickAction(title="BTPL", icon="ti-truck", url="#", permission="admin"),
+        QuickAction(title="COF", icon="ti-file-certificate", url="#", permission="admin"),
+        QuickAction(title="FTL", icon="ti-package", url="#", permission="admin"),
+        QuickAction(title="Reports", icon="ti-chart-pie", url="#", permission="admin"),
+    ]
+
+    # 4. Diagnostics & Infrastructure Models
+    provider_diagnostics = []
+    for key, p in providers_dict.items():
+        provider_diagnostics.append(ProviderDiagnostic(
+            key=key,
+            title=p.title,
+            summary=p.summary,
+            status=p.status,
+            health_score=p.health_score,
+            execution_duration="< 50ms", # placeholder for now until we add timing to BaseProvider
+            checks=[{"name": c.name, "status": c.status, "message": c.message} for c in p.checks],
+            last_updated=p.last_updated
+        ))
+        
+    infra_data = {}
+    if 'storage' in providers_dict:
+        s_metrics = providers_dict['storage'].metrics
+        data_arr = s_metrics.get('data', [1, 1])
+        used, free = data_arr[0], data_arr[1]
+        pct = int(used / (used + free) * 100) if (used + free) > 0 else 0
+        infra_data['storage_percent'] = pct
+        infra_data['storage_metrics'] = s_metrics
+        infra_data['storage_status'] = providers_dict['storage'].status
+        
+    if 'database' in providers_dict:
+        infra_data['database_status'] = providers_dict['database'].status
+        infra_data['database_metrics'] = providers_dict['database'].metrics
+        
+    if 'backups' in providers_dict:
+        infra_data['backup_status'] = providers_dict['backups'].status
+        infra_data['backup_metrics'] = providers_dict['backups'].metrics
+
+    if 'performance' in providers_dict:
+        infra_data['performance_metrics'] = providers_dict['performance'].metrics
+        
+    if 'activity' in providers_dict:
+        infra_data['activity_metrics'] = providers_dict['activity'].metrics
+
+    kpi_metrics = {
+        'enabled_accounts': providers_dict.get('business').metrics.get('Enabled Accounts', '--') if 'business' in providers_dict else '--',
+        'avg_response': providers_dict.get('performance').metrics.get('Avg Latency', '--') if 'performance' in providers_dict else '--',
+        'system_events': providers_dict.get('activity').metrics.get('Events (24h)', '--') if 'activity' in providers_dict else '--',
+        'db_size': providers_dict.get('database').metrics.get('File Size', '--') if 'database' in providers_dict else '--',
     }
-    
-    score_breakdown = {}
-    for cat_name, keys in categories.items():
-        cat_total = 0
-        cat_max = 0
-        for key in keys:
-            if key in providers_dict:
-                cat_total += providers_dict[key].get('health_score', 0)
-                cat_max += 100
-        if cat_max > 0:
-            # Calculate how much this category contributed to the overall score
-            # A category adds (cat_total / (provider_count * 100)) * 100 to the 100-point total
-            contribution = (cat_total / (provider_count * 100)) * 100 if provider_count > 0 else 0
-            # Also calculate how many points it lost
-            max_contribution = (cat_max / (provider_count * 100)) * 100 if provider_count > 0 else 0
-            lost = max_contribution - contribution
-            score_breakdown[cat_name] = {
-                'earned': round(contribution),
-                'lost': round(lost),
-                'status': 'healthy' if lost == 0 else ('warning' if lost < 5 else 'critical')
-            }
 
-    if has_critical or has_warning:
-        for p in providers_data:
-            if p.get('status') == 'critical':
-                for check in p.get('checks', []):
-                    if check.get('status') == 'critical':
-                        critical_messages.append(f"{p.get('title', 'Unknown')}: {check.get('message', 'Failed')}")
-                if not p.get('checks'):
-                    critical_messages.append(f"{p.get('title', 'Unknown')} is critical")
-            elif p.get('status') == 'warning':
-                for check in p.get('checks', []):
-                    if check.get('status') == 'warning':
-                        warning_messages.append(f"{p.get('title', 'Unknown')}: {check.get('message', 'Needs Attention')}")
-
-    # Generate predictive insights
-    insights = []
-    
-    # 1. Database Insight (Needs historical data for projections)
-    db_data = providers_dict.get('database', {})
-    db_size = db_data.get('metrics', {}).get('File Size', '0 MB')
-    try:
-        size_val = float(db_size.split()[0])
-        if size_val > 500:
-            insights.append({"type": "warning", "icon": "ti-database", "message": f"Database size is {size_val:.1f}MB. Optimization recommended."})
-        else:
-            # We don't have historical growth data, so we cannot project when it reaches 80%
-            insights.append({"type": "info", "icon": "ti-chart-line", "message": "Collecting operational history for storage projections."})
-    except:
-        pass
-        
-    # 2. Performance insight
-    perf_data = providers_dict.get('performance', {})
-    latency = perf_data.get('metrics', {}).get('Avg Latency', '0 ms')
-    try:
-        lat_val = float(latency.split()[0])
-        if lat_val > 500:
-            insights.append({"type": "warning", "icon": "ti-bolt", "message": f"Performance degrading. Average latency is {lat_val:.0f}ms."})
-        elif lat_val > 0:
-            insights.append({"type": "info", "icon": "ti-chart-line", "message": "Collecting operational history for performance trends."})
-    except:
-        pass
-        
-    # 3. Backups insight
-    backup_data = providers_dict.get('backups', {})
-    last_backup = backup_data.get('metrics', {}).get('Latest Backup', 'N/A')
-    if last_backup == 'N/A':
-        insights.append({"type": "danger", "icon": "ti-shield", "message": "No backups found."})
-    else:
-        insights.append({"type": "success", "icon": "ti-shield", "message": "Backup freshness excellent."})
-        
-    # 4. Criticals insight
-    if not has_critical:
-        insights.append({"type": "success", "icon": "ti-check", "message": "No critical system failures."})
-        
-    # Generate Executive Summary
-    executive_summary = []
-    
-    # Reports
-    biz_data = providers_dict.get('business', {})
-    reports_today = biz_data.get('metrics', {}).get('Reports Today')
-    if reports_today:
-        executive_summary.append({"icon": "check", "color": "success", "text": f"{reports_today} reports generated today"})
-    
-    # Attendance
-    att_data = providers_dict.get('attendance', {})
-    att_jobs = att_data.get('metrics', {}).get('Jobs Today')
-    if att_jobs:
-        executive_summary.append({"icon": "check", "color": "success", "text": f"{att_jobs} attendance uploads completed"})
-        
-    # Statuses
-    if not has_critical:
-        executive_summary.append({"icon": "check", "color": "success", "text": "All business modules operational"})
-    if has_critical:
-        executive_summary.append({"icon": "alert-triangle", "color": "danger", "text": "Critical failures detected in infrastructure"})
-        
-    if last_backup != 'N/A':
-        executive_summary.append({"icon": "check", "color": "success", "text": "Database backup completed successfully"})
-    else:
-        executive_summary.append({"icon": "alert-triangle", "color": "warning", "text": "No recent backups found"})
-        
-    if latency != '0 ms':
-        executive_summary.append({"icon": "check", "color": "success", "text": f"Platform latency stable at {latency}"})
+    # 5. Build ViewModel
+    dashboard = OperationsDashboard(
+        operational_score=InsightsService.calculate_operational_score(providers_dict, has_critical, has_warning),
+        insights=InsightsService.generate_predictive_insights(providers_dict, has_critical),
+        executive_summary=InsightsService.generate_executive_summary(providers_dict, has_critical),
+        quick_actions=quick_actions,
+        providers=provider_diagnostics,
+        infrastructure=infra_data,
+        business_modules={
+            'attendance': providers_dict.get('attendance'),
+            'btpl': providers_dict.get('btpl'),
+            'cof': providers_dict.get('cof'),
+            'ftl': providers_dict.get('ftl'),
+            'salary': providers_dict.get('salary'),
+            'business': providers_dict.get('business'),
+        },
+        kpi_metrics=kpi_metrics,
+        events=events
+    )
 
     context = {
-        'providers': providers_data,
-        'providers_dict': providers_dict,
-        'has_critical': has_critical,
-        'has_warning': has_warning,
-        'overall_health_score': overall_health_score,
-        'critical_messages': critical_messages,
-        'warning_messages': warning_messages,
-        'score_breakdown': score_breakdown,
-        'executive_summary': executive_summary,
-        'insights': insights,
-        'events': events,
+        'dashboard': dashboard,
+        'q': query,
+        'severity': severity
     }
     return render(request, 'core/portal/operations_center.html', context)
+

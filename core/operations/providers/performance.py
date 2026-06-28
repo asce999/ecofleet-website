@@ -1,13 +1,14 @@
 from django.core.cache import cache
 from django.utils import timezone
-from .base import BaseProvider
+from .base import BaseProvider, ProviderResult, CheckResult
 
 class PerformanceProvider(BaseProvider):
-    def __init__(self, request=None):
-        super().__init__(request)
-        self.title = "Performance metrics"
+    category = "Performance"
+    key = "performance"
+    title = "Performance metrics"
+    summary = "Rolling endpoint performance metrics."
 
-    def _fetch_data(self):
+    def _fetch_data(self) -> ProviderResult:
         status = "healthy"
         checks = []
         metrics_dict = {}
@@ -15,18 +16,14 @@ class PerformanceProvider(BaseProvider):
         # Fetch from LocMemCache
         data = cache.get('performance_metrics')
         if not data:
-            return {
-                "status": "warning",
-                "health_score": 50,
-                "title": self.title,
-                "summary": "No performance data available yet. Make some requests.",
-                "checks": [{"name": "Cache", "status": "warning", "message": "Empty"}],
-                "metrics": {"Total Requests": 0, "Avg Latency": "N/A", "Max Latency": "N/A", "95th Percentile": "N/A"},
-                "warnings": [],
-                "errors": [],
-                "technical_details": None,
-                "last_updated": timezone.now()
-            }
+            return ProviderResult(
+                status="warning",
+                health_score=50,
+                title=self.title,
+                summary="No performance data available yet. Make some requests.",
+                checks=[CheckResult(name="Cache", status="warning", message="Empty")],
+                metrics={"Total Requests": 0, "Avg Latency": "N/A", "Max Latency": "N/A", "95th Percentile": "N/A"}
+            )
             
         requests = data.get('requests', 0)
         total_time = data.get('total_time', 0.0)
@@ -52,9 +49,9 @@ class PerformanceProvider(BaseProvider):
                 
                 if p95 > 1000: # 1 second
                     status = "warning"
-                    checks.append({"name": "P95 Latency", "status": "warning", "message": "> 1000ms"})
+                    checks.append(CheckResult(name="P95 Latency", status="warning", message="> 1000ms"))
                 else:
-                    checks.append({"name": "P95 Latency", "status": "healthy", "message": "OK (< 1000ms)"})
+                    checks.append(CheckResult(name="P95 Latency", status="healthy", message="OK (< 1000ms)"))
                 
                 # Chart data for response times (up to last 15 requests)
                 chart_len = min(len(recent_chronological), 15)
@@ -64,19 +61,15 @@ class PerformanceProvider(BaseProvider):
                 metrics_dict["labels"] = []
                 metrics_dict["data"] = []
         else:
-            checks.append({"name": "Requests", "status": "warning", "message": "0 logged"})
+            checks.append(CheckResult(name="Requests", status="warning", message="0 logged"))
             metrics_dict["labels"] = []
             metrics_dict["data"] = []
             
-        return {
-            "status": status,
-            "title": self.title,
-            "summary": "Rolling endpoint performance metrics.",
-            "checks": checks,
-            "metrics": metrics_dict,
-            "health_score": 100 if status == "healthy" else (80 if status == "warning" else 0),
-            "warnings": [],
-            "errors": [],
-            "technical_details": None,
-            "last_updated": timezone.now()
-        }
+        return ProviderResult(
+            status=status,
+            title=self.title,
+            summary=self.summary,
+            checks=checks,
+            metrics=metrics_dict,
+            health_score=100 if status == "healthy" else (80 if status == "warning" else 0)
+        )

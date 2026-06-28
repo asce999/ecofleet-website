@@ -12,7 +12,7 @@ from django.conf import settings
 from django.contrib import messages
 import logging
 
-logger = logging.getLogger('core')
+logger = logging.getLogger(__name__)
 
 
 
@@ -39,10 +39,10 @@ def cof_generator(request):
                 result = cof_logic.generate_cof(data, wb_path)
             except (cof_logic.COFLockTimeout, cof_logic.WorkbookInUse,
                     cof_logic.WorkbookInvalid, cof_logic.AssetMissing) as e:
-                logger.error(f"Validation or lock error during COF generation: {e}")
+                logger.error(f"Workbook processing failure during COF generation by '{request.user.username}': {e}")
                 messages.error(request, str(e))
             except Exception as e:
-                logger.error(f"Unexpected error generating COF: {e}")
+                logger.error(f"Unexpected error generating COF by '{request.user.username}': {e}")
                 ToolRun.objects.create(
                     user=request.user, tool=ToolRun.TOOL_COF,
                     status=ToolRun.STATUS_FAILED,
@@ -58,11 +58,11 @@ def cof_generator(request):
                     run=run, label="COF document", download_name=result['docx_name'],
                     file=ContentFile(result['docx'].getvalue(), name=result['docx_name']))
                 
-                logger.info(f"COF generated successfully: {result['cof_number']}")
+                logger.info(f"Report generated: COF {result['cof_number']} by user '{request.user.username}'")
                 messages.success(request, f"{result['cof_number']} generated successfully.")
                 return redirect('cof_success', pk=run.pk)
         else:
-            logger.warning("Validation failure during COF form submission.")
+            logger.warning(f"Validation failure during COF form submission by '{request.user.username}'.")
             messages.error(request, "Please fix the highlighted fields.")
     else:
         form = CofForm()
@@ -85,20 +85,20 @@ def cof_workbook(request):
         if action == 'remove' and wb_obj:
             wb_obj.is_active = False
             wb_obj.save(update_fields=['is_active'])
+            logger.info(f"Workbook archived/removed: COF Tracker by user '{request.user.username}'")
             messages.success(request, "Active workbook removed. Upload one to continue.")
             return redirect('cof_workbook')
 
         form = WorkbookUploadForm(request.POST, request.FILES)
         if form.is_valid():
             upload = form.cleaned_data['workbook']
-            logger.info(f"COF workbook upload started: {upload.name}")
             new = CofWorkbook.objects.create(
                 file=upload, original_name=upload.name,
                 uploaded_by=request.user, is_active=False)
             try:
                 cof_logic.validate_workbook(new.file.path)
             except cof_logic.WorkbookInvalid as e:
-                logger.error(f"COF workbook validation failed for {upload.name}: {e}")
+                logger.error(f"Workbook validation failure: COF Tracker '{upload.name}' by user '{request.user.username}': {e}")
                 new.file.delete(save=False)
                 new.delete()
                 messages.error(request, str(e))
@@ -107,11 +107,11 @@ def cof_workbook(request):
             new.is_active = True
             new.save(update_fields=['is_active'])
             
-            logger.info(f"COF workbook upload completed: {upload.name}")
+            logger.info(f"Workbook uploaded: COF Tracker '{upload.name}' by user '{request.user.username}'")
             messages.success(request, f"“{upload.name}” is now the active tracking workbook.")
             return redirect('cof_generator')
         else:
-            logger.warning("COF workbook upload failed: Invalid file.")
+            logger.warning(f"Workbook validation failure: No file provided for COF upload by user '{request.user.username}'")
             messages.error(request, "Please choose a valid .xlsx file.")
     else:
         form = WorkbookUploadForm()
@@ -130,7 +130,7 @@ def cof_workbook(request):
 @staff_required
 @tool_permission_required('cof')
 def cof_success(request, pk):
-    run = get_object_or_404(ToolRun.objects.prefetch_related('files'),
+    run = get_object_or_404(ToolRun.objects.for_user(request.user).prefetch_related('files'),
                             pk=pk, tool=ToolRun.TOOL_COF, status=ToolRun.STATUS_SUCCESS)
     return render(request, 'core/portal/cof_success.html', {'active': 'cof', 'run': run})
 
@@ -164,6 +164,7 @@ def cof_workbook_download(request):
     wb_obj = CofWorkbook.active()
     if not wb_obj:
         raise Http404("No active workbook.")
+    logger.info(f"Report downloaded: COF Tracker by user '{request.user.username}'")
     return FileResponse(wb_obj.file.open('rb'), as_attachment=True,
                         filename=wb_obj.original_name)
 

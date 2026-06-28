@@ -6,7 +6,7 @@ from . import cof
 import zipfile
 import logging
 
-logger = logging.getLogger('core')
+logger = logging.getLogger(__name__)
 
 def validate_xlsx_upload(f):
     if not f:

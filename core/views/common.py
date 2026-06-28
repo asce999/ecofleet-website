@@ -10,7 +10,7 @@ from django.shortcuts import redirect
 
 @staff_required
 def download_file(request, file_id):
-    f = get_object_or_404(ToolRunFile, pk=file_id)
+    f = get_object_or_404(ToolRunFile.objects.filter(run__in=ToolRun.objects.for_user(request.user)), pk=file_id)
     if not f.file:
         raise Http404("File not available.")
 
@@ -35,7 +35,7 @@ def download_file(request, file_id):
 
 @staff_required
 def tool_result(request, pk):
-    run = get_object_or_404(ToolRun.objects.prefetch_related('files'),
+    run = get_object_or_404(ToolRun.objects.for_user(request.user).prefetch_related('files'),
                             pk=pk, status=ToolRun.STATUS_SUCCESS)
     tool_map = {
         'COF': 'cof',

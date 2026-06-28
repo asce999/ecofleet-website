@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.core.exceptions import ObjectDoesNotExist
 
 
 class Pincode(models.Model):
@@ -10,6 +11,18 @@ class Pincode(models.Model):
 
     def __str__(self):
         return f"{self.pin} - {self.city} ({self.location_type})"
+
+
+class ToolRunQuerySet(models.QuerySet):
+    def for_user(self, user):
+        if not user.is_authenticated:
+            return self.none()
+        try:
+            if user.profile.role == 'Director':
+                return self
+        except ObjectDoesNotExist:
+            pass
+        return self.filter(user=user)
 
 
 class ToolRun(models.Model):
@@ -52,6 +65,8 @@ class ToolRun(models.Model):
     output_file = models.FileField(upload_to='tool_outputs/%Y/%m/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    objects = ToolRunQuerySet.as_manager()
+
     class Meta:
         ordering = ['-created_at']
 
@@ -71,6 +86,7 @@ class ToolRunFile(models.Model):
         ordering = ['id']
 
     def __str__(self):
+        """e.g. 'Morning Report Output (42)'"""
         return f"{self.label} ({self.run_id})"
 
 

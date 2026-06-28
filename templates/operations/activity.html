@@ -1,16 +1,29 @@
 <div class="portal-card">
-    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
-        <i class="ti ti-activity" style="font-size: 20px; color: var(--cyan);"></i>
-        <h2 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text);">Activity Timeline</h2>
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <i class="ti ti-activity" style="font-size: 20px; color: var(--cyan);"></i>
+            <h2 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text);">Activity Timeline</h2>
+        </div>
+        
+        <form method="GET" action="." style="display: flex; gap: 8px; align-items: center;">
+            <input type="text" name="q" placeholder="Search events..." value="{{ q }}" style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font-size: 13px;">
+            <select name="severity" style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font-size: 13px;">
+                <option value="all" {% if severity == 'all' or not severity %}selected{% endif %}>All Severities</option>
+                <option value="info" {% if severity == 'info' %}selected{% endif %}>Info</option>
+                <option value="warning" {% if severity == 'warning' %}selected{% endif %}>Warning</option>
+                <option value="error" {% if severity == 'error' %}selected{% endif %}>Error</option>
+            </select>
+            <button type="submit" style="padding: 6px 12px; background: var(--primary); color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 13px; cursor: pointer;">Filter</button>
+        </form>
     </div>
     
-    {% if events %}
+    {% if dashboard.events %}
         <div style="position: relative; margin-top: 14px;">
-            {% for event in events %}
+            {% for event in dashboard.events %}
                 {% include "components/timeline_item.html" with event=event is_last=forloop.last %}
             {% endfor %}
         </div>
     {% else %}
-        {% include "components/empty_state.html" with message="No recent system events." icon="list" %}
+        {% include "components/empty_state.html" with message="No system events match your criteria." icon="list" %}
     {% endif %}
 </div>

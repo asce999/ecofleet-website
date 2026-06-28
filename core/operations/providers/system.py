@@ -1,15 +1,16 @@
 import sys
 from django.conf import settings
 from django.utils import timezone
-from .base import BaseProvider
+from .base import BaseProvider, ProviderResult, CheckResult
 import django
 
 class SystemProvider(BaseProvider):
-    def __init__(self, request=None):
-        super().__init__(request)
-        self.title = "System Health"
+    category = "Infrastructure"
+    key = "system"
+    title = "System Health"
+    summary = "Core application framework health"
 
-    def _fetch_data(self):
+    def _fetch_data(self) -> ProviderResult:
         status = "healthy"
         
         metrics = {
@@ -21,21 +22,17 @@ class SystemProvider(BaseProvider):
         
         checks = []
         if settings.DEBUG:
-            checks.append({"name": "Production Settings", "status": "warning", "message": "DEBUG is True"})
+            checks.append(CheckResult(name="Production Settings", status="warning", message="DEBUG is True"))
             if metrics["Environment"] == "production":
                 status = "warning"
         else:
-            checks.append({"name": "Production Settings", "status": "healthy", "message": "DEBUG is False"})
+            checks.append(CheckResult(name="Production Settings", status="healthy", message="DEBUG is False"))
 
-        return {
-            "status": status,
-            "title": self.title,
-            "summary": "Core application framework health",
-            "checks": checks,
-            "metrics": metrics,
-            "health_score": 100 if status == "healthy" else (80 if status == "warning" else 0),
-            "warnings": [],
-            "errors": [],
-            "technical_details": None,
-            "last_updated": timezone.now()
-        }
+        return ProviderResult(
+            status=status,
+            title=self.title,
+            summary=self.summary,
+            checks=checks,
+            metrics=metrics,
+            health_score=100 if status == "healthy" else (80 if status == "warning" else 0)
+        )

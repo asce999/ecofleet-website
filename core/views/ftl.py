@@ -11,7 +11,7 @@ from django.contrib import messages
 from django.conf import settings
 import logging
 
-logger = logging.getLogger('core')
+logger = logging.getLogger(__name__)
 
 
 
@@ -113,7 +113,6 @@ def ftl_api(request):
                     reference=f"LR: {row_data.get('lr_number') or ''}",
                     detail=f"Row: {target_row} · Sheet: {sheet_name} · Vehicle: {row_data.get('vehicle_number') or ''}"
                 )
-                logger.info(f"FTL generated for LR: {row_data.get('lr_number')}")
                 return JsonResponse({'success': True, 'run_id': run.pk, 'row': target_row})
             except Exception as e:
                 logger.error(f"Error generating FTL row {target_row}: {e}")
@@ -126,7 +125,7 @@ def ftl_api(request):
                 return JsonResponse({'error': str(e)}, status=500)
         else:
             errors = {k: v[0] for k, v in form.errors.items()}
-            logger.warning(f"Validation failure during FTL generation: {errors}")
+            logger.warning(f"Workbook validation failure during FTL processing by {request.user.username}: {errors}")
             return JsonResponse({'error': 'Validation failed', 'field_errors': errors}, status=400)
 
     # POST: delete row
@@ -160,12 +159,16 @@ def ftl_api(request):
 @staff_required
 @tool_permission_required('ftl')
 def ftl_download(request):
+    from core.services.workbook_manager import WorkbookManager
     wb_obj, file_path, sheet_name = get_active_ftl_workbook()
-    if not file_path or not os.path.exists(file_path):
+    
+    stream = WorkbookManager.get_file_stream(wb_obj, 'FTL_Shipment_Tracker.xlsx')
+    if not stream:
         raise Http404("FTL Shipment Tracker file not found.")
     
     filename = wb_obj.original_name if wb_obj else "FTL_Shipment_Tracker.xlsx"
-    response = FileResponse(open(file_path, 'rb'), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    logger.info(f"Report downloaded: FTL Tracker '{filename}' by user '{request.user.username}'")
+    response = FileResponse(stream, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 
@@ -176,14 +179,10 @@ def ftl_settings(request):
     """Manage active FTL shipment workbook and active sheet tab."""
     wb_obj, file_path, current_sheet_name = get_active_ftl_workbook()
     
-    sheets = []
-    if file_path and os.path.exists(file_path):
-        try:
-            import openpyxl
-            wb = openpyxl.load_workbook(file_path, read_only=True)
-            sheets = wb.sheetnames
-        except Exception:
-            sheets = ['Sheet1']
+    from core.services.sheet_parser import get_sheet_names
+    sheets = get_sheet_names(file_path)
+    if not sheets:
+        sheets = ['Sheet1']
     else:
         sheets = ['Sheet1']
         
@@ -199,18 +198,16 @@ def ftl_settings(request):
                     uploaded_by=request.user,
                     is_active=False
                 )
+            logger.info(f"Workbook archived/removed: FTL Tracker by user '{request.user.username}'")
             messages.success(request, "FTL shipment sheet removed entirely. Portal is now in empty state.")
             return redirect('ftl_settings')
             
         elif action == 'load_default':
-            import shutil
-            root_file_path = os.path.join(settings.BASE_DIR, 'FTL_Shipment_Tracker.xlsx')
-            target_dir = os.path.join(settings.MEDIA_ROOT, 'ftl')
-            os.makedirs(target_dir, exist_ok=True)
-            dest_path = os.path.join(target_dir, 'FTL_Shipment_Tracker.xlsx')
-            shutil.copy2(root_file_path, dest_path)
+            from core.services.workbook_manager import WorkbookManager
             
             FtlWorkbook.objects.filter(is_active=True).update(is_active=False)
+            
+            file_name = WorkbookManager.load_default_template('ftl', 'FTL_Shipment_Tracker.xlsx')
             
             wb_obj = FtlWorkbook.objects.create(
                 original_name='FTL_Shipment_Tracker.xlsx',
@@ -218,9 +215,10 @@ def ftl_settings(request):
                 uploaded_by=request.user,
                 is_active=True
             )
-            wb_obj.file.name = 'ftl/FTL_Shipment_Tracker.xlsx'
+            wb_obj.file.name = file_name
             wb_obj.save(update_fields=['file'])
             
+            logger.info(f"Workbook activated: Default FTL Tracker loaded by user '{request.user.username}'")
             messages.success(request, "Default FTL shipment workbook loaded successfully.")
             return redirect('ftl_settings')
             
@@ -232,12 +230,8 @@ def ftl_settings(request):
                     wb_obj.active_sheet = sheet_sel
                     wb_obj.save(update_fields=['active_sheet'])
                 else:
-                    import shutil
-                    root_file_path = os.path.join(settings.BASE_DIR, 'FTL_Shipment_Tracker.xlsx')
-                    target_dir = os.path.join(settings.MEDIA_ROOT, 'ftl')
-                    os.makedirs(target_dir, exist_ok=True)
-                    dest_path = os.path.join(target_dir, 'FTL_Shipment_Tracker.xlsx')
-                    shutil.copy2(root_file_path, dest_path)
+                    from core.services.workbook_manager import WorkbookManager
+                    file_name = WorkbookManager.load_default_template('ftl', 'FTL_Shipment_Tracker.xlsx')
                     
                     wb_obj = FtlWorkbook.objects.create(
                         original_name='FTL_Shipment_Tracker.xlsx',
@@ -245,7 +239,7 @@ def ftl_settings(request):
                         uploaded_by=request.user,
                         is_active=True
                     )
-                    wb_obj.file.name = 'ftl/FTL_Shipment_Tracker.xlsx'
+                    wb_obj.file.name = file_name
                     wb_obj.save(update_fields=['file'])
                     
                 messages.success(request, f"Active sheet tab changed to '{sheet_sel}'.")
@@ -256,33 +250,26 @@ def ftl_settings(request):
             if form.is_valid():
                 upload = request.FILES.get('workbook')
                 if upload:
-                    logger.info(f"FTL upload started: {upload.name}")
                     new_wb = FtlWorkbook.objects.create(
                         file=upload, original_name=upload.name,
                         uploaded_by=request.user, is_active=False
                     )
-                    
-                    try:
-                        import openpyxl
-                        temp_wb = openpyxl.load_workbook(new_wb.file.path, read_only=True)
-                        uploaded_sheets = temp_wb.sheetnames
-                        default_sheet = uploaded_sheets[0] if uploaded_sheets else 'Sheet1'
-                    except Exception as e:
-                        logger.error(f"Excel parsing failed for FTL {upload.name}: {e}")
-                        default_sheet = 'Sheet1'
-                        
-                    new_wb.active_sheet = default_sheet
-                    new_wb.save(update_fields=['active_sheet'])
+                    from core.services.sheet_parser import get_sheet_names
+                    if new_wb.file:
+                        sheetnames = get_sheet_names(new_wb.file.path)
+                        if sheetnames:
+                            new_wb.active_sheet = sheetnames[0]
+                            new_wb.save(update_fields=['active_sheet'])
                     
                     FtlWorkbook.objects.filter(is_active=True).update(is_active=False)
                     new_wb.is_active = True
                     new_wb.save(update_fields=['is_active'])
                     
-                    logger.info(f"FTL upload completed: {upload.name}")
+                    logger.info(f"Workbook uploaded: FTL Tracker '{upload.name}' by user '{request.user.username}'")
                     messages.success(request, f"Uploaded workbook '{upload.name}' is now the active FTL shipment workbook.")
                     return redirect('ftl_settings')
                 else:
-                    logger.warning("FTL file upload failed: No file provided.")
+                    logger.warning(f"Workbook validation failure: No file provided for FTL upload by user '{request.user.username}'")
                     messages.error(request, "Please choose a valid .xlsx file to upload.")
     else:
         form = FtlWorkbookUploadForm(initial={'active_sheet': current_sheet_name}, sheets=sheets)

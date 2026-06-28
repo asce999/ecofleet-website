@@ -327,3 +327,69 @@ def clear_ftl_row(file_path, row, sheet_name='Sheet1'):
             sheet.cell(row=row, column=col).value = None
             
     wb.save(file_path)
+
+def get_cached_ftl_metrics(ftl_wb_obj, ftl_file_path, ftl_sheet_name):
+    import os
+    from django.core.cache import cache
+    from pathlib import Path
+    
+    ftl_total = 0
+    ftl_delivered = 0
+    ftl_in_transit = 0
+    ftl_vendors = 0
+    
+    cache_key = None
+    if ftl_wb_obj and ftl_file_path and Path(ftl_file_path).exists():
+        mtime = os.path.getmtime(ftl_file_path)
+        cache_key = f'ftl_metrics_active_{ftl_wb_obj.id}_{mtime}'
+        
+    cached_metrics = cache.get(cache_key) if cache_key else None
+    if cached_metrics:
+        return cached_metrics
+        
+    if ftl_file_path and Path(ftl_file_path).exists():
+        try:
+            import openpyxl
+            wb_ftl = openpyxl.load_workbook(ftl_file_path, read_only=True)
+            if ftl_sheet_name in wb_ftl.sheetnames:
+                sheet_ftl = wb_ftl[ftl_sheet_name]
+                mapping_ftl = get_column_mapping(sheet_ftl)
+                vendors_set = set()
+                del_col = mapping_ftl.get('delivery_date')
+                etd_col = mapping_ftl.get('etd')
+                vendor_col = mapping_ftl.get('vendor')
+                
+                for r in range(2, sheet_ftl.max_row + 1):
+                    has_data = False
+                    for key in ['booking_date', 'lr_number', 'consignee', 'vehicle_number']:
+                        col = mapping_ftl.get(key)
+                        if col:
+                            val = sheet_ftl.cell(row=r, column=col).value
+                            if val is not None and str(val).strip() != '':
+                                has_data = True
+                                break
+                    if not has_data:
+                        continue
+                        
+                    ftl_total += 1
+                    del_val = sheet_ftl.cell(row=r, column=del_col).value if del_col else None
+                    etd_val = sheet_ftl.cell(row=r, column=etd_col).value if etd_col else None
+                    
+                    status = derive_status(etd_val, del_val)
+                    if status == 'Delivered':
+                        ftl_delivered += 1
+                    elif status == 'In Transit':
+                        ftl_in_transit += 1
+                        
+                    v_val = sheet_ftl.cell(row=r, column=vendor_col).value if vendor_col else None
+                    if v_val is not None and str(v_val).strip() != '':
+                        vendors_set.add(str(v_val).strip())
+                ftl_vendors = len(vendors_set)
+                
+                if cache_key:
+                    cache.set(cache_key, (ftl_total, ftl_delivered, ftl_in_transit, ftl_vendors), timeout=900)
+        except Exception:
+            pass
+            
+    return ftl_total, ftl_delivered, ftl_in_transit, ftl_vendors
+

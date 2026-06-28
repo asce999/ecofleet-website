@@ -37,4 +37,13 @@
     <button type="submit" class="btn-primary"><i class="ti ti-history"></i> Run Previous Month Update</button>
   </div>
 </form>
+
+<script>
+document.querySelector('form').addEventListener('submit', function(e) {
+    const btn = this.querySelector('button[type="submit"]');
+    if (!btn) return;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ti ti-loader-2 animate-spin"></i> Processing…';
+});
+</script>
 {% endblock %}

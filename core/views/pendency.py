@@ -127,7 +127,7 @@ def pendency_observations(request, pk):
     """Override / fill the Observation column of an existing pendency report by
     uploading one or more observation CSVs, matched strictly by LR Number."""
     run = get_object_or_404(
-        ToolRun.objects.prefetch_related('files'),
+        ToolRun.objects.for_user(request.user).prefetch_related('files'),
         pk=pk, tool=ToolRun.TOOL_PENDENCY, status=ToolRun.STATUS_SUCCESS)
     current = run.files.last()  # newest report (original, or a prior override)
     if not current or not current.file:

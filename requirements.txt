@@ -8,3 +8,4 @@ sentry-sdk==2.63.0
 python-dotenv==1.2.2
 defusedxml==0.7.1
 django-csp==3.7
+django-axes==6.5.0

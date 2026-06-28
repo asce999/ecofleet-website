@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+from django.core.exceptions import ImproperlyConfigured
 import os
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
@@ -58,6 +59,23 @@ APPEND_SLASH = True
 
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
+# ── CSRF Trusted Origins (ENG-03) ──
+_raw_csrf_origins = os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '')
+CSRF_TRUSTED_ORIGINS = []
+if _raw_csrf_origins:
+    _origins = _raw_csrf_origins.split(',')
+    _seen = set()
+    for o in _origins:
+        o_clean = o.strip()
+        if not o_clean:
+            continue
+        if o_clean in _seen:
+            continue
+        if not (o_clean.startswith('http://') or o_clean.startswith('https://')):
+            raise ImproperlyConfigured(f"Invalid CSRF origin '{o_clean}'. Must start with http:// or https://")
+        _seen.add(o_clean)
+        CSRF_TRUSTED_ORIGINS.append(o_clean)
+
 
 # Application definition
 
@@ -66,12 +84,14 @@ INSTALLED_APPS = [
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
+    'axes',
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'core',
 ]
 
 MIDDLEWARE = [
+    'axes.middleware.AxesMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -81,13 +101,12 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'csp.middleware.CSPMiddleware',
-    'core.middleware.RequestIDMiddleware',
     'core.middleware.PerformanceMiddleware',
 ]
 
 # ── Content Security Policy ──
 CSP_DEFAULT_SRC = ("'self'",)
-CSP_FONT_SRC = ("'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com")
+CSP_FONT_SRC = ("'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net")
 # TODO(SECURITY): Refactor inline scripts and styles into external files or use nonces.
 # 'unsafe-inline' is currently required for Chart.js tooltips and dynamic template styles,
 # but it undermines CSP protection against XSS.
@@ -146,6 +165,12 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# ── Authentication backends ──
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
@@ -189,16 +214,13 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'filters': {
-        'request_id': {
-            '()': 'core.logging_filters.RequestIDFilter',
-        },
         'require_debug_false': {
             '()': 'django.utils.log.RequireDebugFalse',
         },
     },
     'formatters': {
         'standard': {
-            'format': '[{asctime}] {levelname} [{name}.{funcName}] {message} [ReqID: {request_id}]',
+            'format': '[{asctime}] {levelname} [{name}] {message}',
             'style': '{',
             'datefmt': '%Y-%m-%d %H:%M:%S',
         },
@@ -207,7 +229,6 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'standard',
-            'filters': ['request_id'],
         },
         'file_app': {
             'class': 'logging.handlers.TimedRotatingFileHandler',
@@ -216,7 +237,6 @@ LOGGING = {
             'interval': 1,
             'backupCount': 30,
             'formatter': 'standard',
-            'filters': ['request_id'],
             'level': 'INFO',
         },
         'file_error': {
@@ -226,7 +246,6 @@ LOGGING = {
             'interval': 1,
             'backupCount': 30,
             'formatter': 'standard',
-            'filters': ['request_id'],
             'level': 'ERROR',
         },
         'file_security': {
@@ -236,7 +255,6 @@ LOGGING = {
             'interval': 1,
             'backupCount': 30,
             'formatter': 'standard',
-            'filters': ['request_id'],
             'level': 'INFO',
         },
         'mail_admins': {
@@ -267,8 +285,22 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'core.decorators': {
+            'handlers': ['file_security', 'mail_admins'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'core.views.portal_auth': {
+            'handlers': ['file_security', 'mail_admins'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }
+
+if DEBUG:
+    for logger_name, logger_dict in LOGGING['loggers'].items():
+        logger_dict['handlers'] = ['console']
 
 # ── Email & Admins ──
 ADMIN_EMAIL = os.getenv('ADMIN_EMAIL')
@@ -301,5 +333,13 @@ if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760
+
+# ── BRUTE FORCE PROTECTION (django-axes) ──
+AXES_FAILURE_LIMIT = 5               # lock after 5 failed attempts
+AXES_COOLOFF_TIME = 1                # lockout lasts 1 hour
+AXES_LOCKOUT_PARAMETERS = ['username', 'ip_address']  # lock by both
+AXES_RESET_ON_SUCCESS = True         # clear failures on successful login
+AXES_ENABLE_ADMIN = False            # don't protect /efe-internal-2026/ separately
+AXES_VERBOSE = False                 # suppress debug output
 
 NGINX_ACCEL_REDIRECT = os.environ.get('NGINX_ACCEL_REDIRECT', 'False') == 'True'

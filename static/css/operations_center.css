@@ -297,6 +297,7 @@
 
 .ops-timeline-content {
     flex-grow: 1;
+    min-width: 0; /* allow flex/grid child to shrink so long strings wrap instead of overflowing */
     padding-top: 6px;
 }
 
@@ -325,6 +326,7 @@
     color: var(--muted);
     margin-top: 4px;
     line-height: 1.5;
+    overflow-wrap: anywhere; /* break long unbroken paths/tokens instead of overflowing */
 }
 
 .ops-timeline-details {

@@ -2,29 +2,30 @@ import os
 import datetime
 from django.conf import settings
 from django.utils import timezone
-from .base import BaseProvider
+from .base import BaseProvider, ProviderResult, CheckResult
 from core.models import SystemEvent
 
 class BackupsProvider(BaseProvider):
-    def __init__(self, request=None):
-        super().__init__(request)
-        self.title = "Backups"
+    category = "Storage & Backups"
+    key = "backups"
+    title = "Backups"
+    summary = "Automated database backup status"
 
-    def _fetch_data(self):
+    def _fetch_data(self) -> ProviderResult:
         status = "healthy"
         checks = []
         metrics = {}
         
         backup_dir = os.path.join(settings.BASE_DIR, 'backups')
         if not os.path.exists(backup_dir):
-            return {
-                "status": "warning",
-                "title": self.title,
-                "summary": "Backup directory does not exist yet.",
-                "checks": [{"name": "Directory", "status": "warning", "message": "Missing"}],
-                "metrics": {"Total Backups": 0},
-                "last_updated": timezone.now()
-            }
+            return ProviderResult(
+                status="warning",
+                title=self.title,
+                summary="Backup directory does not exist yet.",
+                checks=[CheckResult(name="Directory", status="warning", message="Missing")],
+                metrics={"Total Backups": 0},
+                health_score=80
+            )
             
         all_backups = sorted(
             [f for f in os.listdir(backup_dir) if f.startswith('ecofleet_') and f.endswith('.sqlite3.gz')],
@@ -35,7 +36,7 @@ class BackupsProvider(BaseProvider):
         
         if not all_backups:
             status = "warning"
-            checks.append({"name": "Recent Backup", "status": "warning", "message": "No backups found"})
+            checks.append(CheckResult(name="Recent Backup", status="warning", message="No backups found"))
             metrics["Latest Backup"] = "None"
         else:
             latest = all_backups[0]
@@ -50,9 +51,9 @@ class BackupsProvider(BaseProvider):
             # Check if backup is older than 24 hours
             if (datetime.datetime.now() - dt).total_seconds() > 86400:
                 status = "warning"
-                checks.append({"name": "Freshness", "status": "warning", "message": "> 24h old"})
+                checks.append(CheckResult(name="Freshness", status="warning", message="> 24h old"))
             else:
-                checks.append({"name": "Freshness", "status": "healthy", "message": "OK (< 24h)"})
+                checks.append(CheckResult(name="Freshness", status="healthy", message="OK (< 24h)"))
 
         # Check for backup failures
         recent_failures = SystemEvent.objects.filter(
@@ -63,17 +64,13 @@ class BackupsProvider(BaseProvider):
         
         if recent_failures > 0:
             status = "critical"
-            checks.append({"name": "Failures", "status": "critical", "message": f"{recent_failures} failures in 24h"})
+            checks.append(CheckResult(name="Failures", status="critical", message=f"{recent_failures} failures in 24h"))
             
-        return {
-            "status": status,
-            "title": self.title,
-            "summary": "Automated database backup status",
-            "checks": checks,
-            "metrics": metrics,
-            "health_score": 100 if status == "healthy" else (80 if status == "warning" else 0),
-            "warnings": [],
-            "errors": [],
-            "technical_details": None,
-            "last_updated": timezone.now()
-        }
+        return ProviderResult(
+            status=status,
+            title=self.title,
+            summary=self.summary,
+            checks=checks,
+            metrics=metrics,
+            health_score=100 if status == "healthy" else (80 if status == "warning" else 0)
+        )

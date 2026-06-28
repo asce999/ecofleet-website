@@ -1,25 +1,4 @@
-import uuid
-import threading
 
-_local = threading.local()
-
-def get_request_id():
-    return getattr(_local, 'request_id', '-')
-
-class RequestIDMiddleware:
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        request_id = str(uuid.uuid4())
-        _local.request_id = request_id
-        request.id = request_id
-        
-        response = self.get_response(request)
-        
-        # Add the request ID to the response headers for tracking
-        response['X-Request-ID'] = request_id
-        return response
 
 import time
 from django.core.cache import cache

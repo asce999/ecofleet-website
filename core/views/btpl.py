@@ -13,7 +13,7 @@ from django.contrib import messages
 from django.conf import settings
 import logging
 
-logger = logging.getLogger('core')
+logger = logging.getLogger(__name__)
 
 
 
@@ -119,7 +119,6 @@ def btpl_api(request):
                     reference=f"LR: {row_data.get('lr_number') or ''}",
                     detail=f"Row: {target_row} · Sheet: {sheet_name} · Consignee: {row_data.get('name') or ''}"
                 )
-                logger.info(f"BTPL generated for LR: {row_data.get('lr_number')}")
                 return JsonResponse({'success': True, 'run_id': run.pk, 'row': target_row})
             except Exception as e:
                 logger.error(f"Error generating BTPL row {target_row}: {e}")
@@ -132,7 +131,7 @@ def btpl_api(request):
                 return JsonResponse({'error': str(e)}, status=500)
         else:
             errors = {k: v[0] for k, v in form.errors.items()}
-            logger.warning(f"Validation failure during BTPL generation: {errors}")
+            logger.warning(f"Workbook validation failure during BTPL processing by '{request.user.username}': {errors}")
             return JsonResponse({'error': 'Validation failed', 'field_errors': errors}, status=400)
 
     # POST: delete row
@@ -167,12 +166,16 @@ def btpl_api(request):
 @staff_required
 @tool_permission_required('btpl')
 def btpl_download(request):
+    from core.services.workbook_manager import WorkbookManager
     wb_obj, file_path, sheet_name = get_active_btpl_workbook()
-    if not file_path or not os.path.exists(file_path):
+    
+    stream = WorkbookManager.get_file_stream(wb_obj, 'BTPL_Shipments.xlsx')
+    if not stream:
         raise Http404("BTPL Shipments file not found.")
     
     filename = wb_obj.original_name if wb_obj else "BTPL_Shipments.xlsx"
-    response = FileResponse(open(file_path, 'rb'), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    logger.info(f"Report downloaded: BTPL Shipments '{filename}' by user '{request.user.username}'")
+    response = FileResponse(stream, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 
@@ -184,14 +187,10 @@ def btpl_settings(request):
     wb_obj, file_path, current_sheet_name = get_active_btpl_workbook()
     
     # Read sheets from Excel if file_path exists
-    sheets = []
-    if file_path:
-        try:
-            import openpyxl
-            wb = openpyxl.load_workbook(file_path, read_only=True)
-            sheets = wb.sheetnames
-        except Exception:
-            sheets = ['JUN 26']
+    from core.services.sheet_parser import get_sheet_names
+    sheets = get_sheet_names(file_path)
+    if not sheets:
+        sheets = ['JUN 26']
     else:
         sheets = ['JUN 26']
         
@@ -207,19 +206,17 @@ def btpl_settings(request):
                     uploaded_by=request.user,
                     is_active=False
                 )
+            logger.info(f"Workbook archived/removed: BTPL Tracker by user '{request.user.username}'")
             messages.success(request, "BTPL shipment sheet removed entirely. Portal is now in empty state.")
             return redirect('btpl_settings')
             
         elif action == 'load_default':
-            import shutil
-            root_file_path = os.path.join(settings.BASE_DIR, 'BTPL_Shipments.xlsx')
-            target_dir = os.path.join(settings.MEDIA_ROOT, 'btpl')
-            os.makedirs(target_dir, exist_ok=True)
-            dest_path = os.path.join(target_dir, 'BTPL_Shipments.xlsx')
-            shutil.copy2(root_file_path, dest_path)
+            from core.services.workbook_manager import WorkbookManager
             
             # Deactivate any existing
             BtplWorkbook.objects.filter(is_active=True).update(is_active=False)
+            
+            file_name = WorkbookManager.load_default_template('btpl', 'BTPL_Shipments.xlsx')
             
             wb_obj = BtplWorkbook.objects.create(
                 original_name='BTPL_Shipments.xlsx',
@@ -227,9 +224,10 @@ def btpl_settings(request):
                 uploaded_by=request.user,
                 is_active=True
             )
-            wb_obj.file.name = 'btpl/BTPL_Shipments.xlsx'
+            wb_obj.file.name = file_name
             wb_obj.save(update_fields=['file'])
             
+            logger.info(f"Workbook activated: Default BTPL Tracker loaded by user '{request.user.username}'")
             messages.success(request, "Default BTPL shipment workbook loaded successfully.")
             return redirect('btpl_settings')
             
@@ -242,12 +240,8 @@ def btpl_settings(request):
                     wb_obj.save(update_fields=['active_sheet'])
                 else:
                     # Copy root file to media directory and register in database
-                    import shutil
-                    root_file_path = os.path.join(settings.BASE_DIR, 'BTPL_Shipments.xlsx')
-                    target_dir = os.path.join(settings.MEDIA_ROOT, 'btpl')
-                    os.makedirs(target_dir, exist_ok=True)
-                    dest_path = os.path.join(target_dir, 'BTPL_Shipments.xlsx')
-                    shutil.copy2(root_file_path, dest_path)
+                    from core.services.workbook_manager import WorkbookManager
+                    file_name = WorkbookManager.load_default_template('btpl', 'BTPL_Shipments.xlsx')
                     
                     wb_obj = BtplWorkbook.objects.create(
                         original_name='BTPL_Shipments.xlsx',
@@ -255,7 +249,7 @@ def btpl_settings(request):
                         uploaded_by=request.user,
                         is_active=True
                     )
-                    wb_obj.file.name = 'btpl/BTPL_Shipments.xlsx'
+                    wb_obj.file.name = file_name
                     wb_obj.save(update_fields=['file'])
                     
                 messages.success(request, f"Active sheet tab changed to '{sheet_sel}'.")
@@ -266,7 +260,6 @@ def btpl_settings(request):
             if form.is_valid():
                 upload = request.FILES.get('workbook')
                 if upload:
-                    logger.info(f"BTPL upload started: {upload.name}")
                     # Create new workbook record
                     new_wb = BtplWorkbook.objects.create(
                         file=upload, original_name=upload.name,
@@ -274,28 +267,23 @@ def btpl_settings(request):
                     )
                     
                     # Read sheets from the uploaded workbook to set default active sheet
-                    try:
-                        import openpyxl
-                        temp_wb = openpyxl.load_workbook(new_wb.file.path, read_only=True)
-                        uploaded_sheets = temp_wb.sheetnames
-                        default_sheet = uploaded_sheets[0] if uploaded_sheets else 'JUN 26'
-                    except Exception as e:
-                        logger.error(f"Excel parsing failed for BTPL {upload.name}: {e}")
-                        default_sheet = 'JUN 26'
-                        
-                    new_wb.active_sheet = default_sheet
-                    new_wb.save(update_fields=['active_sheet'])
+                    from core.services.sheet_parser import get_sheet_names
+                    if new_wb.file:
+                        sheetnames = get_sheet_names(new_wb.file.path)
+                        if sheetnames:
+                            new_wb.active_sheet = sheetnames[0]
+                            new_wb.save(update_fields=['active_sheet'])
                     
                     # Deactivate existing active workbook
                     BtplWorkbook.objects.filter(is_active=True).update(is_active=False)
                     new_wb.is_active = True
                     new_wb.save(update_fields=['is_active'])
                     
-                    logger.info(f"BTPL upload completed: {upload.name}")
+                    logger.info(f"Workbook uploaded: BTPL Tracker '{upload.name}' by user '{request.user.username}'")
                     messages.success(request, f"Uploaded workbook '{upload.name}' is now the active BTPL shipment workbook.")
                     return redirect('btpl_settings')
                 else:
-                    logger.warning("BTPL file upload failed: No file provided.")
+                    logger.warning(f"Workbook validation failure: No file provided for BTPL upload by user '{request.user.username}'")
                     messages.error(request, "Please choose a valid .xlsx file to upload.")
     else:
         form = BtplWorkbookUploadForm(initial={'active_sheet': current_sheet_name}, sheets=sheets)

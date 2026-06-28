@@ -1,14 +1,15 @@
 import os
 from django.conf import settings
 from django.utils import timezone
-from .base import BaseProvider
+from .base import BaseProvider, ProviderResult, CheckResult
 
 class StorageProvider(BaseProvider):
-    def __init__(self, request=None):
-        super().__init__(request)
-        self.title = "Storage & Media"
+    category = "Storage & Backups"
+    key = "storage"
+    title = "Storage & Media"
+    summary = "File storage, static assets, and media."
 
-    def _fetch_data(self):
+    def _fetch_data(self) -> ProviderResult:
         status = "healthy"
         checks = []
         metrics = {}
@@ -16,7 +17,7 @@ class StorageProvider(BaseProvider):
         # Check media directory
         media_path = settings.MEDIA_ROOT
         if os.path.exists(media_path) and os.access(media_path, os.W_OK):
-            checks.append({"name": "Media Directory Writable", "status": "healthy", "message": "OK"})
+            checks.append(CheckResult(name="Media Directory Writable", status="healthy", message="OK"))
             
             # Count files and size
             total_size = 0
@@ -32,18 +33,18 @@ class StorageProvider(BaseProvider):
             metrics["Media Size"] = f"{total_size / (1024*1024):.2f} MB"
         else:
             status = "critical"
-            checks.append({"name": "Media Directory", "status": "critical", "message": "Missing or Read-Only"})
+            checks.append(CheckResult(name="Media Directory", status="critical", message="Missing or Read-Only"))
 
         # Static Directory
         static_path = settings.STATIC_ROOT or (settings.STATICFILES_DIRS[0] if settings.STATICFILES_DIRS else None)
         if static_path and os.path.exists(static_path):
-            checks.append({"name": "Static Directory", "status": "healthy", "message": "OK"})
+            checks.append(CheckResult(name="Static Directory", status="healthy", message="OK"))
         else:
             if settings.DEBUG:
-                checks.append({"name": "Static Directory", "status": "warning", "message": "Missing (Ignored in dev)"})
+                checks.append(CheckResult(name="Static Directory", status="warning", message="Missing (Ignored in dev)"))
             else:
                 status = "warning"
-                checks.append({"name": "Static Directory", "status": "warning", "message": "Missing in production"})
+                checks.append(CheckResult(name="Static Directory", status="warning", message="Missing in production"))
                 
         # Server Disk Space (Windows)
         import shutil
@@ -54,9 +55,9 @@ class StorageProvider(BaseProvider):
         # If less than 10% free, warning
         if (free / total) < 0.1:
             status = "critical" if status == "critical" else "warning"
-            checks.append({"name": "Disk Space", "status": "warning", "message": "< 10% free space"})
+            checks.append(CheckResult(name="Disk Space", status="warning", message="< 10% free space"))
         else:
-            checks.append({"name": "Disk Space", "status": "healthy", "message": "OK"})
+            checks.append(CheckResult(name="Disk Space", status="healthy", message="OK"))
 
         # Chart labels and data (Doughnut)
         metrics["labels"] = ["Used Space (GB)", "Free Space (GB)"]
@@ -65,15 +66,11 @@ class StorageProvider(BaseProvider):
             round(free / (1024**3), 2)
         ]
 
-        return {
-            "status": status,
-            "title": self.title,
-            "summary": "File storage, static assets, and media.",
-            "checks": checks,
-            "metrics": metrics,
-            "health_score": 100 if status == "healthy" else (80 if status == "warning" else 0),
-            "warnings": [],
-            "errors": [],
-            "technical_details": None,
-            "last_updated": timezone.now()
-        }
+        return ProviderResult(
+            status=status,
+            title=self.title,
+            summary=self.summary,
+            checks=checks,
+            metrics=metrics,
+            health_score=100 if status == "healthy" else (80 if status == "warning" else 0)
+        )

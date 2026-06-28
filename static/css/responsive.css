@@ -144,6 +144,12 @@
     display: block;
   }
 
+  /* Customer Login CTA lives in .nav-actions on desktop; hide it on mobile
+     where the dedicated .mobile-only-cta item takes over inside the menu. */
+  .nav-actions .nav-cta {
+    display: none;
+  }
+
   /* HERO */
   .hero {
     padding: 60px 20px 48px;
@@ -311,6 +317,11 @@
   }
 }
 
+/* Globally hide the mobile-only CTA by default */
+.mobile-only-cta {
+  display: none;
+}
+
 /* Mobile nav menu open state */
 .nav-links.open {
   display: flex;
@@ -325,6 +336,11 @@
   gap: 20px;
   border-bottom: 1px solid var(--border);
   z-index: 99;
+}
+
+/* Reveal the Customer Login CTA only while the mobile menu is open */
+.nav-links.open .mobile-only-cta {
+  display: block;
 }
 
 @media (max-width: 768px) {

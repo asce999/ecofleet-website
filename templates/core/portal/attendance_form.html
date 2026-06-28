@@ -466,4 +466,17 @@
   });
 </script>
 
+<script>
+  // Disable + spinner whichever Save button is clicked (desktop or mobile bar).
+  // setTimeout(…, 10) lets the form submit fire before we mutate the button.
+  document.querySelectorAll('button[type="submit"]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      setTimeout(function() {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader-2 animate-spin"></i> Saving…';
+      }, 10);
+    });
+  });
+</script>
+
 {% endblock %}

@@ -477,3 +477,15 @@ def calculate_salary_data(attendance_data):
         'total_cost': total_cost,
         'employees': results
     }
+
+def get_sheet_names(file_path):
+    from pathlib import Path
+    if file_path and Path(file_path).exists():
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(file_path, read_only=True)
+            return wb.sheetnames
+        except Exception:
+            pass
+    return []
+

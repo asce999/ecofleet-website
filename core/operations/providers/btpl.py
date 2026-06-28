@@ -1,15 +1,16 @@
 from django.utils import timezone
-from .base import BaseProvider
+from .base import BaseProvider, ProviderResult, CheckResult
 from core.models import ToolRun
 
 class BTPLProvider(BaseProvider):
-    def __init__(self, request=None):
-        super().__init__(request)
-        self.title = "BTPL Module"
+    category = "Business Modules"
+    key = "btpl"
+    title = "BTPL Module"
+    summary = "BTPL generation health and metrics."
 
-    def _fetch_data(self):
+    def _fetch_data(self) -> ProviderResult:
         status = "healthy"
-        checks = [{"name": "Service", "status": "healthy", "message": "Available"}]
+        checks = [CheckResult(name="Service", status="healthy", message="Available")]
         metrics = {}
         
         total = ToolRun.objects.filter(tool='BTPL Generator').count()
@@ -18,15 +19,11 @@ class BTPLProvider(BaseProvider):
         if recent:
             metrics["Last Run"] = recent.created_at.strftime("%Y-%m-%d %H:%M:%S")
 
-        return {
-            "status": status,
-            "health_score": 100 if status == "healthy" else 0,
-            "title": self.title,
-            "summary": "BTPL generation health and metrics.",
-            "checks": checks,
-            "metrics": metrics,
-            "warnings": [],
-            "errors": [],
-            "technical_details": None,
-            "last_updated": timezone.now()
-        }
+        return ProviderResult(
+            status=status,
+            health_score=100 if status == "healthy" else 0,
+            title=self.title,
+            summary=self.summary,
+            checks=checks,
+            metrics=metrics
+        )

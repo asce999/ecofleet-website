@@ -28,10 +28,17 @@ class Command(BaseCommand):
             # Use sqlite3 backup API
             temp_backup = os.path.join(backup_dir, f'temp_{timestamp}.sqlite3')
             
-            import contextlib
-            with contextlib.closing(sqlite3.connect(db_path)) as source:
-                with contextlib.closing(sqlite3.connect(temp_backup)) as dest:
-                    source.backup(dest)
+            source = sqlite3.connect(db_path)
+            dest = sqlite3.connect(temp_backup)
+            
+            try:
+                source.backup(dest)
+            finally:
+                dest.close()
+                source.close()
+                
+            # Allow time for Windows to release file handles before compress/delete
+            time.sleep(0.2)
             
             # Compress
             with open(temp_backup, 'rb') as f_in:

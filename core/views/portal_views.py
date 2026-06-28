@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from django.db.models import Count, Q
+from django.db.models import Count, Q  # required for pincode_dashboard_stats cache
 from django.db.models.functions import TruncDate
 from core.models import Pincode, ToolRun, ToolRunFile
 from core.decorators import staff_required, director_required
@@ -91,69 +91,9 @@ def dashboard(request):
 
     # ── FTL metrics ──
     ftl_wb_obj, ftl_file_path, ftl_sheet_name = get_active_ftl_workbook()
-    ftl_total = 0
-    ftl_delivered = 0
-    ftl_in_transit = 0
-    ftl_vendors = 0
-    
-    # --- CACHE IMPLEMENTATION ---
-    # Cache Invalidation Strategy:
-    # 1. We include `ftl_wb_obj.id` so the cache invalidates instantly if a new active workbook is set.
-    # 2. We include `os.path.getmtime()` to instantly invalidate if the existing file is edited externally.
-    # 3. Timeout is set to 900s (15 mins) as a passive fallback.
-    cache_key = None
-    if ftl_wb_obj and ftl_file_path and os.path.exists(ftl_file_path):
-        mtime = os.path.getmtime(ftl_file_path)
-        cache_key = f"ftl_metrics_active_{ftl_wb_obj.id}_{mtime}"
-        
-    cached_metrics = cache.get(cache_key) if cache_key else None
-    
-    if cached_metrics:
-        ftl_total, ftl_delivered, ftl_in_transit, ftl_vendors = cached_metrics
-    elif ftl_file_path and os.path.exists(ftl_file_path):
-        try:
-            import openpyxl
-            wb_ftl = openpyxl.load_workbook(ftl_file_path, read_only=True)
-            if ftl_sheet_name in wb_ftl.sheetnames:
-                sheet_ftl = wb_ftl[ftl_sheet_name]
-                mapping_ftl = ftl_logic.get_column_mapping(sheet_ftl)
-                vendors_set = set()
-                del_col = mapping_ftl.get('delivery_date')
-                etd_col = mapping_ftl.get('etd')
-                vendor_col = mapping_ftl.get('vendor')
-                
-                for r in range(2, sheet_ftl.max_row + 1):
-                    # Check if row is actually empty
-                    has_data = False
-                    for key in ['booking_date', 'lr_number', 'consignee', 'vehicle_number']:
-                        col = mapping_ftl.get(key)
-                        if col:
-                            val = sheet_ftl.cell(row=r, column=col).value
-                            if val is not None and str(val).strip() != "":
-                                has_data = True
-                                break
-                    if not has_data:
-                        continue
-                        
-                    ftl_total += 1
-                    del_val = sheet_ftl.cell(row=r, column=del_col).value if del_col else None
-                    etd_val = sheet_ftl.cell(row=r, column=etd_col).value if etd_col else None
-                    
-                    status = ftl_logic.derive_status(etd_val, del_val)
-                    if status == 'Delivered':
-                        ftl_delivered += 1
-                    elif status == 'In Transit':
-                        ftl_in_transit += 1
-                        
-                    v_val = sheet_ftl.cell(row=r, column=vendor_col).value if vendor_col else None
-                    if v_val is not None and str(v_val).strip() != "":
-                        vendors_set.add(str(v_val).strip())
-                ftl_vendors = len(vendors_set)
-                
-                if cache_key:
-                    cache.set(cache_key, (ftl_total, ftl_delivered, ftl_in_transit, ftl_vendors), timeout=900)
-        except Exception:
-            pass
+    ftl_total, ftl_delivered, ftl_in_transit, ftl_vendors = ftl_logic.get_cached_ftl_metrics(
+        ftl_wb_obj, ftl_file_path, ftl_sheet_name
+    )
 
     ctx = {
         'active': 'dashboard',

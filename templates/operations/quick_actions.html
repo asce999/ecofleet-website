@@ -1,0 +1,24 @@
+<div class="ops-infra-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
+    {% for action in dashboard.quick_actions %}
+    <a href="{{ action.url }}" class="portal-card" style="text-decoration: none; display: flex; align-items: center; gap: 12px; transition: transform 0.2s ease, box-shadow 0.2s ease;">
+        <div style="background: var(--surface-2); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--primary);">
+            <i class="ti {{ action.icon }}" style="font-size: 20px;"></i>
+        </div>
+        <div>
+            <div style="font-weight: 600; color: var(--text); font-size: 14px;">{{ action.title }}</div>
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase;">{{ action.permission }}</div>
+        </div>
+    </a>
+    {% empty %}
+    <div style="grid-column: 1/-1; padding: 20px; text-align: center; color: var(--muted); background: var(--surface-2); border-radius: 8px;">
+        No quick actions configured.
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+.portal-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+</style>

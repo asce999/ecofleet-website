@@ -1,10 +1,10 @@
 {% load core_extras %}
-<div class="stat-grid">
-    {% include "components/kpi_card.html" with title="Total Users" value=providers_dict.business.metrics|get_item:"Total Users"|default_if_none:"--" icon="users" color="cyan" %}
+<div class="ops-infra-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 28px;">
+    {% include "components/kpi_card.html" with title="Enabled Accounts" value=dashboard.kpi_metrics.enabled_accounts icon="users" color="cyan" %}
     
-    {% include "components/kpi_card.html" with title="Avg Response" value=providers_dict.performance.metrics|get_item:"Avg Latency"|default_if_none:"--" icon="activity" color="green" %}
+    {% include "components/kpi_card.html" with title="Avg Response" value=dashboard.kpi_metrics.avg_response icon="activity" color="green" %}
     
-    {% include "components/kpi_card.html" with title="System Events" value=providers_dict.activity.metrics|get_item:"Events (24h)"|default_if_none:"--" icon="list-details" color="purple" %}
+    {% include "components/kpi_card.html" with title="System Events" value=dashboard.kpi_metrics.system_events icon="list-details" color="purple" %}
     
-    {% include "components/kpi_card.html" with title="DB Size" value=providers_dict.database.metrics|get_item:"File Size"|default_if_none:"--" icon="database" color="orange" %}
+    {% include "components/kpi_card.html" with title="DB Size" value=dashboard.kpi_metrics.db_size icon="database" color="orange" %}
 </div>
