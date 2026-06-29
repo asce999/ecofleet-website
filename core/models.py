@@ -69,6 +69,9 @@ class ToolRun(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['tool', '-created_at']),
+        ]
 
     def __str__(self):
         return f"{self.get_tool_display()} · {self.created_at:%d-%b-%Y %H:%M} · {self.status}"
@@ -102,6 +105,9 @@ class CofWorkbook(models.Model):
 
     class Meta:
         ordering = ['-uploaded_at']
+        indexes = [
+            models.Index(fields=['is_active']),
+        ]
 
     def __str__(self):
         return f"{self.original_name} ({'active' if self.is_active else 'archived'})"
@@ -124,6 +130,9 @@ class BtplWorkbook(models.Model):
 
     class Meta:
         ordering = ['-uploaded_at']
+        indexes = [
+            models.Index(fields=['is_active']),
+        ]
 
     def __str__(self):
         return f"{self.original_name} ({self.active_sheet}) ({'active' if self.is_active else 'archived'})"
@@ -146,6 +155,9 @@ class AttendanceWorkbook(models.Model):
 
     class Meta:
         ordering = ['-uploaded_at']
+        indexes = [
+            models.Index(fields=['is_active']),
+        ]
 
     def __str__(self):
         return f"{self.original_name} ({self.active_sheet}) ({'active' if self.is_active else 'archived'})"
@@ -223,6 +235,9 @@ class FtlWorkbook(models.Model):
 
     class Meta:
         ordering = ['-uploaded_at']
+        indexes = [
+            models.Index(fields=['is_active']),
+        ]
 
     def __str__(self):
         return f"{self.original_name} ({self.active_sheet}) ({'active' if self.is_active else 'archived'})"
@@ -236,13 +251,13 @@ class FtlWorkbook(models.Model):
 class UserProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
     role = models.CharField(max_length=50, default='Employee')
-    can_use_cof = models.BooleanField(default=True)
-    can_use_morning = models.BooleanField(default=True)
-    can_use_pendency = models.BooleanField(default=True)
-    can_use_prev_month = models.BooleanField(default=True)
-    can_use_btpl = models.BooleanField(default=True)
-    can_use_attendance = models.BooleanField(default=True)
-    can_use_ftl = models.BooleanField(default=True)
+    can_use_cof = models.BooleanField(default=False)
+    can_use_morning = models.BooleanField(default=False)
+    can_use_pendency = models.BooleanField(default=False)
+    can_use_prev_month = models.BooleanField(default=False)
+    can_use_btpl = models.BooleanField(default=False)
+    can_use_attendance = models.BooleanField(default=False)
+    can_use_ftl = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.user.username} Profile ({self.role})"

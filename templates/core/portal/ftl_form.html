@@ -596,7 +596,7 @@ function renderTable(p) {
       row.cells.forEach((cell, idx) => {
         const val = (cell || '').trim();
         if (val !== '' && val !== '0' && p.columns[idx] && !p.columns[idx].toLowerCase().includes('lr number')) {
-          summaryDetails.push(`<span><strong>${p.columns[idx]}:</strong> ${escHtml(val)}</span>`);
+          summaryDetails.push(`<span><strong>${escHtml(p.columns[idx])}:</strong> ${escHtml(val)}</span>`);
         }
       });
       mobHtml += `

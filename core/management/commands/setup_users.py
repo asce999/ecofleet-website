@@ -1,6 +1,8 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from core.models import UserProfile
+from django.utils.crypto import get_random_string
+import os
 
 class Command(BaseCommand):
     help = 'Create Jude (Director) and Jitendra (Manager) superuser accounts.'
@@ -15,7 +17,9 @@ class Command(BaseCommand):
                 'last_name': '',
             }
         )
-        jude.set_password('Jude123')
+        env_password = os.getenv('ECOFLEET_BOOTSTRAP_PASSWORD')
+        jude_password = env_password or get_random_string(12)
+        jude.set_password(jude_password)
         jude.is_staff = True
         jude.is_superuser = True
         jude.last_name = ''
@@ -31,7 +35,10 @@ class Command(BaseCommand):
         jude_profile.can_use_attendance = True
         jude_profile.save()
 
-        self.stdout.write(self.style.SUCCESS("Superuser 'Jude' (Director) updated/created successfully."))
+        if not env_password:
+            self.stdout.write(self.style.SUCCESS(f"Superuser 'Jude' (Director) updated/created successfully. Initial Password: {jude_password} - CHANGE IMMEDIATELY."))
+        else:
+            self.stdout.write(self.style.SUCCESS("Superuser 'Jude' (Director) updated/created successfully using provided bootstrap password."))
 
         jitendra, created = User.objects.get_or_create(
             username='Jitendra',
@@ -42,7 +49,8 @@ class Command(BaseCommand):
                 'last_name': '',
             }
         )
-        jitendra.set_password('Jitendra123')
+        jitendra_password = env_password or get_random_string(12)
+        jitendra.set_password(jitendra_password)
         jitendra.is_staff = True
         jitendra.is_superuser = True
         jitendra.last_name = ''
@@ -58,4 +66,7 @@ class Command(BaseCommand):
         jitendra_profile.can_use_attendance = True
         jitendra_profile.save()
 
-        self.stdout.write(self.style.SUCCESS("Superuser 'Jitendra' (Manager) updated/created successfully."))
+        if not env_password:
+            self.stdout.write(self.style.SUCCESS(f"Superuser 'Jitendra' (Manager) updated/created successfully. Initial Password: {jitendra_password} - CHANGE IMMEDIATELY."))
+        else:
+            self.stdout.write(self.style.SUCCESS("Superuser 'Jitendra' (Manager) updated/created successfully using provided bootstrap password."))

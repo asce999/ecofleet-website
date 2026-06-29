@@ -18,7 +18,7 @@ class SummaryCard:
 class OperationalScore:
     score: int
     trend: str
-    availability: str
+    availability: Optional[str]
     active_alerts: int
     last_refresh: datetime.datetime
     last_incident: str

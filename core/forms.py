@@ -6,7 +6,7 @@ from . import cof
 import zipfile
 import logging
 
-logger = logging.getLogger(__name__)
+from core.utils.excel import sanitize_excel_formula
 
 def validate_xlsx_upload(f):
     if not f:
@@ -116,7 +116,7 @@ class CofForm(forms.Form):
     def to_cof_data(self):
         c = self.cleaned_data
         loss = float(c["ndp_price"]) * float(c["disc_qty"])
-        g = lambda k: (c.get(k) or "").strip()
+        g = lambda k: sanitize_excel_formula(c.get(k) or "")
         return {
             "lr_number": g("lr_number"),
             "invoice_date": g("invoice_date"),
@@ -269,6 +269,13 @@ class BtplShipmentForm(forms.Form):
                 css = 'portal-select' if isinstance(w, forms.Select) else 'portal-input'
                 w.attrs.setdefault('class', css)
 
+    def clean(self):
+        cleaned_data = super().clean()
+        for key, value in cleaned_data.items():
+            if isinstance(value, str):
+                cleaned_data[key] = sanitize_excel_formula(value)
+        return cleaned_data
+
 
 class BtplWorkbookUploadForm(forms.Form):
     workbook = forms.FileField(label="BTPL Shipment Workbook (.xlsx)", required=False)
@@ -351,6 +358,13 @@ class FtlShipmentForm(forms.Form):
             if not isinstance(w, forms.HiddenInput):
                 css = 'portal-select' if isinstance(w, forms.Select) else 'portal-input'
                 w.attrs.setdefault('class', css)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        for key, value in cleaned_data.items():
+            if isinstance(value, str):
+                cleaned_data[key] = sanitize_excel_formula(value)
+        return cleaned_data
 
 
 class FtlWorkbookUploadForm(forms.Form):

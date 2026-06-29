@@ -8,6 +8,9 @@ from core import ftl as ftl_logic
 import os
 from core.models import ToolRun
 from django.contrib import messages
+from core.utils.parsing import safe_int
+from core.workbook.locking import workbook_lock
+import uuid
 from django.conf import settings
 import logging
 
@@ -41,7 +44,7 @@ def ftl_sheet(request):
             'no_sheet': True,
         })
 
-    page = int(request.GET.get('page', 1))
+    page = safe_int(request.GET.get('page', 1), 1)
     page_data = ftl_logic.get_ftl_page_data(
         file_path, sheet_name=sheet_name, page=page, page_size=20
     )
@@ -82,7 +85,7 @@ def ftl_api(request):
 
     # GET: fetch row data for editing
     if action == 'get_row':
-        row_num = int(request.GET.get('row', 0))
+        row_num = safe_int(request.GET.get('row', 0), 0)
         if row_num < 2:
             return JsonResponse({'error': 'Invalid row'}, status=400)
         row_data = ftl_logic.get_ftl_row_values(file_path, row_num, sheet_name=sheet_name)
@@ -94,7 +97,7 @@ def ftl_api(request):
 
     # GET: paginated preview
     if action == 'preview':
-        page = int(request.GET.get('page', 1))
+        page = safe_int(request.GET.get('page', 1), 1)
         preview = ftl_logic.get_ftl_preview(file_path, sheet_name=sheet_name, page=page, page_size=20)
         return JsonResponse({'preview': preview})
 
@@ -105,7 +108,8 @@ def ftl_api(request):
             row_data = form.cleaned_data
             target_row = row_data['row_num']
             try:
-                ftl_logic.add_ftl_shipment(file_path, row_data, sheet_name=sheet_name)
+                with workbook_lock(file_path):
+                    ftl_logic.add_ftl_shipment(file_path, row_data, sheet_name=sheet_name)
                 run = ToolRun.objects.create(
                     user=request.user,
                     tool=ToolRun.TOOL_FTL,
@@ -130,13 +134,14 @@ def ftl_api(request):
 
     # POST: delete row
     if action == 'delete' and request.method == 'POST':
-        row_num = int(request.POST.get('row', 0))
+        row_num = safe_int(request.POST.get('row', 0), 0)
         page_data = ftl_logic.get_ftl_page_data(file_path, sheet_name=sheet_name, page=1, page_size=1)
         totals_row = page_data['totals_row'] if page_data else 1000
         if row_num < 2 or row_num >= totals_row:
             return JsonResponse({'error': 'Invalid row number'}, status=400)
         try:
-            ftl_logic.clear_ftl_row(file_path, row_num, sheet_name=sheet_name)
+            with workbook_lock(file_path):
+                ftl_logic.clear_ftl_row(file_path, row_num, sheet_name=sheet_name)
             ToolRun.objects.create(
                 user=request.user,
                 tool=ToolRun.TOOL_FTL,
@@ -182,8 +187,6 @@ def ftl_settings(request):
     from core.services.sheet_parser import get_sheet_names
     sheets = get_sheet_names(file_path)
     if not sheets:
-        sheets = ['Sheet1']
-    else:
         sheets = ['Sheet1']
         
     if request.method == 'POST':
@@ -250,8 +253,11 @@ def ftl_settings(request):
             if form.is_valid():
                 upload = request.FILES.get('workbook')
                 if upload:
+                    original_name = upload.name
+                    ext = os.path.splitext(original_name)[1]
+                    upload.name = f"ftl_{uuid.uuid4().hex}{ext}"
                     new_wb = FtlWorkbook.objects.create(
-                        file=upload, original_name=upload.name,
+                        file=upload, original_name=original_name,
                         uploaded_by=request.user, is_active=False
                     )
                     from core.services.sheet_parser import get_sheet_names
@@ -265,8 +271,8 @@ def ftl_settings(request):
                     new_wb.is_active = True
                     new_wb.save(update_fields=['is_active'])
                     
-                    logger.info(f"Workbook uploaded: FTL Tracker '{upload.name}' by user '{request.user.username}'")
-                    messages.success(request, f"Uploaded workbook '{upload.name}' is now the active FTL shipment workbook.")
+                    logger.info(f"Workbook uploaded: FTL Tracker '{original_name}' by user '{request.user.username}'")
+                    messages.success(request, f"Uploaded workbook '{original_name}' is now the active FTL shipment workbook.")
                     return redirect('ftl_settings')
                 else:
                     logger.warning(f"Workbook validation failure: No file provided for FTL upload by user '{request.user.username}'")

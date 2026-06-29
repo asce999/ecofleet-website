@@ -19,6 +19,12 @@ The domain names that the Django application is permitted to serve.
 * **Format**: Comma-separated list of hostnames (no scheme).
 * **Example**: `example.com,staging.example.com`
 
+### `ECOFLEET_BOOTSTRAP_PASSWORD`
+When running the `setup_users` management command to initialize the application, this variable allows you to securely inject the initial superuser password without it being auto-generated and printed to stdout.
+* **Format**: String
+* **Requirement**: Use a secure, randomly generated string.
+* **Example**: `your_secure_password_here`
+
 ---
 
 ## Configuration Profiles

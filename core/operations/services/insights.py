@@ -108,7 +108,7 @@ class InsightsService:
         elif has_warning:
             trend = "degrading"
             
-        availability = "99.9%" if not has_critical else "99.5%"
+        availability = None
         
         return OperationalScore(
             score=score,

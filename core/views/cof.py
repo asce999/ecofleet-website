@@ -10,6 +10,7 @@ import io
 import os
 from django.conf import settings
 from django.contrib import messages
+import uuid
 import logging
 
 logger = logging.getLogger(__name__)
@@ -92,8 +93,11 @@ def cof_workbook(request):
         form = WorkbookUploadForm(request.POST, request.FILES)
         if form.is_valid():
             upload = form.cleaned_data['workbook']
+            original_name = upload.name
+            ext = os.path.splitext(original_name)[1]
+            upload.name = f"cof_{uuid.uuid4().hex}{ext}"
             new = CofWorkbook.objects.create(
-                file=upload, original_name=upload.name,
+                file=upload, original_name=original_name,
                 uploaded_by=request.user, is_active=False)
             try:
                 cof_logic.validate_workbook(new.file.path)
@@ -107,8 +111,8 @@ def cof_workbook(request):
             new.is_active = True
             new.save(update_fields=['is_active'])
             
-            logger.info(f"Workbook uploaded: COF Tracker '{upload.name}' by user '{request.user.username}'")
-            messages.success(request, f"“{upload.name}” is now the active tracking workbook.")
+            logger.info(f"Workbook uploaded: COF Tracker '{original_name}' by user '{request.user.username}'")
+            messages.success(request, f"“{original_name}” is now the active tracking workbook.")
             return redirect('cof_generator')
         else:
             logger.warning(f"Workbook validation failure: No file provided for COF upload by user '{request.user.username}'")

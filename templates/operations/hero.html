@@ -29,7 +29,7 @@
                     </div>
                     <div class="ops-breakdown-item">
                         <div class="ops-breakdown-label">Availability</div>
-                        <div class="ops-breakdown-val" style="color: var(--success);">{{ dashboard.operational_score.availability }}</div>
+                        <div class="ops-breakdown-val" style="color: var(--success);">{{ dashboard.operational_score.availability|default:"Unknown (No uptime monitoring)" }}</div>
                     </div>
                     <div class="ops-breakdown-item">
                         <div class="ops-breakdown-label">Active Alerts</div>
@@ -63,7 +63,7 @@
 
                 <div>
                     <div class="ops-env-label">Platform Uptime</div>
-                    <div class="ops-env-val" style="color: var(--muted);">{{ dashboard.operational_score.availability }}</div>
+                    <div class="ops-env-val" style="color: var(--muted);">{{ dashboard.operational_score.availability|default:"Unknown (No uptime monitoring)" }}</div>
                 </div>
 
                 <div>

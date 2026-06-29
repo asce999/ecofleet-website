@@ -10,6 +10,7 @@ class BusinessProvider(BaseProvider):
     key = "business"
     title = "Business Users"
     summary = "Platform user statistics and roles."
+    cache_timeout = 300
 
     def _fetch_data(self) -> ProviderResult:
         status = "healthy"

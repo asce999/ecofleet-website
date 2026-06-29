@@ -641,7 +641,7 @@ function renderTable(p) {
       row.cells.forEach((cell, idx) => {
         const val = (cell || '').trim();
         if (val !== '' && val !== '0' && val !== '0.00' && p.columns[idx] && !p.columns[idx].toLowerCase().includes('lr number') && !p.columns[idx].toLowerCase().includes('phone')) {
-          summaryDetails.push(`<span><strong>${p.columns[idx]}:</strong> ${escHtml(val)}</span>`);
+          summaryDetails.push(`<span><strong>${escHtml(p.columns[idx])}:</strong> ${escHtml(val)}</span>`);
         }
       });
       mobHtml += `

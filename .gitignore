@@ -1,7 +1,16 @@
 venv/
 .idea/
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+htmlcov/
+.coverage
+.tox/
+build/
+dist/
+*.egg-info/
 media/
 efe_data/
 .agent
@@ -11,9 +20,9 @@ db.sqlite3
 *.xlsx
 *.csv
 test_output.txt
-scratch_*.py
-patch*.py
-test_*.py
+/scratch_*.py
+/patch*.py
+/test_*.py
 .env
 logs/
 backups/
@@ -27,3 +36,13 @@ graphify-out/
 prompt.md
 rendered_ops.html
 build_graph.py
+
+# Claude AI
+.claude/
+
+# Local test and scratch scripts (root only so we don't ignore real tests)
+/*_test.py
+/playwright_*.py
+
+# macOS
+.DS_Store

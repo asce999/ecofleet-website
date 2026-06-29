@@ -10,6 +10,8 @@ from core.models import ToolRun
 from django.contrib import messages
 from django.conf import settings
 from django.urls import reverse
+from core.workbook.locking import workbook_lock
+import uuid
 import logging
 
 logger = logging.getLogger(__name__)
@@ -29,7 +31,8 @@ def attendance_sheet(request):
         
     if request.method == 'POST':
         try:
-            modified = attendance_logic.save_attendance(file_path, sheet_name, request.POST)
+            with workbook_lock(file_path):
+                modified = attendance_logic.save_attendance(file_path, sheet_name, request.POST)
             if modified:
                 ToolRun.objects.create(
                     user=request.user,
@@ -208,8 +211,11 @@ def attendance_settings(request):
             if form.is_valid():
                 upload = request.FILES.get('workbook')
                 if upload:
+                    original_name = upload.name
+                    ext = os.path.splitext(original_name)[1]
+                    upload.name = f"attendance_{uuid.uuid4().hex}{ext}"
                     new_wb = AttendanceWorkbook.objects.create(
-                        file=upload, original_name=upload.name,
+                        file=upload, original_name=original_name,
                         uploaded_by=request.user, is_active=False
                     )
                     
@@ -224,8 +230,8 @@ def attendance_settings(request):
                     new_wb.is_active = True
                     new_wb.save(update_fields=['is_active'])
                     
-                    logger.info(f"Workbook uploaded: Attendance Tracker '{upload.name}' by user '{request.user.username}'")
-                    messages.success(request, f"Uploaded workbook '{upload.name}' is now the active attendance workbook.")
+                    logger.info(f"Workbook uploaded: Attendance Tracker '{original_name}' by user '{request.user.username}'")
+                    messages.success(request, f"Uploaded workbook '{original_name}' is now the active attendance workbook.")
                     return redirect('attendance_settings')
                 else:
                     logger.warning(f"Workbook validation failure: No file provided for Attendance upload by user '{request.user.username}'")

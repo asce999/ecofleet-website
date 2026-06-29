@@ -10,6 +10,9 @@ import json
 import datetime
 from core.models import ToolRun
 from django.contrib import messages
+from core.utils.parsing import safe_int
+from core.workbook.locking import workbook_lock
+import uuid
 from django.conf import settings
 import logging
 
@@ -45,7 +48,7 @@ def btpl_sheet(request):
             'no_sheet': True,
         })
 
-    page = int(request.GET.get('page', 1))
+    page = safe_int(request.GET.get('page', 1), 1)
     page_data = btpl_logic.get_btpl_page_data(
         file_path, sheet_name=sheet_name, page=page, page_size=20
     )
@@ -87,7 +90,7 @@ def btpl_api(request):
 
     # GET: fetch row data for editing
     if action == 'get_row':
-        row_num = int(request.GET.get('row', 0))
+        row_num = safe_int(request.GET.get('row', 0), 0)
         if row_num < 2:
             return JsonResponse({'error': 'Invalid row'}, status=400)
         row_data = btpl_logic.get_btpl_row_values(file_path, row_num, sheet_name=sheet_name)
@@ -100,7 +103,7 @@ def btpl_api(request):
 
     # GET: paginated preview
     if action == 'preview':
-        page = int(request.GET.get('page', 1))
+        page = safe_int(request.GET.get('page', 1), 1)
         preview = btpl_logic.get_btpl_preview(file_path, sheet_name=sheet_name, page=page, page_size=20)
         return JsonResponse({'preview': preview})
 
@@ -111,7 +114,8 @@ def btpl_api(request):
             row_data = form.cleaned_data
             target_row = row_data['row_num']
             try:
-                btpl_logic.add_btpl_shipment(file_path, row_data, sheet_name=sheet_name)
+                with workbook_lock(file_path):
+                    btpl_logic.add_btpl_shipment(file_path, row_data, sheet_name=sheet_name)
                 run = ToolRun.objects.create(
                     user=request.user,
                     tool=ToolRun.TOOL_BTPL,
@@ -136,14 +140,15 @@ def btpl_api(request):
 
     # POST: delete row
     if action == 'delete' and request.method == 'POST':
-        row_num = int(request.POST.get('row', 0))
+        row_num = safe_int(request.POST.get('row', 0), 0)
         # Get totals_row to validate
         page_data = btpl_logic.get_btpl_page_data(file_path, sheet_name=sheet_name, page=1, page_size=1)
         totals_row = page_data['totals_row'] if page_data else 64
         if row_num < 2 or row_num >= totals_row:
             return JsonResponse({'error': 'Invalid row number'}, status=400)
         try:
-            btpl_logic.clear_btpl_row(file_path, row_num, sheet_name=sheet_name)
+            with workbook_lock(file_path):
+                btpl_logic.clear_btpl_row(file_path, row_num, sheet_name=sheet_name)
             ToolRun.objects.create(
                 user=request.user,
                 tool=ToolRun.TOOL_BTPL,
@@ -190,8 +195,6 @@ def btpl_settings(request):
     from core.services.sheet_parser import get_sheet_names
     sheets = get_sheet_names(file_path)
     if not sheets:
-        sheets = ['JUN 26']
-    else:
         sheets = ['JUN 26']
         
     if request.method == 'POST':
@@ -260,9 +263,12 @@ def btpl_settings(request):
             if form.is_valid():
                 upload = request.FILES.get('workbook')
                 if upload:
+                    original_name = upload.name
+                    ext = os.path.splitext(original_name)[1]
+                    upload.name = f"btpl_{uuid.uuid4().hex}{ext}"
                     # Create new workbook record
                     new_wb = BtplWorkbook.objects.create(
-                        file=upload, original_name=upload.name,
+                        file=upload, original_name=original_name,
                         uploaded_by=request.user, is_active=False
                     )
                     
@@ -279,8 +285,8 @@ def btpl_settings(request):
                     new_wb.is_active = True
                     new_wb.save(update_fields=['is_active'])
                     
-                    logger.info(f"Workbook uploaded: BTPL Tracker '{upload.name}' by user '{request.user.username}'")
-                    messages.success(request, f"Uploaded workbook '{upload.name}' is now the active BTPL shipment workbook.")
+                    logger.info(f"Workbook uploaded: BTPL Tracker '{original_name}' by user '{request.user.username}'")
+                    messages.success(request, f"Uploaded workbook '{original_name}' is now the active BTPL shipment workbook.")
                     return redirect('btpl_settings')
                 else:
                     logger.warning(f"Workbook validation failure: No file provided for BTPL upload by user '{request.user.username}'")

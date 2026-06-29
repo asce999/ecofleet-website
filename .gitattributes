@@ -1,2 +1,20 @@
 * text=auto eol=lf
 *.bat text eol=crlf
+
+# Binary files
+*.xlsx binary
+*.docx binary
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.sqlite3 binary
+*.db binary
+
+# Code diffs
+*.py text diff=python
+*.html text diff=html
+*.css text diff=css
+*.js text

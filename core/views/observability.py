@@ -3,6 +3,7 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.db import connection
 from django.db.utils import OperationalError
+from django.core.cache import cache
 
 from django.utils import timezone
 from core.decorators import staff_required
@@ -69,6 +70,8 @@ import importlib
 import inspect
 from core.operations.providers.base import BaseProvider, ProviderResult, CheckResult
 
+_PROVIDER_CLASSES_CACHE = None
+
 @staff_required
 def operations_center(request):
     """
@@ -85,26 +88,31 @@ def operations_center(request):
     has_warning = False
     
     # 1. Discover Providers
+    global _PROVIDER_CLASSES_CACHE
+    if _PROVIDER_CLASSES_CACHE is None:
+        _PROVIDER_CLASSES_CACHE = []
+        import core.operations.providers as provider_package
+        for _, module_name, _ in pkgutil.iter_modules(provider_package.__path__):
+            if module_name == 'base':
+                continue
+            full_module_name = f"{provider_package.__name__}.{module_name}"
+            try:
+                module = importlib.import_module(full_module_name)
+                for name, obj in inspect.getmembers(module, inspect.isclass):
+                    if issubclass(obj, BaseProvider) and obj is not BaseProvider:
+                        _PROVIDER_CLASSES_CACHE.append(obj)
+            except Exception as e:
+                # Add a dummy class or just log it; the previous code generated a failed result here
+                pass # We handle instantiation later
+                
     import core.operations.providers as provider_package
     for _, module_name, _ in pkgutil.iter_modules(provider_package.__path__):
         if module_name == 'base':
             continue
-            
         full_module_name = f"{provider_package.__name__}.{module_name}"
         try:
+            # Re-discover to get errors for UI, but skip loading if already in cache
             module = importlib.import_module(full_module_name)
-            for name, obj in inspect.getmembers(module, inspect.isclass):
-                if issubclass(obj, BaseProvider) and obj is not BaseProvider:
-                    provider_instance = obj()
-                    data = provider_instance.get_data()
-                    
-                    providers_dict[provider_instance.key] = data
-                    
-                    status = data.status
-                    if status in ('critical', 'unavailable'):
-                        has_critical = True
-                    elif status == 'warning':
-                        has_warning = True
         except Exception as e:
             fallback = ProviderResult(
                 status="unavailable",
@@ -116,6 +124,40 @@ def operations_center(request):
                 technical_details=str(e)
             )
             providers_dict[f"failed_{module_name}"] = fallback
+            has_critical = True
+
+    for provider_class in _PROVIDER_CLASSES_CACHE:
+        try:
+            provider_instance = provider_class()
+            cache_key = f"opscenter_provider_{provider_instance.key}"
+            
+            data = None
+            if provider_instance.cache_timeout:
+                data = cache.get(cache_key)
+                
+            if data is None:
+                data = provider_instance.get_data()
+                if provider_instance.cache_timeout:
+                    cache.set(cache_key, data, provider_instance.cache_timeout)
+            
+            providers_dict[provider_instance.key] = data
+            
+            status = data.status
+            if status in ('critical', 'unavailable'):
+                has_critical = True
+            elif status == 'warning':
+                has_warning = True
+        except Exception as e:
+            fallback = ProviderResult(
+                status="unavailable",
+                health_score=0,
+                title=f"Provider Instance: {provider_class.__name__}",
+                summary="Failed to instantiate provider.",
+                checks=[CheckResult(name="Init", status="critical", message=str(e))],
+                metrics={},
+                technical_details=str(e)
+            )
+            providers_dict[f"failed_{provider_class.__name__}"] = fallback
             has_critical = True
 
     # 2. Activity Feed (SSR Filtering & Pagination)

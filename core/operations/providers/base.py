@@ -38,6 +38,7 @@ class BaseProvider:
     key: str = "unknown"
     title: str = "Base Provider"
     summary: str = ""
+    cache_timeout: Optional[int] = None
 
     def get_data(self) -> ProviderResult:
         """
