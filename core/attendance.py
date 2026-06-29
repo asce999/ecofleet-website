@@ -4,6 +4,8 @@ import openpyxl
 import os
 from django.conf import settings
 from openpyxl.utils import get_column_letter
+import logging
+from core.workbook.helpers import atomic_save_workbook
 
 PAID_CODES = {'P', 'CL', 'SL', 'PL', 'WO', 'H'}
 HALF_DAY_CODES = {'HD'}
@@ -269,7 +271,7 @@ def save_attendance(file_path, sheet_name, post_data):
                     pass
                     
     if modified:
-        wb.save(file_path)
+        atomic_save_workbook(wb, file_path)
     return modified
 
 

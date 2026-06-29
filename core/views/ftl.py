@@ -1,5 +1,6 @@
 from django.views.decorators.cache import never_cache
 from django.shortcuts import render, redirect
+from django.db import transaction
 from django.http import FileResponse, Http404
 from core.models import FtlWorkbook
 from core.forms import FtlShipmentForm, FtlWorkbookUploadForm
@@ -193,14 +194,15 @@ def ftl_settings(request):
         action = request.POST.get('action')
         
         if action == 'remove':
-            FtlWorkbook.objects.filter(is_active=True).update(is_active=False)
-            if FtlWorkbook.objects.count() == 0:
-                FtlWorkbook.objects.create(
-                    original_name='FTL_Shipment_Tracker.xlsx',
-                    active_sheet='Sheet1',
-                    uploaded_by=request.user,
-                    is_active=False
-                )
+            with transaction.atomic():
+                FtlWorkbook.objects.filter(is_active=True).update(is_active=False)
+                if FtlWorkbook.objects.count() == 0:
+                    FtlWorkbook.objects.create(
+                        original_name='FTL_Shipment_Tracker.xlsx',
+                        active_sheet='Sheet1',
+                        uploaded_by=request.user,
+                        is_active=False
+                    )
             logger.info(f"Workbook archived/removed: FTL Tracker by user '{request.user.username}'")
             messages.success(request, "FTL shipment sheet removed entirely. Portal is now in empty state.")
             return redirect('ftl_settings')
@@ -208,18 +210,19 @@ def ftl_settings(request):
         elif action == 'load_default':
             from core.services.workbook_manager import WorkbookManager
             
-            FtlWorkbook.objects.filter(is_active=True).update(is_active=False)
-            
             file_name = WorkbookManager.load_default_template('ftl', 'FTL_Shipment_Tracker.xlsx')
             
-            wb_obj = FtlWorkbook.objects.create(
-                original_name='FTL_Shipment_Tracker.xlsx',
-                active_sheet='Sheet1',
-                uploaded_by=request.user,
-                is_active=True
-            )
-            wb_obj.file.name = file_name
-            wb_obj.save(update_fields=['file'])
+            with transaction.atomic():
+                FtlWorkbook.objects.filter(is_active=True).update(is_active=False)
+                
+                wb_obj = FtlWorkbook.objects.create(
+                    original_name='FTL_Shipment_Tracker.xlsx',
+                    active_sheet='Sheet1',
+                    uploaded_by=request.user,
+                    is_active=True
+                )
+                wb_obj.file.name = file_name
+                wb_obj.save(update_fields=['file'])
             
             logger.info(f"Workbook activated: Default FTL Tracker loaded by user '{request.user.username}'")
             messages.success(request, "Default FTL shipment workbook loaded successfully.")
@@ -235,15 +238,15 @@ def ftl_settings(request):
                 else:
                     from core.services.workbook_manager import WorkbookManager
                     file_name = WorkbookManager.load_default_template('ftl', 'FTL_Shipment_Tracker.xlsx')
-                    
-                    wb_obj = FtlWorkbook.objects.create(
-                        original_name='FTL_Shipment_Tracker.xlsx',
-                        active_sheet=sheet_sel,
-                        uploaded_by=request.user,
-                        is_active=True
-                    )
-                    wb_obj.file.name = file_name
-                    wb_obj.save(update_fields=['file'])
+                    with transaction.atomic():
+                        wb_obj = FtlWorkbook.objects.create(
+                            original_name='FTL_Shipment_Tracker.xlsx',
+                            active_sheet=sheet_sel,
+                            uploaded_by=request.user,
+                            is_active=True
+                        )
+                        wb_obj.file.name = file_name
+                        wb_obj.save(update_fields=['file'])
                     
                 messages.success(request, f"Active sheet tab changed to '{sheet_sel}'.")
                 return redirect('ftl_sheet')
@@ -267,9 +270,25 @@ def ftl_settings(request):
                             new_wb.active_sheet = sheetnames[0]
                             new_wb.save(update_fields=['active_sheet'])
                     
-                    FtlWorkbook.objects.filter(is_active=True).update(is_active=False)
-                    new_wb.is_active = True
-                    new_wb.save(update_fields=['is_active'])
+                    with transaction.atomic():
+                        FtlWorkbook.objects.filter(is_active=True).update(is_active=False)
+                        new_wb.is_active = True
+                        new_wb.save(update_fields=['is_active'])
+                    
+                    # Phase 3 Shadow Importer Hook
+                    from core.models import MigrationFeatureFlags, ImportJob
+                    flags = MigrationFeatureFlags.get_solo()
+                    if flags.use_database_importer:
+                        import_job = ImportJob.objects.create(
+                            workbook_type='FTL',
+                            status='PENDING',
+                            uploaded_by=request.user
+                        )
+                        from core.importers.excel_importer import ExcelImporter
+                        import threading
+                        importer = ExcelImporter()
+                        thread = threading.Thread(target=importer.process_ftl_workbook, args=(import_job.id, new_wb.file.path))
+                        thread.start()
                     
                     logger.info(f"Workbook uploaded: FTL Tracker '{original_name}' by user '{request.user.username}'")
                     messages.success(request, f"Uploaded workbook '{original_name}' is now the active FTL shipment workbook.")

@@ -1,6 +1,10 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import Q, UniqueConstraint
 from django.core.exceptions import ObjectDoesNotExist
+from decimal import Decimal
+import uuid
+from django.utils import timezone
 
 
 class Pincode(models.Model):
@@ -108,6 +112,13 @@ class CofWorkbook(models.Model):
         indexes = [
             models.Index(fields=['is_active']),
         ]
+        constraints = [
+            UniqueConstraint(
+                fields=['is_active'],
+                condition=Q(is_active=True),
+                name='unique_active_cof'
+            )
+        ]
 
     def __str__(self):
         return f"{self.original_name} ({'active' if self.is_active else 'archived'})"
@@ -132,6 +143,13 @@ class BtplWorkbook(models.Model):
         ordering = ['-uploaded_at']
         indexes = [
             models.Index(fields=['is_active']),
+        ]
+        constraints = [
+            UniqueConstraint(
+                fields=['is_active'],
+                condition=Q(is_active=True),
+                name='unique_active_btpl'
+            )
         ]
 
     def __str__(self):
@@ -158,6 +176,13 @@ class AttendanceWorkbook(models.Model):
         indexes = [
             models.Index(fields=['is_active']),
         ]
+        constraints = [
+            UniqueConstraint(
+                fields=['is_active'],
+                condition=Q(is_active=True),
+                name='unique_active_attendance'
+            )
+        ]
 
     def __str__(self):
         return f"{self.original_name} ({self.active_sheet}) ({'active' if self.is_active else 'archived'})"
@@ -169,29 +194,29 @@ class AttendanceWorkbook(models.Model):
 
 class SalaryConfig(models.Model):
     """Singleton model to store global payroll rates and settings."""
-    basic_rate_per_day = models.DecimalField(max_digits=10, decimal_places=2, default=492.12)
-    sp_allowance_rate_per_day = models.DecimalField(max_digits=10, decimal_places=2, default=96.58)
+    basic_rate_per_day = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('492.12'))
+    sp_allowance_rate_per_day = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('96.58'))
     standard_month_days = models.IntegerField(default=26)
-    other_allowance_pct = models.DecimalField(max_digits=5, decimal_places=2, default=10.00, help_text="Percentage (e.g. 10.00)")
+    other_allowance_pct = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('10.00'), help_text="Percentage (e.g. 10.00)")
     other_allowance_eligible_departments = models.CharField(max_length=255, default="CV-SUPERVISOR,CV-DEO", help_text="Comma-separated list of departments")
-    hra_pct = models.DecimalField(max_digits=5, decimal_places=2, default=5.00, help_text="Percentage (e.g. 5.00)")
+    hra_pct = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('5.00'), help_text="Percentage (e.g. 5.00)")
     
-    leave_payment_threshold_days = models.DecimalField(max_digits=5, decimal_places=2, default=19.90)
-    leave_payment_amount = models.DecimalField(max_digits=10, decimal_places=2, default=589.00)
-    extra_day_rate = models.DecimalField(max_digits=10, decimal_places=2, default=589.00)
+    leave_payment_threshold_days = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('19.90'))
+    leave_payment_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('589.00'))
+    extra_day_rate = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('589.00'))
     
-    pf_wage_ceiling = models.DecimalField(max_digits=10, decimal_places=2, default=15000.00)
-    pf_rate = models.DecimalField(max_digits=5, decimal_places=2, default=12.00, help_text="Percentage (e.g. 12.00)")
-    esic_employee_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.75, help_text="Percentage (e.g. 0.75)")
+    pf_wage_ceiling = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('15000.00'))
+    pf_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('12.00'), help_text="Percentage (e.g. 12.00)")
+    esic_employee_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.75'), help_text="Percentage (e.g. 0.75)")
     
-    pt_slab_1_max = models.DecimalField(max_digits=10, decimal_places=2, default=7499.00)
-    pt_slab_2_max = models.DecimalField(max_digits=10, decimal_places=2, default=9999.00)
-    pt_slab_3_amount = models.DecimalField(max_digits=10, decimal_places=2, default=300.00, help_text="Usually 200, but 300 in Feb")
+    pt_slab_1_max = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('7499.00'))
+    pt_slab_2_max = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('9999.00'))
+    pt_slab_3_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('300.00'), help_text="Usually 200, but 300 in Feb")
     
-    canteen_rate_per_day = models.DecimalField(max_digits=10, decimal_places=2, default=14.00)
+    canteen_rate_per_day = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('14.00'))
     
-    reporting_pf_cost_rate = models.DecimalField(max_digits=5, decimal_places=2, default=25.00, help_text="Percentage (e.g. 25.00)")
-    reporting_esic_cost_rate = models.DecimalField(max_digits=5, decimal_places=2, default=4.00, help_text="Percentage (e.g. 4.00)")
+    reporting_pf_cost_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('25.00'), help_text="Percentage (e.g. 25.00)")
+    reporting_esic_cost_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('4.00'), help_text="Percentage (e.g. 4.00)")
 
     def __str__(self):
         return "Salary Configuration"
@@ -237,6 +262,13 @@ class FtlWorkbook(models.Model):
         ordering = ['-uploaded_at']
         indexes = [
             models.Index(fields=['is_active']),
+        ]
+        constraints = [
+            UniqueConstraint(
+                fields=['is_active'],
+                condition=Q(is_active=True),
+                name='unique_active_ftl'
+            )
         ]
 
     def __str__(self):
@@ -292,4 +324,219 @@ class SystemEvent(models.Model):
         ordering = ['-timestamp']
 
     def __str__(self):
-        return f"[{self.severity}] {self.component} - {self.title} at {self.timestamp}"
+        return f"[{self.severity}] {self.component} - {self.title} at {self.timestamp}"
+
+
+# ==============================================================================
+# PHASE 3: OPERATIONAL DATA MIGRATION (SHIPMENT DOMAIN)
+# ==============================================================================
+
+class MigrationFeatureFlags(models.Model):
+    """Singleton model to control the rollout of Phase 3 database migration."""
+    use_database_importer = models.BooleanField(
+        default=False, 
+        help_text="Shadow Mode: Uploaded Excel files are parsed and inserted into PostgreSQL."
+    )
+    use_database_reads = models.BooleanField(
+        default=False, 
+        help_text="Dual-Read: UI dashboards query PostgreSQL instead of parsing Excel."
+    )
+    use_database_exports = models.BooleanField(
+        default=False, 
+        help_text="Replaces static Excel downloads with dynamically generated DB workbooks."
+    )
+
+    def __str__(self):
+        return "Migration Feature Flags"
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(id=1)
+        return obj
+
+
+# ------------------------------------------------------------------------------
+# FLEET CONTEXT (Master Data)
+# ------------------------------------------------------------------------------
+
+class Vehicle(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    registration_number = models.CharField(max_length=50, unique=True)
+    vehicle_type = models.CharField(max_length=100, blank=True)
+    capacity_tons = models.FloatField(null=True, blank=True)
+    status = models.CharField(max_length=20, default='ACTIVE')
+
+    def __str__(self):
+        return self.registration_number
+
+
+class Driver(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    license_number = models.CharField(max_length=100, blank=True)
+    uan_number = models.CharField(max_length=100, blank=True)
+    status = models.CharField(max_length=20, default='ACTIVE')
+
+    def __str__(self):
+        return self.name
+
+
+# ------------------------------------------------------------------------------
+# CUSTOMER CONTEXT
+# ------------------------------------------------------------------------------
+
+class Customer(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255, unique=True)
+    gst_number = models.CharField(max_length=50, blank=True)
+    address = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.name
+
+
+# ------------------------------------------------------------------------------
+# SHIPMENT CONTEXT
+# ------------------------------------------------------------------------------
+
+class Shipment(models.Model):
+    SHIPMENT_TYPE_CHOICES = [
+        ('FTL', 'Full Truck Load'),
+        ('BTPL', 'BTL Parcel Load'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    shipment_type = models.CharField(max_length=10, choices=SHIPMENT_TYPE_CHOICES)
+    origin = models.CharField(max_length=255, blank=True)
+    destination = models.CharField(max_length=255, blank=True)
+    
+    # Using Lorry Number/Date as natural keys often found in Excel
+    dispatch_date = models.DateField(null=True, blank=True)
+    expected_eta = models.DateTimeField(null=True, blank=True)
+    actual_eta = models.DateTimeField(null=True, blank=True)
+    
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.SET_NULL, null=True, blank=True, related_name='shipments')
+    driver = models.ForeignKey(Driver, on_delete=models.SET_NULL, null=True, blank=True, related_name='shipments')
+    
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ['-dispatch_date']
+
+    def __str__(self):
+        return f"{self.shipment_type} Shipment - {self.vehicle} on {self.dispatch_date}"
+
+
+class ShipmentStatus(models.Model):
+    STATUS_CHOICES = [
+        ('DRAFT', 'Draft'),
+        ('DISPATCHED', 'Dispatched'),
+        ('IN_TRANSIT', 'In Transit'),
+        ('DELIVERED', 'Delivered'),
+        ('CANCELLED', 'Cancelled'),
+    ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    shipment = models.ForeignKey(Shipment, on_delete=models.CASCADE, related_name='statuses')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    timestamp = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.shipment} -> {self.status}"
+
+
+class Consignment(models.Model):
+    """Child entity of Shipment, especially relevant for BTPL"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    shipment = models.ForeignKey(Shipment, on_delete=models.CASCADE, related_name='consignments')
+    description = models.CharField(max_length=255, blank=True)
+    weight = models.FloatField(null=True, blank=True)
+    receiver = models.ForeignKey(Customer, on_delete=models.SET_NULL, null=True, blank=True, related_name='received_consignments')
+    
+    def __str__(self):
+        return f"Consignment for {self.receiver} on {self.shipment}"
+
+
+class TrackingHistory(models.Model):
+    """Append-only ledger recording locations."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    shipment = models.ForeignKey(Shipment, on_delete=models.CASCADE, related_name='tracking_history')
+    location = models.CharField(max_length=255)
+    timestamp = models.DateTimeField(default=timezone.now)
+    remarks = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+
+
+# ------------------------------------------------------------------------------
+# HUMAN RESOURCES CONTEXT
+# ------------------------------------------------------------------------------
+
+class AttendanceRecord(models.Model):
+    STATUS_CHOICES = [
+        ('PRESENT', 'Present'),
+        ('ABSENT', 'Absent'),
+        ('LEAVE', 'Leave'),
+        ('HALF_DAY', 'Half Day'),
+    ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='attendance_records')
+    record_date = models.DateField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    
+    class Meta:
+        unique_together = ('driver', 'record_date')
+        ordering = ['-record_date']
+
+    def __str__(self):
+        return f"{self.driver} - {self.record_date} ({self.status})"
+
+
+# ------------------------------------------------------------------------------
+# IMPORT CONTEXT
+# ------------------------------------------------------------------------------
+
+class ImportJob(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('RUNNING', 'Running'),
+        ('COMPLETED', 'Completed'),
+        ('FAILED', 'Failed'),
+        ('PARTIAL_SUCCESS', 'Partial Success'),
+    ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    workbook_type = models.CharField(max_length=50) # 'FTL', 'BTPL', 'ATTENDANCE'
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    
+    total_rows = models.IntegerField(default=0)
+    processed_rows = models.IntegerField(default=0)
+    failed_rows = models.IntegerField(default=0)
+    
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-started_at']
+
+    def __str__(self):
+        return f"Import {self.workbook_type} - {self.status}"
+
+
+class ImportErrorRecord(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    import_job = models.ForeignKey(ImportJob, on_delete=models.CASCADE, related_name='errors')
+    row_number = models.IntegerField()
+    error_message = models.TextField()
+    raw_data = models.JSONField(default=dict)
+
+    class Meta:
+        ordering = ['row_number']
+
+    def __str__(self):
+        return f"Error on {self.import_job} (Row {self.row_number})"
+

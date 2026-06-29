@@ -1,6 +1,8 @@
 import datetime
 import openpyxl
 import os
+from dateutil.relativedelta import relativedelta
+from core.workbook.helpers import atomic_save_workbook
 from openpyxl.utils import get_column_letter, column_index_from_string
 
 HEADER_MAP = {
@@ -150,7 +152,7 @@ def add_ftl_shipment(file_path, row_data, sheet_name='Sheet1'):
         if current_serial is None or str(current_serial).strip() == "":
             sheet.cell(row=row, column=serial_col).value = row - 1
             
-    wb.save(file_path)
+    atomic_save_workbook(wb, file_path)
 
 def evaluate_cell(sheet, row, col, memo=None):
     if memo is None:
@@ -326,7 +328,7 @@ def clear_ftl_row(file_path, row, sheet_name='Sheet1'):
         if key != 'serial':
             sheet.cell(row=row, column=col).value = None
             
-    wb.save(file_path)
+    atomic_save_workbook(wb, file_path)
 
 def get_cached_ftl_metrics(ftl_wb_obj, ftl_file_path, ftl_sheet_name):
     import os

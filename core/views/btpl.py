@@ -1,5 +1,6 @@
 from django.views.decorators.cache import never_cache
 from django.shortcuts import render, redirect, get_object_or_404
+from django.db import transaction
 from django.http import FileResponse, Http404, JsonResponse
 from core.models import BtplWorkbook
 from core.forms import BtplShipmentForm, BtplWorkbookUploadForm
@@ -201,14 +202,15 @@ def btpl_settings(request):
         action = request.POST.get('action')
         
         if action == 'remove':
-            BtplWorkbook.objects.filter(is_active=True).update(is_active=False)
-            if BtplWorkbook.objects.count() == 0:
-                BtplWorkbook.objects.create(
-                    original_name='BTPL_Shipments.xlsx',
-                    active_sheet='JUN 26',
-                    uploaded_by=request.user,
-                    is_active=False
-                )
+            with transaction.atomic():
+                BtplWorkbook.objects.filter(is_active=True).update(is_active=False)
+                if BtplWorkbook.objects.count() == 0:
+                    BtplWorkbook.objects.create(
+                        original_name='BTPL_Shipments.xlsx',
+                        active_sheet='JUN 26',
+                        uploaded_by=request.user,
+                        is_active=False
+                    )
             logger.info(f"Workbook archived/removed: BTPL Tracker by user '{request.user.username}'")
             messages.success(request, "BTPL shipment sheet removed entirely. Portal is now in empty state.")
             return redirect('btpl_settings')
@@ -216,19 +218,20 @@ def btpl_settings(request):
         elif action == 'load_default':
             from core.services.workbook_manager import WorkbookManager
             
-            # Deactivate any existing
-            BtplWorkbook.objects.filter(is_active=True).update(is_active=False)
-            
             file_name = WorkbookManager.load_default_template('btpl', 'BTPL_Shipments.xlsx')
             
-            wb_obj = BtplWorkbook.objects.create(
-                original_name='BTPL_Shipments.xlsx',
-                active_sheet='JUN 26',
-                uploaded_by=request.user,
-                is_active=True
-            )
-            wb_obj.file.name = file_name
-            wb_obj.save(update_fields=['file'])
+            with transaction.atomic():
+                # Deactivate any existing
+                BtplWorkbook.objects.filter(is_active=True).update(is_active=False)
+                
+                wb_obj = BtplWorkbook.objects.create(
+                    original_name='BTPL_Shipments.xlsx',
+                    active_sheet='JUN 26',
+                    uploaded_by=request.user,
+                    is_active=True
+                )
+                wb_obj.file.name = file_name
+                wb_obj.save(update_fields=['file'])
             
             logger.info(f"Workbook activated: Default BTPL Tracker loaded by user '{request.user.username}'")
             messages.success(request, "Default BTPL shipment workbook loaded successfully.")
@@ -245,15 +248,15 @@ def btpl_settings(request):
                     # Copy root file to media directory and register in database
                     from core.services.workbook_manager import WorkbookManager
                     file_name = WorkbookManager.load_default_template('btpl', 'BTPL_Shipments.xlsx')
-                    
-                    wb_obj = BtplWorkbook.objects.create(
-                        original_name='BTPL_Shipments.xlsx',
-                        active_sheet=sheet_sel,
-                        uploaded_by=request.user,
-                        is_active=True
-                    )
-                    wb_obj.file.name = file_name
-                    wb_obj.save(update_fields=['file'])
+                    with transaction.atomic():
+                        wb_obj = BtplWorkbook.objects.create(
+                            original_name='BTPL_Shipments.xlsx',
+                            active_sheet=sheet_sel,
+                            uploaded_by=request.user,
+                            is_active=True
+                        )
+                        wb_obj.file.name = file_name
+                        wb_obj.save(update_fields=['file'])
                     
                 messages.success(request, f"Active sheet tab changed to '{sheet_sel}'.")
                 return redirect('btpl_sheet')
@@ -280,10 +283,11 @@ def btpl_settings(request):
                             new_wb.active_sheet = sheetnames[0]
                             new_wb.save(update_fields=['active_sheet'])
                     
-                    # Deactivate existing active workbook
-                    BtplWorkbook.objects.filter(is_active=True).update(is_active=False)
-                    new_wb.is_active = True
-                    new_wb.save(update_fields=['is_active'])
+                    with transaction.atomic():
+                        # Deactivate existing active workbook
+                        BtplWorkbook.objects.filter(is_active=True).update(is_active=False)
+                        new_wb.is_active = True
+                        new_wb.save(update_fields=['is_active'])
                     
                     logger.info(f"Workbook uploaded: BTPL Tracker '{original_name}' by user '{request.user.username}'")
                     messages.success(request, f"Uploaded workbook '{original_name}' is now the active BTPL shipment workbook.")

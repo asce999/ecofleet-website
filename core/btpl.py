@@ -1,8 +1,10 @@
 import datetime
 import openpyxl
 import os
+import logging
 from openpyxl.utils import get_column_letter, column_index_from_string
 from django.core.cache import cache
+from core.workbook.helpers import atomic_save_workbook
 
 HEADER_MAP = {
     'lr_number': ['LR NUMBER', 'LR No.', 'LR NO'],
@@ -187,7 +189,7 @@ def add_btpl_shipment(file_path, row_data, sheet_name='JUN 26'):
     write_val('vendor_rate', row_data['vendor_rate'])
     write_val('vendor_payment', row_data['vendor_payment'])
     
-    wb.save(file_path)
+    atomic_save_workbook(wb, file_path)
 
 def get_cell_value_by_ref(sheet, ref, memo):
     col_letter = ""
@@ -504,4 +506,4 @@ def clear_btpl_row(file_path, row, sheet_name='JUN 26'):
     if amount_col is not None:
         sheet.cell(row=row, column=amount_col).value = f"={rate_letter}{row}*{weight_letter}{row}"
         
-    wb.save(file_path)
+    atomic_save_workbook(wb, file_path)

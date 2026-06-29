@@ -343,3 +343,6 @@ AXES_ENABLE_ADMIN = False            # don't protect /efe-internal-2026/ separat
 AXES_VERBOSE = False                 # suppress debug output
 
 NGINX_ACCEL_REDIRECT = os.environ.get('NGINX_ACCEL_REDIRECT', 'False') == 'True'
+
+# ── Workbook Settings ──
+WORKBOOK_LOCK_TIMEOUT = 120

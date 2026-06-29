@@ -1,5 +1,6 @@
 from django.views.decorators.cache import never_cache
 from django.shortcuts import render, redirect, get_object_or_404
+from django.db import transaction
 from django.http import FileResponse, Http404
 from core.models import AttendanceWorkbook
 from core.forms import AttendanceWorkbookUploadForm
@@ -144,14 +145,15 @@ def attendance_settings(request):
         action = request.POST.get('action')
         
         if action == 'remove':
-            AttendanceWorkbook.objects.filter(is_active=True).update(is_active=False)
-            if AttendanceWorkbook.objects.count() == 0:
-                AttendanceWorkbook.objects.create(
-                    original_name='Attendance_Sheet.xlsx',
-                    active_sheet='JUNE 2026',
-                    uploaded_by=request.user,
-                    is_active=False
-                )
+            with transaction.atomic():
+                AttendanceWorkbook.objects.filter(is_active=True).update(is_active=False)
+                if AttendanceWorkbook.objects.count() == 0:
+                    AttendanceWorkbook.objects.create(
+                        original_name='Attendance_Sheet.xlsx',
+                        active_sheet='JUNE 2026',
+                        uploaded_by=request.user,
+                        is_active=False
+                    )
             logger.info(f"Workbook archived/removed: Attendance Tracker by user '{request.user.username}'")
             messages.success(request, "Attendance sheet removed entirely. Portal is now in empty state.")
             return redirect('attendance_settings')
@@ -159,18 +161,18 @@ def attendance_settings(request):
         elif action == 'load_default':
             from core.services.workbook_manager import WorkbookManager
             
-            AttendanceWorkbook.objects.filter(is_active=True).update(is_active=False)
-            
             file_name = WorkbookManager.load_default_template('attendance', 'Attendance_Sheet.xlsx')
             
-            wb_obj = AttendanceWorkbook.objects.create(
-                original_name='Attendance_Sheet.xlsx',
-                active_sheet='JUNE 2026',
-                uploaded_by=request.user,
-                is_active=True
-            )
-            wb_obj.file.name = file_name
-            wb_obj.save(update_fields=['file'])
+            with transaction.atomic():
+                AttendanceWorkbook.objects.filter(is_active=True).update(is_active=False)
+                wb_obj = AttendanceWorkbook.objects.create(
+                    original_name='Attendance_Sheet.xlsx',
+                    active_sheet='JUNE 2026',
+                    uploaded_by=request.user,
+                    is_active=True
+                )
+                wb_obj.file.name = file_name
+                wb_obj.save(update_fields=['file'])
             
             from core.services.sheet_parser import get_sheet_names
             if wb_obj.file:
@@ -193,15 +195,15 @@ def attendance_settings(request):
                 else:
                     from core.services.workbook_manager import WorkbookManager
                     file_name = WorkbookManager.load_default_template('attendance', 'Attendance_Sheet.xlsx')
-                    
-                    wb_obj = AttendanceWorkbook.objects.create(
-                        original_name='Attendance_Sheet.xlsx',
-                        active_sheet=sheet_sel,
-                        uploaded_by=request.user,
-                        is_active=True
-                    )
-                    wb_obj.file.name = file_name
-                    wb_obj.save(update_fields=['file'])
+                    with transaction.atomic():
+                        wb_obj = AttendanceWorkbook.objects.create(
+                            original_name='Attendance_Sheet.xlsx',
+                            active_sheet=sheet_sel,
+                            uploaded_by=request.user,
+                            is_active=True
+                        )
+                        wb_obj.file.name = file_name
+                        wb_obj.save(update_fields=['file'])
                     
                 messages.success(request, f"Active sheet tab changed to '{sheet_sel}'.")
                 return redirect('attendance_sheet')
@@ -226,9 +228,10 @@ def attendance_settings(request):
                             new_wb.active_sheet = sheetnames[-1]
                             new_wb.save(update_fields=['active_sheet'])
                     
-                    AttendanceWorkbook.objects.filter(is_active=True).update(is_active=False)
-                    new_wb.is_active = True
-                    new_wb.save(update_fields=['is_active'])
+                    with transaction.atomic():
+                        AttendanceWorkbook.objects.filter(is_active=True).update(is_active=False)
+                        new_wb.is_active = True
+                        new_wb.save(update_fields=['is_active'])
                     
                     logger.info(f"Workbook uploaded: Attendance Tracker '{original_name}' by user '{request.user.username}'")
                     messages.success(request, f"Uploaded workbook '{original_name}' is now the active attendance workbook.")

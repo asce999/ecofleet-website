@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.db import transaction
 from django.http import FileResponse, Http404
 from core.models import ToolRun, CofWorkbook, ToolRunFile
 from django.core.files.base import ContentFile
@@ -107,9 +108,10 @@ def cof_workbook(request):
                 new.delete()
                 messages.error(request, str(e))
                 return redirect('cof_workbook')
-            CofWorkbook.objects.filter(is_active=True).update(is_active=False)
-            new.is_active = True
-            new.save(update_fields=['is_active'])
+            with transaction.atomic():
+                CofWorkbook.objects.filter(is_active=True).update(is_active=False)
+                new.is_active = True
+                new.save(update_fields=['is_active'])
             
             logger.info(f"Workbook uploaded: COF Tracker '{original_name}' by user '{request.user.username}'")
             messages.success(request, f"“{original_name}” is now the active tracking workbook.")

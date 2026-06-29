@@ -1,48 +1,113 @@
-venv/
-.idea/
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.env/
+.venv/
+Pipfile.lock
+poetry.lock
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+db.sqlite3-shm
+db.sqlite3-wal
+test.db
+media/
+staticfiles/
+
+# Testing
 .pytest_cache/
 htmlcov/
 .coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
 .tox/
-build/
-dist/
-*.egg-info/
-media/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+ehthumbs_vista.db
+Thumbs.db
+desktop.ini
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Frontend / Node
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn.lock
+package-lock.json
+
+# Project specific
 efe_data/
 .agent
 .agents
-design-system
-db.sqlite3
+.claude/
+design-system/
 *.xlsx
+!templates/*.xlsx
+!core/templates/*.xlsx
 *.csv
 test_output.txt
-/scratch_*.py
-/patch*.py
-/test_*.py
-.env
 logs/
 backups/
-staticfiles/
 cache/
-db.sqlite3-wal
-db.sqlite3-shm
-test.db
 graphify-out/
 .playwright-mcp/
 prompt.md
 rendered_ops.html
 build_graph.py
+scratch/
 
-# Claude AI
-.claude/
-
-# Local test and scratch scripts (root only so we don't ignore real tests)
+# Local test and scratch scripts (root only)
+/scratch_*.py
+/patch*.py
+/test_*.py
 /*_test.py
 /playwright_*.py
-
-# macOS
-.DS_Store

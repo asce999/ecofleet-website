@@ -12,6 +12,7 @@ import re
 import time
 
 from django.conf import settings
+from core.workbook.helpers import atomic_save_workbook
 
 from num2words import num2words
 from openpyxl import load_workbook
@@ -331,7 +332,7 @@ def generate_cof(d, workbook_path):
         sheet_name = create_cof_sheet(wb, d)
         append_data_sheet(wb, d, info["serial"])
         try:
-            wb.save(workbook_path)
+            atomic_save_workbook(wb, workbook_path)
         except PermissionError:
             raise WorkbookInUse(
                 "Couldn't save — the tracking workbook is open in Excel on the server.")
