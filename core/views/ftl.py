@@ -26,7 +26,7 @@ def get_active_ftl_workbook():
             return None, None, None
         return wb_obj, wb_obj.file.path, wb_obj.active_sheet
     else:
-        file_path = os.path.join(settings.BASE_DIR, 'FTL_Shipment_Tracker.xlsx')
+        file_path = os.path.join(settings.BASE_DIR, 'efe_data', 'FTL_Shipment_Tracker.xlsx')
         sheet_name = 'Sheet1'
         return None, file_path, sheet_name
 

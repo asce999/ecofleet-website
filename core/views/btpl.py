@@ -30,7 +30,7 @@ def get_active_btpl_workbook():
         return wb_obj, wb_obj.file.path, wb_obj.active_sheet
     else:
         # Initial fresh state: fall back to default
-        file_path = os.path.join(settings.BASE_DIR, 'BTPL_Shipments.xlsx')
+        file_path = os.path.join(settings.BASE_DIR, 'efe_data', 'BTPL_Shipments.xlsx')
         sheet_name = 'JUN 26'
         return None, file_path, sheet_name
 

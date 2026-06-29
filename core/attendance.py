@@ -36,7 +36,7 @@ def get_active_attendance_workbook():
             return None, None, None
         return wb_obj, wb_obj.file.path, wb_obj.active_sheet
     else:
-        file_path = os.path.join(settings.BASE_DIR, 'Attendance_Sheet.xlsx')
+        file_path = os.path.join(settings.BASE_DIR, 'efe_data', 'Attendance_Sheet.xlsx')
         sheet_name = 'JUNE 2026'
         if os.path.exists(file_path):
             try:

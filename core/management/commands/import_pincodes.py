@@ -1,4 +1,6 @@
 import csv
+import os
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from core.models import Pincode
 
@@ -6,7 +8,7 @@ class Command(BaseCommand):
     help = 'Import pincodes from CSV'
 
     def handle(self, *args, **kwargs):
-        with open('Pin-Code_List_9Jun26.csv', encoding='utf-8') as f:
+        with open(os.path.join(settings.BASE_DIR, 'efe_data', 'Pin-Code_List_9Jun26.csv'), encoding='utf-8') as f:
             reader = csv.DictReader(f)
             count = 0
             for row in reader:
