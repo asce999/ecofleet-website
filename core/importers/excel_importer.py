@@ -98,21 +98,30 @@ class ExcelImporter:
                 import dateutil.parser
                 try:
                     booking_date = dateutil.parser.parse(booking_date).date()
-                except:
+                except (ValueError, TypeError, dateutil.parser.ParserError):
                     booking_date = None
 
+            lr = str(get_val('lr_number') or '')
+            source_key = f"{lr}|{booking_date.isoformat() if booking_date else ''}"
+
+            if not lr and not booking_date:
+                raise ValueError("Cannot import row: missing both lr_number and booking_date")
+
             # Create Shipment
-            shipment = Shipment.objects.create(
+            shipment, _ = Shipment.objects.update_or_create(
                 shipment_type='FTL',
-                origin=str(origin),
-                destination=str(destination),
-                dispatch_date=booking_date,
-                vehicle=vehicle_obj,
-                metadata={
-                    'lr_number': str(get_val('lr_number')) if get_val('lr_number') else "",
-                    'consignor': str(get_val('consignor')) if get_val('consignor') else "",
-                    'consignee': str(get_val('consignee')) if get_val('consignee') else "",
-                    'vendor': str(get_val('vendor')) if get_val('vendor') else "",
+                source_key=source_key,
+                defaults={
+                    'origin': str(origin),
+                    'destination': str(destination),
+                    'dispatch_date': booking_date,
+                    'vehicle': vehicle_obj,
+                    'metadata': {
+                        'lr_number': lr,
+                        'consignor': str(get_val('consignor')) if get_val('consignor') else "",
+                        'consignee': str(get_val('consignee')) if get_val('consignee') else "",
+                        'vendor': str(get_val('vendor')) if get_val('vendor') else "",
+                    }
                 }
             )
 
@@ -126,7 +135,9 @@ class ExcelImporter:
             elif etd:
                 status_val = 'IN_TRANSIT'
 
-            ShipmentStatus.objects.create(
+            # get_or_create (not create) so re-importing the same row does not
+            # bloat the status log with duplicate rows (F-02 idempotency).
+            ShipmentStatus.objects.get_or_create(
                 shipment=shipment,
                 status=status_val
             )

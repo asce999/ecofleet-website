@@ -3,6 +3,7 @@ from io import BytesIO
 from core.models import Shipment
 
 class ExcelExporter:
+    # TODO(phase-3): wired when dual-read/export lands
     def export_ftl_shipments(self):
         """Generates an FTL Excel file directly from the PostgreSQL Shipment domain models."""
         wb = openpyxl.Workbook()

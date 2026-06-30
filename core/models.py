@@ -340,7 +340,7 @@ class MigrationFeatureFlags(models.Model):
     use_database_reads = models.BooleanField(
         default=False, 
         help_text="Dual-Read: UI dashboards query PostgreSQL instead of parsing Excel."
-    )
+    )  # TODO(phase-3): wired when dual-read/export lands
     use_database_exports = models.BooleanField(
         default=False, 
         help_text="Replaces static Excel downloads with dynamically generated DB workbooks."
@@ -411,6 +411,7 @@ class Shipment(models.Model):
     destination = models.CharField(max_length=255, blank=True)
     
     # Using Lorry Number/Date as natural keys often found in Excel
+    source_key = models.CharField(max_length=200, blank=True, db_index=True)
     dispatch_date = models.DateField(null=True, blank=True)
     expected_eta = models.DateTimeField(null=True, blank=True)
     actual_eta = models.DateTimeField(null=True, blank=True)
@@ -422,6 +423,13 @@ class Shipment(models.Model):
 
     class Meta:
         ordering = ['-dispatch_date']
+        constraints = [
+            UniqueConstraint(
+                fields=['shipment_type', 'source_key'],
+                condition=~Q(source_key=''),
+                name='unique_shipment_source_key'
+            )
+        ]
 
     def __str__(self):
         return f"{self.shipment_type} Shipment - {self.vehicle} on {self.dispatch_date}"
