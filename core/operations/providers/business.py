@@ -19,7 +19,7 @@ class BusinessProvider(BaseProvider):
         
         total_users = User.objects.count()
         active_users = User.objects.filter(is_active=True).count()
-        directors = UserProfile.objects.filter(role='Director').count()
+        directors = UserProfile.objects.filter(role=UserProfile.ROLE_DIRECTOR).count()
         
         metrics["Total Users"] = total_users
         metrics["Enabled Accounts"] = active_users

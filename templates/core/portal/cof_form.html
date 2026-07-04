@@ -96,7 +96,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ request.csp_nonce }}">
   function recalc() {
     const ndp = parseFloat(document.getElementById('id_ndp_price').value) || 0;
     const qty = parseFloat(document.getElementById('id_disc_qty').value) || 0;

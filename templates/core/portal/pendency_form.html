@@ -152,7 +152,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ request.csp_nonce }}">
   // Grey out the delay-days field when "everything in transit" is ticked.
   (function () {
     const all = document.getElementById('id_all_in_transit');

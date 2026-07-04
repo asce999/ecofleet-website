@@ -558,6 +558,7 @@ h1 {
   border-radius: 24px;
   padding: 48px 52px;
   overflow: hidden;
+  scroll-margin-top: 100px;
 }
 
 .track-section::after {

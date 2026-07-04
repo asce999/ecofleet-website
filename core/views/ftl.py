@@ -8,7 +8,7 @@ from core.decorators import staff_required, tool_permission_required
 from core import ftl as ftl_logic
 import os
 import datetime
-from core.models import ToolRun
+from core.models import ToolRun, MigrationFeatureFlags, Shipment
 from django.contrib import messages
 from core.utils.parsing import safe_int
 from core.workbook.locking import workbook_lock
@@ -28,9 +28,86 @@ def get_active_ftl_workbook():
             return None, None, None
         return wb_obj, wb_obj.file.path, wb_obj.active_sheet
     else:
-        file_path = os.path.join(settings.BASE_DIR, 'efe_data', 'FTL_Shipment_Tracker.xlsx')
+        file_path = os.path.join(settings.BASE_DIR, 'core', 'templates_default', 'FTL_Shipment_Tracker.xlsx')
         sheet_name = 'Sheet1'
         return None, file_path, sheet_name
+
+
+def _get_db_ftl_page_data(page=1, page_size=20, target_row=None):
+    shipments = Shipment.objects.filter(shipment_type='FTL').order_by('dispatch_date', 'source_key')
+    total_rows = shipments.count()
+    total_pages = max(1, (total_rows + page_size - 1) // page_size)
+    page = max(1, min(page, total_pages))
+
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    page_shipments = shipments[start_idx:end_idx]
+
+    columns = [
+        'Date of Booking', 'ETD', 'Date of Delivery', 'Consignor', 'From Location',
+        'Consignee', 'LR Number', 'To Location', 'Vehicle Number', 'Vendor', 'Serial'
+    ]
+
+    def format_date(d):
+        if not d: return ""
+        return d.strftime('%d-%b-%y')
+
+    rows = []
+    for i, s in enumerate(page_shipments):
+        row_num = start_idx + i + 2
+        cells = [
+            format_date(s.dispatch_date),
+            "", # ETD
+            "", # Delivery Date
+            s.metadata.get('consignor', ''),
+            s.origin,
+            s.metadata.get('consignee', ''),
+            s.metadata.get('lr_number', ''),
+            s.destination,
+            s.vehicle.registration_number if s.vehicle else '',
+            s.metadata.get('vendor', ''),
+            row_num - 1 # Serial
+        ]
+        rows.append({'row_num': row_num, 'cells': cells})
+
+    preview = {
+        'columns': columns,
+        'rows': rows,
+        'total_rows': total_rows,
+        'page': page,
+        'page_size': page_size,
+        'total_pages': total_pages
+    }
+
+    totals_row = total_rows + 2
+    next_row = target_row if target_row else totals_row
+
+    row_values = {}
+    if next_row < totals_row:
+        idx = next_row - 2
+        if 0 <= idx < total_rows:
+            s = shipments[idx]
+            row_values = {
+                'row_num': next_row,
+                'booking_date': s.dispatch_date,
+                'etd': None,
+                'delivery_date': None,
+                'consignor': s.metadata.get('consignor', ''),
+                'origin': s.origin,
+                'consignee': s.metadata.get('consignee', ''),
+                'lr_number': s.metadata.get('lr_number', ''),
+                'destination': s.destination,
+                'vehicle_number': s.vehicle.registration_number if s.vehicle else '',
+                'vendor': s.metadata.get('vendor', ''),
+            }
+
+    return {
+        'mapping': {},
+        'totals_row': totals_row,
+        'next_row': next_row,
+        'row_values': row_values,
+        'preview': preview,
+    }
 
 
 @staff_required
@@ -47,9 +124,14 @@ def ftl_sheet(request):
         })
 
     page = safe_int(request.GET.get('page', 1), 1)
-    page_data = ftl_logic.get_ftl_page_data(
-        file_path, sheet_name=sheet_name, page=page, page_size=20
-    )
+    
+    flags = MigrationFeatureFlags.get_solo()
+    if flags.use_database_reads:
+        page_data = _get_db_ftl_page_data(page=page, page_size=20)
+    else:
+        page_data = ftl_logic.get_ftl_page_data(
+            file_path, sheet_name=sheet_name, page=page, page_size=20
+        )
 
     if page_data is None:
         return render(request, 'core/portal/ftl_form.html', {
@@ -84,13 +166,21 @@ def ftl_api(request):
         return JsonResponse({'error': 'No active workbook'}, status=404)
 
     action = request.GET.get('action') or request.POST.get('action', '')
+    
+    flags = MigrationFeatureFlags.get_solo()
+    use_db = flags.use_database_reads
 
     # GET: fetch row data for editing
     if action == 'get_row':
         row_num = safe_int(request.GET.get('row', 0), 0)
         if row_num < 2:
             return JsonResponse({'error': 'Invalid row'}, status=400)
-        row_data = ftl_logic.get_ftl_row_values(file_path, row_num, sheet_name=sheet_name)
+            
+        if use_db:
+            page_data = _get_db_ftl_page_data(page=1, page_size=1, target_row=row_num)
+            row_data = page_data['row_values']
+        else:
+            row_data = ftl_logic.get_ftl_row_values(file_path, row_num, sheet_name=sheet_name)
         for key in ['booking_date', 'etd', 'delivery_date']:
             val = row_data.get(key)
             if isinstance(val, (datetime.datetime, datetime.date)):
@@ -100,7 +190,11 @@ def ftl_api(request):
     # GET: paginated preview
     if action == 'preview':
         page = safe_int(request.GET.get('page', 1), 1)
-        preview = ftl_logic.get_ftl_preview(file_path, sheet_name=sheet_name, page=page, page_size=20)
+        if use_db:
+            page_data = _get_db_ftl_page_data(page=page, page_size=20)
+            preview = page_data['preview']
+        else:
+            preview = ftl_logic.get_ftl_preview(file_path, sheet_name=sheet_name, page=page, page_size=20)
         return JsonResponse({'preview': preview})
 
     # POST: save row
@@ -137,7 +231,10 @@ def ftl_api(request):
     # POST: delete row
     if action == 'delete' and request.method == 'POST':
         row_num = safe_int(request.POST.get('row', 0), 0)
-        page_data = ftl_logic.get_ftl_page_data(file_path, sheet_name=sheet_name, page=1, page_size=1)
+        if use_db:
+            page_data = _get_db_ftl_page_data(page=1, page_size=1)
+        else:
+            page_data = ftl_logic.get_ftl_page_data(file_path, sheet_name=sheet_name, page=1, page_size=1)
         totals_row = page_data['totals_row'] if page_data else 1000
         if row_num < 2 or row_num >= totals_row:
             return JsonResponse({'error': 'Invalid row number'}, status=400)
@@ -157,7 +254,10 @@ def ftl_api(request):
 
     # GET: next available row
     if action == 'next_row':
-        next_row = ftl_logic.find_next_ftl_row(file_path, sheet_name=sheet_name)
+        if use_db:
+            next_row = Shipment.objects.filter(shipment_type='FTL').count() + 2
+        else:
+            next_row = ftl_logic.find_next_ftl_row(file_path, sheet_name=sheet_name)
         return JsonResponse({'next_row': next_row})
 
     return JsonResponse({'error': 'Unknown action'}, status=400)
@@ -226,6 +326,19 @@ def ftl_settings(request):
                 wb_obj.save(update_fields=['file'])
             
             logger.info(f"Workbook activated: Default FTL Tracker loaded by user '{request.user.username}'")
+            try:
+                from core.models import SystemEvent
+                SystemEvent.objects.create(
+                    component='ftl',
+                    event_type='workbook_activated',
+                    title='Default FTL Tracker Loaded',
+                    message=f"Default FTL Tracker loaded by {request.user.username}",
+                    request_id=getattr(request, 'request_id', None),
+                    user=request.user,
+                    metadata={'file': file_name}
+                )
+            except Exception as e:
+                logger.error(f"Failed to log SystemEvent: {e}")
             messages.success(request, "Default FTL shipment workbook loaded successfully.")
             return redirect('ftl_settings')
             
@@ -248,6 +361,19 @@ def ftl_settings(request):
                         )
                         wb_obj.file.name = file_name
                         wb_obj.save(update_fields=['file'])
+                    try:
+                        from core.models import SystemEvent
+                        SystemEvent.objects.create(
+                            component='ftl',
+                            event_type='workbook_activated',
+                            title='New FTL Tracker Initialized',
+                            message=f"Default FTL Tracker initialized with sheet '{sheet_sel}' by {request.user.username}",
+                            request_id=getattr(request, 'request_id', None),
+                            user=request.user,
+                            metadata={'file': file_name, 'sheet': sheet_sel}
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to log SystemEvent: {e}")
                     
                 messages.success(request, f"Active sheet tab changed to '{sheet_sel}'.")
                 return redirect('ftl_sheet')
@@ -278,6 +404,7 @@ def ftl_settings(request):
                     
                     # Phase 3 Shadow Importer Hook
                     from core.models import MigrationFeatureFlags, ImportJob
+                    import os
                     flags = MigrationFeatureFlags.get_solo()
                     if flags.use_database_importer:
                         import_job = ImportJob.objects.create(
@@ -285,13 +412,31 @@ def ftl_settings(request):
                             status='PENDING',
                             uploaded_by=request.user
                         )
-                        from core.importers.excel_importer import ExcelImporter
-                        import threading
-                        importer = ExcelImporter()
-                        thread = threading.Thread(target=importer.process_ftl_workbook, args=(import_job.id, new_wb.file.path))
-                        thread.start()
+                        if os.environ.get('CELERY_BROKER_URL'):
+                            from core.tasks import process_ftl_import
+                            process_ftl_import.delay(import_job.id, new_wb.file.path)
+                        else:
+                            from core.importers.excel_importer import ExcelImporter
+                            import threading
+                            importer = ExcelImporter()
+                            thread = threading.Thread(target=importer.process_ftl_workbook, args=(import_job.id, new_wb.file.path))
+                            thread.start()
                     
                     logger.info(f"Workbook uploaded: FTL Tracker '{original_name}' by user '{request.user.username}'")
+                    try:
+                        from core.models import SystemEvent
+                        SystemEvent.objects.create(
+                            component='ftl',
+                            event_type='workbook_activated',
+                            title='New FTL Tracker Uploaded',
+                            message=f"Workbook '{original_name}' uploaded and activated by {request.user.username}",
+                            request_id=getattr(request, 'request_id', None),
+                            user=request.user,
+                            metadata={'original_name': original_name, 'file': new_wb.file.name}
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to log SystemEvent: {e}")
+
                     messages.success(request, f"Uploaded workbook '{original_name}' is now the active FTL shipment workbook.")
                     return redirect('ftl_settings')
                 else:

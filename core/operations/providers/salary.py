@@ -14,6 +14,10 @@ class SalaryProvider(BaseProvider):
         metrics = {}
         
         config = SalaryConfig.objects.first()
+        from core.models import EmployeeSalaryOverride
+        overrides_count = EmployeeSalaryOverride.objects.count()
+        metrics["Salary Overrides"] = overrides_count
+
         if config:
             checks.append(CheckResult(name="Configuration", status="healthy", message="Loaded"))
             metrics["Base Per Day"] = f"₹{config.basic_rate_per_day}" if config.basic_rate_per_day else "N/A"

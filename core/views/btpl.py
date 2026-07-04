@@ -4,7 +4,7 @@ from django.db import transaction
 from django.http import FileResponse, Http404, JsonResponse
 from core.models import BtplWorkbook
 from core.forms import BtplShipmentForm, BtplWorkbookUploadForm
-from core.decorators import staff_required, tool_permission_required, tool_permission_required
+from core.decorators import staff_required, tool_permission_required
 from core import btpl as btpl_logic
 import os
 import json
@@ -31,9 +31,58 @@ def get_active_btpl_workbook():
         return wb_obj, wb_obj.file.path, wb_obj.active_sheet
     else:
         # Initial fresh state: fall back to default
-        file_path = os.path.join(settings.BASE_DIR, 'efe_data', 'BTPL_Shipments.xlsx')
+        file_path = os.path.join(settings.BASE_DIR, 'core', 'templates_default', 'BTPL_Shipments.xlsx')
         sheet_name = 'JUN 26'
         return None, file_path, sheet_name
+def _get_db_btpl_page_data(page=1, page_size=20):
+    """Fallback reader that pulls BTPL data directly from the DB."""
+    from core.models import Shipment
+    from django.core.paginator import Paginator
+    
+    shipments = Shipment.objects.filter(shipment_type='BTPL').order_by('dispatch_date', 'id')
+    paginator = Paginator(shipments, page_size)
+    page_obj = paginator.get_page(page)
+    
+    preview = []
+    # Calculate starting row number for UI consistency (assuming row 2 is the first data row)
+    start_row = ((page - 1) * page_size) + 2
+    
+    for idx, s in enumerate(page_obj.object_list):
+        row_num = start_row + idx
+        # Map Shipment fields back to BTPL frontend format
+        preview.append({
+            'row_num': row_num,
+            'pickup_date': s.dispatch_date,
+            'lr_number': s.metadata.get('lr_number', ''),
+            'name': s.metadata.get('name', ''),
+            'address': s.metadata.get('address', ''),
+            'contact_person': s.metadata.get('contact_person', ''),
+            'contact_number': s.metadata.get('contact_number', ''),
+            'city': s.metadata.get('city', ''),
+            'state': s.metadata.get('state', ''),
+            'boxes': s.metadata.get('boxes', ''),
+            'weight_ef': s.metadata.get('weight_ef', ''),
+            'weight_opt': s.metadata.get('weight_opt', ''),
+            'rate': s.metadata.get('rate', ''),
+            'amount': s.metadata.get('amount', ''),
+            'vendor': s.metadata.get('vendor', ''),
+            'vendor_rate': s.metadata.get('vendor_rate', ''),
+            'vendor_payment': s.metadata.get('vendor_payment', ''),
+            'status': s.statuses.first().status if s.statuses.exists() else 'DRAFT'
+        })
+        
+    total_records = paginator.count
+    next_row = total_records + 2
+    
+    return {
+        'preview': preview,
+        'next_row': next_row,
+        'totals_row': next_row,
+        'has_next': page_obj.has_next(),
+        'has_previous': page_obj.has_previous(),
+        'current_page': page_obj.number,
+        'total_pages': paginator.num_pages
+    }
 
 
 @staff_required
@@ -49,10 +98,16 @@ def btpl_sheet(request):
             'no_sheet': True,
         })
 
+    from core.models import MigrationFeatureFlags
+    flags = MigrationFeatureFlags.get_solo()
     page = safe_int(request.GET.get('page', 1), 1)
-    page_data = btpl_logic.get_btpl_page_data(
-        file_path, sheet_name=sheet_name, page=page, page_size=20
-    )
+
+    if flags.use_database_reads:
+        page_data = _get_db_btpl_page_data(page=page, page_size=20)
+    else:
+        page_data = btpl_logic.get_btpl_page_data(
+            file_path, sheet_name=sheet_name, page=page, page_size=20
+        )
 
     if page_data is None:
         return render(request, 'core/portal/btpl_form.html', {
@@ -288,6 +343,25 @@ def btpl_settings(request):
                         BtplWorkbook.objects.filter(is_active=True).update(is_active=False)
                         new_wb.is_active = True
                         new_wb.save(update_fields=['is_active'])
+                    
+                    from core.models import MigrationFeatureFlags, ImportJob
+                    import os
+                    flags = MigrationFeatureFlags.get_solo()
+                    if flags.use_database_importer:
+                        import_job = ImportJob.objects.create(
+                            workbook_type='BTPL',
+                            status='PENDING',
+                            uploaded_by=request.user
+                        )
+                        if os.environ.get('CELERY_BROKER_URL'):
+                            from core.tasks import process_btpl_import
+                            process_btpl_import.delay(import_job.id, new_wb.file.path)
+                        else:
+                            from core.importers.btpl_importer import BtplImporter
+                            import threading
+                            importer = BtplImporter()
+                            thread = threading.Thread(target=importer.process_btpl_workbook, args=(import_job.id, new_wb.file.path))
+                            thread.start()
                     
                     logger.info(f"Workbook uploaded: BTPL Tracker '{original_name}' by user '{request.user.username}'")
                     messages.success(request, f"Uploaded workbook '{original_name}' is now the active BTPL shipment workbook.")

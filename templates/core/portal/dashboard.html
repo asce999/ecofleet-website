@@ -196,8 +196,8 @@
 {% endblock %}
 
 {% block extra_js %}
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script>
+  <script nonce="{{ request.csp_nonce }}" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script nonce="{{ request.csp_nonce }}">
     const D = JSON.parse(document.getElementById('chartData').textContent);
 
     const isLight = document.documentElement.getAttribute('data-theme') === 'light';

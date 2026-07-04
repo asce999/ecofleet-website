@@ -3,7 +3,7 @@
 {% block heading %}BTPL Shipment Sheet{% endblock %}
 
 {% block extra_css %}
-<style>
+<style nonce="{{ request.csp_nonce }}">
 /* ── BTPL Overrides ── */
 .btpl-topbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
 .btpl-topbar-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -403,7 +403,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ request.csp_nonce }}">
 const API = "{% url 'btpl_api' %}";
 const CSRF = "{{ csrf_token }}";
 let currentPage = {{ preview.page|default:"1" }};

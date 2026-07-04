@@ -61,7 +61,7 @@ def director_required(view_func):
         
         from core.models import UserProfile
         profile, _ = UserProfile.objects.get_or_create(user=request.user)
-        if profile.role != 'Director':
+        if profile.role != UserProfile.ROLE_DIRECTOR:
             logger.warning(f"Director-only access violation: User '{request.user.username}' (Role: {profile.role}) attempted to access path: {request.path}")
             messages.error(request, "Only the Director can access this section.")
             return redirect('dashboard')

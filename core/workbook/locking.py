@@ -22,6 +22,7 @@ def workbook_lock(workbook_path: str, timeout: int = 15):
     """
     Acquires an exclusive, file-based lock for a given workbook path.
     Prevents concurrent modifications to the same Excel file.
+    # ponytail: The filesystem lock will be retired in Sprint 5 when the DB becomes authoritative (or we migrate to a Redis lock). Do not touch for now.
     
     Args:
         workbook_path: The absolute path to the workbook file.

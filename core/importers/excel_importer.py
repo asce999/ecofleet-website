@@ -1,7 +1,9 @@
 import openpyxl
+import datetime
 from django.utils import timezone
 from core.models import ImportJob, ImportErrorRecord, Shipment, ShipmentStatus, Vehicle, Driver
 from core.ftl import get_column_mapping
+from core.utils.date_parser import parse_excel_date, parse_excel_datetime
 
 class ExcelImporter:
     def process_ftl_workbook(self, job_id, file_path):
@@ -94,12 +96,12 @@ class ExcelImporter:
             destination = get_val('destination') or ""
             booking_date = get_val('booking_date')
             
-            if isinstance(booking_date, str):
-                import dateutil.parser
-                try:
-                    booking_date = dateutil.parser.parse(booking_date).date()
-                except (ValueError, TypeError, dateutil.parser.ParserError):
-                    booking_date = None
+            booking_date = parse_excel_date(booking_date)
+
+            etd = get_val('etd')
+            delivery_date = get_val('delivery_date')
+            expected_eta = parse_excel_datetime(etd)
+            actual_eta = parse_excel_datetime(delivery_date)
 
             lr = str(get_val('lr_number') or '')
             source_key = f"{lr}|{booking_date.isoformat() if booking_date else ''}"
@@ -115,6 +117,8 @@ class ExcelImporter:
                     'origin': str(origin),
                     'destination': str(destination),
                     'dispatch_date': booking_date,
+                    'expected_eta': expected_eta,
+                    'actual_eta': actual_eta,
                     'vehicle': vehicle_obj,
                     'metadata': {
                         'lr_number': lr,
@@ -126,9 +130,6 @@ class ExcelImporter:
             )
 
             # Determine Status
-            etd = get_val('etd')
-            delivery_date = get_val('delivery_date')
-            
             status_val = 'DRAFT'
             if delivery_date:
                 status_val = 'DELIVERED'

@@ -13,11 +13,17 @@ class BTPLProvider(BaseProvider):
         checks = [CheckResult(name="Service", status="healthy", message="Available")]
         metrics = {}
         
+        from core.models import BtplWorkbook
         total = ToolRun.objects.filter(tool='BTPL Generator').count()
         metrics["Total Runs"] = total
         recent = ToolRun.objects.filter(tool='BTPL Generator').order_by('-created_at').first()
         if recent:
             metrics["Last Run"] = recent.created_at.strftime("%Y-%m-%d %H:%M:%S")
+
+        active_workbooks = BtplWorkbook.objects.filter(is_active=True).count()
+        total_workbooks = BtplWorkbook.objects.count()
+        metrics["Active Workbooks"] = active_workbooks
+        metrics["Total Workbooks"] = total_workbooks
 
         return ProviderResult(
             status=status,

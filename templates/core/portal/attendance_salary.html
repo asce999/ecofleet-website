@@ -3,7 +3,7 @@
 {% block heading %}Attendance Tracker{% endblock %}
 {% block content %}
 
-<style>
+<style nonce="{{ request.csp_nonce }}">
   .salary-table-wrap {
     overflow-x: auto;
     max-width: 100%;

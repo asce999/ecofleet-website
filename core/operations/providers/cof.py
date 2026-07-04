@@ -29,6 +29,12 @@ class COFProvider(BaseProvider):
         if recent:
             metrics["Last Run"] = recent.created_at.strftime("%Y-%m-%d %H:%M:%S")
 
+        from core.models import CofWorkbook
+        active_workbooks = CofWorkbook.objects.filter(is_active=True).count()
+        total_workbooks = CofWorkbook.objects.count()
+        metrics["Active Workbooks"] = active_workbooks
+        metrics["Total Workbooks"] = total_workbooks
+
         return ProviderResult(
             status=status,
             health_score=100 if status == "healthy" else 0,

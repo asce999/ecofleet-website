@@ -21,10 +21,15 @@ class ActivityProvider(BaseProvider):
         warn_24h = SystemEvent.objects.filter(timestamp__gte=one_day_ago, severity=SystemEvent.SEVERITY_WARNING).count()
         crit_24h = SystemEvent.objects.filter(timestamp__gte=one_day_ago, severity=SystemEvent.SEVERITY_CRITICAL).count()
         
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        recent_logins = User.objects.filter(last_login__gte=one_day_ago).count()
+        
         metrics["Events (24h)"] = total_24h
         metrics["Info"] = info_24h
         metrics["Warnings"] = warn_24h
         metrics["Criticals"] = crit_24h
+        metrics["Recent Logins"] = recent_logins
         
         if crit_24h > 0:
             status = "critical"

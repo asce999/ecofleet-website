@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 import os
 import sentry_sdk
@@ -101,17 +102,19 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'csp.middleware.CSPMiddleware',
+    'core.middleware.RequestIDMiddleware',
     'core.middleware.PerformanceMiddleware',
 ]
 
 # ── Content Security Policy ──
 CSP_DEFAULT_SRC = ("'self'",)
 CSP_FONT_SRC = ("'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net")
-# TODO(SECURITY): Refactor inline scripts and styles into external files or use nonces.
-# 'unsafe-inline' is currently required for Chart.js tooltips and dynamic template styles,
-# but it undermines CSP protection against XSS.
-CSP_STYLE_SRC = ("'self'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net", "'unsafe-inline'")
-CSP_SCRIPT_SRC = ("'self'", "https://cdn.jsdelivr.net", "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js", "'unsafe-inline'")
+CSP_STYLE_SRC = ("'self'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net")
+CSP_SCRIPT_SRC = ("'self'", "https://cdn.jsdelivr.net")
+CSP_INCLUDE_NONCE_IN = ['script-src', 'style-src']
+# Report-Only mode: violations are logged (Sentry) but not enforced.
+# Remove this line once a week of clean reports confirms no breakage.
+CSP_REPORT_ONLY = True
 
 ROOT_URLCONF = 'ecofleet.urls'
 
@@ -133,23 +136,36 @@ TEMPLATES = [
 WSGI_APPLICATION = 'ecofleet.wsgi.application'
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-        'OPTIONS': {
-            'timeout': 20,
-            'init_command': 'PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;',
-        }
-    }
+    'default': dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
 
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
-        'LOCATION': BASE_DIR / 'cache',
-        'TIMEOUT': 300,
+REDIS_URL = os.getenv('REDIS_URL')
+
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+        }
     }
-}
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+            'LOCATION': BASE_DIR / 'cache',
+            'TIMEOUT': 300,
+        }
+    }
+
+# ── Celery Settings ──
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', CELERY_BROKER_URL)
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -190,7 +206,14 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
 
 # ── Media: uploaded + generated files ──
 MEDIA_URL = '/media/'
@@ -217,10 +240,13 @@ LOGGING = {
         'require_debug_false': {
             '()': 'django.utils.log.RequireDebugFalse',
         },
+        'request_id': {
+            '()': 'core.middleware.RequestIDFilter',
+        },
     },
     'formatters': {
         'standard': {
-            'format': '[{asctime}] {levelname} [{name}] {message}',
+            'format': '[{asctime}] {levelname} [{name}] [req:{request_id}] {message}',
             'style': '{',
             'datefmt': '%Y-%m-%d %H:%M:%S',
         },
@@ -229,6 +255,7 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'standard',
+            'filters': ['request_id'],
         },
         'file_app': {
             'class': 'logging.handlers.TimedRotatingFileHandler',
@@ -238,6 +265,7 @@ LOGGING = {
             'backupCount': 30,
             'formatter': 'standard',
             'level': 'INFO',
+            'filters': ['request_id'],
         },
         'file_error': {
             'class': 'logging.handlers.TimedRotatingFileHandler',
@@ -247,6 +275,7 @@ LOGGING = {
             'backupCount': 30,
             'formatter': 'standard',
             'level': 'ERROR',
+            'filters': ['request_id'],
         },
         'file_security': {
             'class': 'logging.handlers.TimedRotatingFileHandler',
@@ -256,10 +285,11 @@ LOGGING = {
             'backupCount': 30,
             'formatter': 'standard',
             'level': 'INFO',
+            'filters': ['request_id'],
         },
         'mail_admins': {
             'level': 'ERROR',
-            'filters': ['require_debug_false'],
+            'filters': ['require_debug_false', 'request_id'],
             'class': 'django.utils.log.AdminEmailHandler',
             'include_html': True,
         },
@@ -346,3 +376,6 @@ NGINX_ACCEL_REDIRECT = os.environ.get('NGINX_ACCEL_REDIRECT', 'False') == 'True'
 
 # ── Workbook Settings ──
 WORKBOOK_LOCK_TIMEOUT = 120
+
+# ── Third-Party Integrations ──
+EXTERNAL_TRACKING_API_URL = os.environ.get('EXTERNAL_TRACKING_API_URL', 'http://ecofleetexpress.com/Auth_tracking')

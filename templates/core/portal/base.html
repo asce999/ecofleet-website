@@ -7,7 +7,7 @@
     <meta name="robots" content="noindex, nofollow" />
     <title>{% block title %}Employee Portal — EcoFleet Express{% endblock %}</title>
 
-    <script>
+    <script nonce="{{ request.csp_nonce }}">
       (function () {
         try {
           if (localStorage.getItem('ef-theme') !== 'dark') {
@@ -110,7 +110,7 @@
       </main>
     </div>
 
-<script>
+<script nonce="{{ request.csp_nonce }}">
     (function () {
         const portalBurger = document.getElementById('portalBurger');
         const portalSidebar = document.getElementById('portalSidebar');

@@ -3,7 +3,7 @@
 {% block heading %}Attendance Tracker{% endblock %}
 {% block content %}
 
-<style>
+<style nonce="{{ request.csp_nonce }}">
   .attendance-table-wrap {
     overflow-x: auto;
     max-width: 100%;
@@ -352,7 +352,7 @@
 </div>
 {% endif %}
 
-<script>
+<script nonce="{{ request.csp_nonce }}">
   function cycleStatus(cell, rowIdx, dayNum) {
     const statuses = ['', 'P', 'A', 'HD'];
     const current = cell.getAttribute('data-status') || '';
@@ -466,7 +466,7 @@
   });
 </script>
 
-<script>
+<script nonce="{{ request.csp_nonce }}">
   // Disable + spinner whichever Save button is clicked (desktop or mobile bar).
   // setTimeout(…, 10) lets the form submit fire before we mutate the button.
   document.querySelectorAll('button[type="submit"]').forEach(function(btn) {

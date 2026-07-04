@@ -21,6 +21,7 @@
 *.env.example text
 .gitignore text
 .gitattributes text
+datadump.json export-ignore -diff
 
 # Denote shell scripts and ensure LF line endings
 *.sh text eol=lf
@@ -70,6 +71,7 @@ db.sqlite3 binary
 *.zip binary
 *.tar binary
 *.gz binary
+*.sql.gz binary
 *.bz2 binary
 *.7z binary
 *.rar binary

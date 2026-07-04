@@ -10,7 +10,8 @@ urlpatterns = [
     re_path(r'^sitemap\.xml/?$', views.sitemap, name='sitemap'),
     path('find-location/', views.find_location, name='find_location'),
 
-    # ── Observability ──
+    # ── Observability & Tracking ──
+    path('api/v1/tracking/<str:pod_no>/', views.shipment_tracking_api, name='api_tracking'),
     path('health/', views.health_check, name='health_check'),
     path('sentry-debug/', views.sentry_debug, name='sentry_debug'),
     path('portal/operations-center/', views.operations_center, name='operations_center'),

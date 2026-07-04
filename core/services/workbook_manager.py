@@ -9,7 +9,7 @@ class WorkbookManager:
         Locates the default template for a given tool and copies it to the media directory.
         Returns the relative media path for Django's FileField.
         """
-        source_path = Path(settings.BASE_DIR) / 'efe_data' / template_filename
+        source_path = Path(settings.BASE_DIR) / 'core' / 'templates_default' / template_filename
         target_dir = Path(settings.MEDIA_ROOT) / tool_name
         target_dir.mkdir(parents=True, exist_ok=True)
         
@@ -30,7 +30,7 @@ class WorkbookManager:
             except Exception:
                 pass
                 
-        fallback_path = Path(settings.BASE_DIR) / 'efe_data' / fallback_template
+        fallback_path = Path(settings.BASE_DIR) / 'core' / 'templates_default' / fallback_template
         if fallback_path.exists():
             return open(fallback_path, 'rb')
             

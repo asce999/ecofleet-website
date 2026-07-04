@@ -25,12 +25,10 @@ class ExcelExporter:
         for row_num, shipment in enumerate(shipments, 2):
             ws.cell(row=row_num, column=1).value = shipment.dispatch_date
             
-            # Fetch latest status
-            status_obj = shipment.statuses.first()
-            if status_obj and status_obj.status == 'DELIVERED':
-                ws.cell(row=row_num, column=3).value = status_obj.timestamp.date()
-            elif status_obj and status_obj.status == 'IN_TRANSIT':
-                ws.cell(row=row_num, column=2).value = status_obj.timestamp.date()
+            if shipment.actual_eta:
+                ws.cell(row=row_num, column=3).value = shipment.actual_eta.date()
+            if shipment.expected_eta:
+                ws.cell(row=row_num, column=2).value = shipment.expected_eta.date()
             
             ws.cell(row=row_num, column=4).value = shipment.metadata.get('consignor', '')
             ws.cell(row=row_num, column=5).value = shipment.origin

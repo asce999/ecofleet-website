@@ -13,11 +13,17 @@ class FTLProvider(BaseProvider):
         checks = [CheckResult(name="Service", status="healthy", message="Available")]
         metrics = {}
         
+        from core.models import FtlWorkbook
         total = ToolRun.objects.filter(tool='FTL Generator').count()
         metrics["Total Runs"] = total
         recent = ToolRun.objects.filter(tool='FTL Generator').order_by('-created_at').first()
         if recent:
             metrics["Last Run"] = recent.created_at.strftime("%Y-%m-%d %H:%M:%S")
+
+        active_workbooks = FtlWorkbook.objects.filter(is_active=True).count()
+        total_workbooks = FtlWorkbook.objects.count()
+        metrics["Active Workbooks"] = active_workbooks
+        metrics["Total Workbooks"] = total_workbooks
 
         return ProviderResult(
             status=status,

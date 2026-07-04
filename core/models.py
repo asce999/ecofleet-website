@@ -22,7 +22,7 @@ class ToolRunQuerySet(models.QuerySet):
         if not user.is_authenticated:
             return self.none()
         try:
-            if user.profile.role == 'Director':
+            if user.profile.role == UserProfile.ROLE_DIRECTOR:
                 return self
         except ObjectDoesNotExist:
             pass
@@ -281,6 +281,8 @@ class FtlWorkbook(models.Model):
 
 
 class UserProfile(models.Model):
+    ROLE_DIRECTOR = 'Director'
+
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
     role = models.CharField(max_length=50, default='Employee')
     can_use_cof = models.BooleanField(default=False)
@@ -380,6 +382,18 @@ class Driver(models.Model):
     def __str__(self):
         return self.name
 
+class Employee(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    name = models.CharField(max_length=200)
+    department = models.CharField(max_length=100, blank=True)
+    is_driver = models.BooleanField(default=False)
+    driver = models.OneToOneField(Driver, on_delete=models.SET_NULL, null=True, blank=True, related_name='employee_profile')
+    is_active = models.BooleanField(default=True)
+    
+    def __str__(self):
+        return self.name
+
 
 # ------------------------------------------------------------------------------
 # CUSTOMER CONTEXT
@@ -430,6 +444,15 @@ class Shipment(models.Model):
                 name='unique_shipment_source_key'
             )
         ]
+
+    def save(self, *args, **kwargs):
+        if not self.source_key:
+            lr = self.metadata.get('lr_number', '') if isinstance(self.metadata, dict) else ''
+            date_str = self.dispatch_date.isoformat() if self.dispatch_date else ''
+            self.source_key = f"{lr}|{date_str}"
+            if self.source_key == "|":
+                self.source_key = str(self.id)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.shipment_type} Shipment - {self.vehicle} on {self.dispatch_date}"

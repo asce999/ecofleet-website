@@ -141,8 +141,9 @@ def clean_delhivery(file):
     df["Delivered Date"] = pd.to_datetime(df["Delivered Date"], errors="coerce").dt.normalize()
     df["Pickup Date"]    = pd.to_datetime(df["Pickup Date"],    errors="coerce").dt.normalize()
 
-    now = datetime.datetime.today()
-    df = df[(df["Pickup Date"].dt.year == now.year) & (df["Pickup Date"].dt.month == now.month)]
+    # Use the logical report date (yesterday) to determine the target month
+    report_date = _report_date()
+    df = df[(df["Pickup Date"].dt.year == report_date.year) & (df["Pickup Date"].dt.month == report_date.month)]
 
     df["vehicle_type"] = df["Client Location/warehouse"].astype(str).apply(
         lambda x: "2W" if "2 wheeler" in x.lower() else "CV")
@@ -179,8 +180,8 @@ def load_master(all_sheets, vehicle_type):
 
     date_col = "Date of Shipping"
     if date_col in df.columns:
-        now = datetime.datetime.today()
-        df = df[(df[date_col].dt.year == now.year) & (df[date_col].dt.month == now.month)]
+        report_date = _report_date()
+        df = df[(df[date_col].dt.year == report_date.year) & (df[date_col].dt.month == report_date.month)]
 
     df = df.drop_duplicates(subset="Lr No. ", keep="first")
     for col in MASTER_COLUMNS:

@@ -63,17 +63,18 @@
 </section>
 
 <!-- TRACK SHIPMENT -->
-<div class="track-section">
+<div class="track-section" id="track-section">
   <div class="section-eyebrow eyebrow-cyan">Live Tracking</div>
   <div class="track-title">Where is your shipment right now?</div>
   <div class="track-sub">Enter your LR number or AWB number to get real-time status updates</div>
   <div class="track-row">
-    <input class="track-input" type="text" placeholder="Enter LR / AWB number (e.g. DEL-2024-00123)" />
-    <button class="track-btn">
+    <input id="trackingInput" class="track-input" type="text" placeholder="Enter LR / AWB number (e.g. DEL-2024-00123)" />
+    <button id="trackBtn" class="track-btn">
       <i class="ti ti-search"></i>
       Track Now
     </button>
   </div>
+  <div id="trackingResult" class="track-result" style="display: none; margin-top: 20px; text-align: left; background: var(--bg-card); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border-color);"></div>
 </div>
 
 <!-- SERVICES -->
@@ -146,4 +147,131 @@
     <a href="{% url 'contact' %}" class="{% if request.resolver_match.url_name == 'contact' %}active{% endif %}"><button class="cta-btn">Get in touch today →</button></a>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script nonce="{{ request.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+    const trackBtn = document.getElementById('trackBtn');
+    const trackingInput = document.getElementById('trackingInput');
+    const trackingResult = document.getElementById('trackingResult');
+
+    if (trackBtn && trackingInput) {
+        trackBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const podNo = trackingInput.value.trim();
+            if (!podNo) {
+                alert('Please enter a tracking number.');
+                return;
+            }
+
+            trackBtn.innerHTML = '<i class="ti ti-loader"></i> Tracking...';
+            trackBtn.disabled = true;
+            trackingResult.style.display = 'none';
+
+            fetch(`/api/v1/tracking/${podNo}/`)
+                .then(response => response.json().then(data => ({ status: response.status, body: data })))
+                .then(res => {
+                    const data = res.body;
+                    if (res.status === 200 && data.status === "true") {
+                        const info = data.data.info;
+                        const history = data.data.trackinfo || [];
+                        
+                        let html = `
+                        <div class="location-result available" style="margin: 40px auto 0; text-align: left;">
+                          <div class="result-icon-wrap">
+                            <div class="result-icon icon-cyan">
+                              <i class="ti ti-package"></i>
+                            </div>
+                          </div>
+                          <div class="result-content" style="width: 100%;">
+                            <div class="result-status available-text">Shipment Found: ${info.forwording_no}</div>
+                            <div class="result-details" style="margin-bottom: 24px;">
+                              <div class="result-detail-item">
+                                <span class="result-detail-label">Origin</span>
+                                <span class="result-detail-value">${info.origin}</span>
+                              </div>
+                              <div class="result-detail-item">
+                                <span class="result-detail-label">Destination</span>
+                                <span class="result-detail-value">${info.Destination}</span>
+                              </div>
+                              <div class="result-detail-item">
+                                <span class="result-detail-label">Booking Date</span>
+                                <span class="result-detail-value">${info.booking_date}</span>
+                              </div>
+                            </div>
+                            
+                            <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 16px; font-weight: 700;">Tracking History</div>
+                            <div style="display: flex; flex-direction: column; gap: 16px;">
+                        `;
+                        
+                        if (history.length > 0) {
+                            history.forEach((item, index) => {
+                                const isLatest = index === 0;
+                                html += `
+                                <div style="display: flex; gap: 16px; align-items: flex-start; position: relative;">
+                                  ${index !== history.length - 1 ? '<div style="position: absolute; left: 11px; top: 24px; bottom: -16px; width: 2px; background: var(--border-color);"></div>' : ''}
+                                  <div style="width: 24px; height: 24px; border-radius: 50%; background: ${isLatest ? 'var(--cyan)' : 'var(--bg-card)'}; border: 2px solid ${isLatest ? 'var(--cyan)' : 'var(--border-color)'}; z-index: 1; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+                                    ${isLatest ? '<i class="ti ti-check" style="color: white; font-size: 14px;"></i>' : ''}
+                                  </div>
+                                  <div style="background: var(--bg-body); padding: 12px 16px; border-radius: 8px; flex-grow: 1; border: 1px solid var(--border-color);">
+                                    <div style="font-weight: 600; color: ${isLatest ? 'var(--cyan)' : 'var(--text-main)'}; margin-bottom: 4px; font-size: 15px;">${item.status}</div>
+                                    <div style="font-size: 13px; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 12px;">
+                                      <span><i class="ti ti-map-pin" style="margin-right:4px;"></i>${item.location}</span>
+                                      <span><i class="ti ti-clock" style="margin-right:4px;"></i>${item.tracking_date || 'N/A'}</span>
+                                      ${item.comment ? `<span style="width: 100%;"><i class="ti ti-message" style="margin-right:4px;"></i>${item.comment}</span>` : ''}
+                                    </div>
+                                  </div>
+                                </div>`;
+                            });
+                        } else {
+                            html += `<div>No tracking events found.</div>`;
+                        }
+                        
+                        html += `
+                            </div>
+                          </div>
+                        </div>`;
+                        
+                        trackingResult.innerHTML = html;
+                        trackingResult.style.display = 'block';
+                    } else {
+                        trackingResult.innerHTML = `
+                        <div class="location-result unavailable" style="margin: 40px auto 0; text-align: left;">
+                          <div class="result-icon-wrap">
+                            <div class="result-icon icon-red">
+                              <i class="ti ti-circle-x"></i>
+                            </div>
+                          </div>
+                          <div class="result-content">
+                            <div class="result-status unavailable-text">Shipment Not Found</div>
+                            <p class="result-unavailable-desc">We couldn't find tracking details for <strong>${podNo}</strong>. Please check the number and try again.</p>
+                          </div>
+                        </div>`;
+                        trackingResult.style.display = 'block';
+                    }
+                })
+                .catch(err => {
+                    trackingResult.innerHTML = `
+                    <div class="location-result unavailable" style="margin: 40px auto 0; text-align: left;">
+                      <div class="result-icon-wrap">
+                        <div class="result-icon icon-orange">
+                          <i class="ti ti-alert-triangle"></i>
+                        </div>
+                      </div>
+                      <div class="result-content">
+                        <div class="result-status" style="color: var(--orange); font-size: 18px; font-weight: 700; margin-bottom: 8px;">Network Error</div>
+                        <p class="result-unavailable-desc">Unable to connect to the tracking service. Please try again later.</p>
+                      </div>
+                    </div>`;
+                    trackingResult.style.display = 'block';
+                })
+                .finally(() => {
+                    trackBtn.innerHTML = '<i class="ti ti-search"></i> Track Now';
+                    trackBtn.disabled = false;
+                });
+        });
+    }
+});
+</script>
 {% endblock %}

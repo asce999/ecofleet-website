@@ -28,7 +28,7 @@ class BackupsProvider(BaseProvider):
             )
             
         all_backups = sorted(
-            [f for f in os.listdir(backup_dir) if f.startswith('ecofleet_') and f.endswith('.sqlite3.gz')],
+            [f for f in os.listdir(backup_dir) if f.startswith('ecofleet_') and (f.endswith('.sqlite3.gz') or f.endswith('.sql.gz'))],
             reverse=True
         )
         
@@ -55,9 +55,9 @@ class BackupsProvider(BaseProvider):
             else:
                 checks.append(CheckResult(name="Freshness", status="healthy", message="OK (< 24h)"))
 
-        # Check for backup failures
+        # Check for backup failures in the last 24h
         recent_failures = SystemEvent.objects.filter(
-            event_type="Backup", 
+            message__icontains="Backup", 
             severity=SystemEvent.SEVERITY_CRITICAL,
             timestamp__gte=timezone.now() - datetime.timedelta(days=1)
         ).count()

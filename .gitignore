@@ -86,6 +86,7 @@ package-lock.json
 
 # Project specific
 efe_data/
+datadump.json
 .agent
 .agents
 .claude/
@@ -101,6 +102,8 @@ cache/
 graphify-out/
 .playwright-mcp/
 prompt.md
+GEMINI_DETAILED_REPORT.md
+CLAUDE_LATEST_REVIEW.md
 rendered_ops.html
 build_graph.py
 scratch/
@@ -111,3 +114,8 @@ scratch/
 /test_*.py
 /*_test.py
 /playwright_*.py
+
+# Documentation
+# docs/
+celerybeat-schedule
+celerybeat.pid

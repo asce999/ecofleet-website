@@ -38,7 +38,7 @@
   </div>
 </form>
 
-<script>
+<script nonce="{{ request.csp_nonce }}">
 document.querySelector('form').addEventListener('submit', function(e) {
     const btn = this.querySelector('button[type="submit"]');
     if (!btn) return;

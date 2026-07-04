@@ -6,8 +6,8 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/operations_center.css' %}">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
+<script nonce="{{ request.csp_nonce }}" src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style nonce="{{ request.csp_nonce }}">
 /* Modern styling for the HTML5 details component */
 details.dashboard-section {
     background: var(--surface);
@@ -140,7 +140,7 @@ details.dashboard-section[open] > summary i.chevron {
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/chart-manager.js' %}"></script>
-<script src="{% static 'js/dashboard.js' %}"></script>
-<script src="{% static 'js/operations_center.js' %}"></script>
+<script nonce="{{ request.csp_nonce }}" src="{% static 'js/chart-manager.js' %}"></script>
+<script nonce="{{ request.csp_nonce }}" src="{% static 'js/dashboard.js' %}"></script>
+<script nonce="{{ request.csp_nonce }}" src="{% static 'js/operations_center.js' %}"></script>
 {% endblock %}
