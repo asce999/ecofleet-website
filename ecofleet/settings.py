@@ -346,8 +346,8 @@ EMAIL_HOST = os.getenv('EMAIL_HOST', 'localhost')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-EMAIL_USE_TLS = EMAIL_PORT == 587
-EMAIL_USE_SSL = EMAIL_PORT == 465
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', str(EMAIL_PORT in [587, 2525])).lower() in ['true', '1', 't']
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', str(EMAIL_PORT == 465)).lower() in ['true', '1', 't']
 EMAIL_TIMEOUT = 5  # Prevent Gunicorn 30s timeout on blocked ports
 
 # ── Security Headers ──
