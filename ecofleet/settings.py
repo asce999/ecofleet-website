@@ -58,14 +58,14 @@ elif not SECRET_KEY:
 
 APPEND_SLASH = True
 
-ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '').split(',')
 
 # ── CSRF Trusted Origins (ENG-03) ──
 _raw_csrf_origins = os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '')
-CSRF_TRUSTED_ORIGINS = []
+CSRF_TRUSTED_ORIGINS = ['https://*.up.railway.app']
 if _raw_csrf_origins:
     _origins = _raw_csrf_origins.split(',')
-    _seen = set()
+    _seen = set(CSRF_TRUSTED_ORIGINS)
     for o in _origins:
         o_clean = o.strip()
         if not o_clean:
