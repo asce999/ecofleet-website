@@ -215,6 +215,8 @@ STORAGES = {
     },
 }
 
+WHITENOISE_MANIFEST_STRICT = False
+
 # ── Media: uploaded + generated files ──
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
