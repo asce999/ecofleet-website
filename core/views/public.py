@@ -66,7 +66,7 @@ Message:
             send_mail(
                 subject,
                 body,
-                settings.EMAIL_HOST_USER,
+                settings.DEFAULT_FROM_EMAIL,
                 ['info@ecofleetexpress.com'],
                 fail_silently=False,
             )
