@@ -88,6 +88,7 @@ INSTALLED_APPS = [
     'axes',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'anymail',
     'core',
 ]
 
@@ -347,9 +348,16 @@ EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'info@ecofleetexpress.com')
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', str(EMAIL_PORT in [587, 2525])).lower() in ['true', '1', 't']
-EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', str(EMAIL_PORT == 465)).lower() in ['true', '1', 't']
-EMAIL_TIMEOUT = 5  # Prevent Gunicorn 30s timeout on blocked ports
+
+if EMAIL_HOST_USER == 'apikey' and EMAIL_HOST_PASSWORD.startswith('SG.'):
+    EMAIL_BACKEND = 'anymail.backends.sendgrid.EmailBackend'
+    ANYMAIL = {
+        "SENDGRID_API_KEY": EMAIL_HOST_PASSWORD,
+    }
+else:
+    EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', str(EMAIL_PORT in [587, 2525])).lower() in ['true', '1', 't']
+    EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', str(EMAIL_PORT == 465)).lower() in ['true', '1', 't']
+    EMAIL_TIMEOUT = 5  # Prevent Gunicorn 30s timeout on blocked ports
 
 # ── Security Headers ──
 SECURE_BROWSER_XSS_FILTER = True

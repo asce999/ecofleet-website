@@ -17,3 +17,4 @@ redis==5.*
 celery[redis]==5.*
 requests==2.32.3
 gunicorn==23.*
+django-anymail[sendgrid]
