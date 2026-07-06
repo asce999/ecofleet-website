@@ -28,8 +28,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function animateValue(obj) {
         const text = obj.innerText.trim();
+        // Remove commas before parsing to handle thousands separators
+        const cleanText = text.replace(/,/g, '');
         // Extract numeric part (ignores ₹, %, ms etc but assumes suffix)
-        const match = text.match(/^([^\d]*)(\d+(?:\.\d+)?)(.*)$/);
+        const match = cleanText.match(/^([^\d]*)(\d+(?:\.\d+)?)(.*)$/);
         
         if (!match) return; // not a standard number format
         
@@ -54,7 +56,12 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Preserve decimal places if original had them
             const hasDecimals = endStr.includes('.');
-            const formatted = hasDecimals ? current.toFixed(2) : Math.floor(current);
+            let formatted = hasDecimals ? current.toFixed(2) : Math.floor(current).toString();
+            
+            // Add thousands separators back
+            const parts = formatted.split('.');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            formatted = parts.join('.');
             
             obj.innerText = `${prefix}${formatted}${suffix}`;
             

@@ -51,14 +51,14 @@
                 <div>
                     <div class="ops-env-label">Environment</div>
                     <div class="ops-env-val" style="display: flex; align-items: center; gap: 6px;">
-                        Production
+                        {{ environment_name|default:"Production"|title }}
                         <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);"></span>
                     </div>
                 </div>
 
                 <div>
                     <div class="ops-env-label">Django Version</div>
-                    <div class="ops-env-val" style="font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px;">v4.2</div>
+                    <div class="ops-env-val" style="font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px;">v{{ django_version|default:"4.2" }}</div>
                 </div>
 
                 <div>

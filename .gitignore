@@ -103,7 +103,13 @@ graphify-out/
 .playwright-mcp/
 prompt.md
 GEMINI_DETAILED_REPORT.md
+GEMINI_DETAILED_REPORT.html
 CLAUDE_LATEST_REVIEW.md
+EcoFleet_Audit_Report.md
+FINAL_ENGINEERING_REVIEW.md
+REMEDIATION_LOG.md
+antigravity-tools.md
+skills-lock.json
 rendered_ops.html
 build_graph.py
 scratch/

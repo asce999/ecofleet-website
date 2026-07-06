@@ -10,4 +10,4 @@ from core.views.tracking import *
 from core.views.morning import morning_report
 from core.views.pendency import pendency_report, pendency_observations
 from core.views.prev_month import prev_month_update
-from core.views.observability import health_check, sentry_debug, operations_center
+from core.views.observability import health_check, sentry_debug

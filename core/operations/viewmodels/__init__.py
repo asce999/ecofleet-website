@@ -1,1 +1,0 @@
-"""ViewModels for Operations Center."""

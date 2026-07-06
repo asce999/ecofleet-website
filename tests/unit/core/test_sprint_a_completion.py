@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 from core.models import UserProfile
 from core.utils.excel import sanitize_excel_formula
-from core.operations.services.insights import InsightsService
+
 from core.services.sheet_parser import get_sheet_names
 import os
 import tempfile
@@ -28,9 +28,6 @@ class SprintACompletionTests(TestCase):
         self.assertFalse(profile.can_use_pendency)
         self.assertFalse(profile.can_use_prev_month)
 
-    def test_presentation_separation(self):
-        score = InsightsService.calculate_operational_score({}, False, False)
-        self.assertIsNone(score.availability)
 
     def test_workbook_sheet_discovery(self):
         wb = openpyxl.Workbook()

@@ -1,6 +1,10 @@
 {% include "components/section_header.html" with title="Performance & Storage" subtitle="System latency and disk usage" %}
 <div class="chart-grid" style="margin-bottom: 28px;">
+    {% if dashboard.infrastructure.performance_metrics.labels %}
     {% include "components/chart_card.html" with title="Avg Response Time" subtitle="95th percentile api latency" chart_id="performanceChart" icon="activity" %}
+    {% endif %}
     
+    {% if dashboard.infrastructure.storage_metrics.labels %}
     {% include "components/chart_card.html" with title="Storage Utilization" subtitle="Disk capacity and growth projection" chart_id="storageChart" icon="database" %}
+    {% endif %}
 </div>

@@ -147,39 +147,5 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // Contact Form Submission Feedback
-  const contactForm = document.querySelector('.contact-form');
-  if (contactForm) {
-    contactForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      
-      const submitBtn = contactForm.querySelector('.contact-submit');
-      if (!submitBtn) return;
-      
-      // Loading State
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<i class="ti ti-loader animate-spin" style="margin-right: 8px;"></i> Sending...';
-      
-      // Simulate network request
-      setTimeout(() => {
-        // Success State
-        const formWrap = document.querySelector('.contact-form-wrap');
-        if (formWrap) {
-          formWrap.innerHTML = `
-            <div class="contact-success-state" style="text-align: center; padding: 40px 20px; animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);">
-              <div style="font-size: 64px; color: var(--cyan); margin-bottom: 20px;"><i class="ti ti-circle-check"></i></div>
-              <h2 style="font-size: 24px; margin-bottom: 12px; font-weight: 700; color: var(--text);">Message Sent Successfully!</h2>
-              <p style="color: var(--muted); font-size: 15px; margin-bottom: 24px; max-width: 400px; margin-left: auto; margin-right: auto; line-height: 1.6;">
-                Thank you for reaching out. Our operations team will review your message and get back to you within 24 hours.
-              </p>
-              <button class="btn-primary" onclick="window.location.reload()" style="margin: 0 auto; display: inline-flex; align-items: center; gap: 8px; justify-content: center;">
-                <i class="ti ti-arrow-left"></i> Send Another Message
-              </button>
-            </div>
-          `;
-        }
-      }, 1500);
-    });
-  }
 
 });

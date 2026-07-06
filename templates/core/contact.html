@@ -39,8 +39,24 @@
       <div class="section-eyebrow eyebrow-cyan">Send us a message</div>
       <h2 class="contact-form-title">We'll get back to you within 24 hours</h2>
 
-      <form class="contact-form" method="POST" action="#">
+      {% if messages %}
+      <div class="messages" style="margin-bottom: 24px;">
+        {% for message in messages %}
+          <div style="padding: 16px; border-radius: 8px; margin-bottom: 8px; {% if message.tags == 'success' %}background-color: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0;{% else %}background-color: #fef2f2; color: #991b1b; border: 1px solid #fecaca;{% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <form class="contact-form" method="POST" action="{% url 'contact' %}">
         {% csrf_token %}
+        
+        <!-- Anti-bot honeypot field (hidden) -->
+        <div style="position: absolute; left: -5000px;" aria-hidden="true">
+          <input type="text" name="website_url" tabindex="-1" autocomplete="off" />
+        </div>
+
         <div class="form-row">
           <div class="form-group">
             <label>Full Name</label>
