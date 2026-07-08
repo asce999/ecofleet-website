@@ -4,6 +4,8 @@ from django.core.mail import send_mail
 from django.contrib import messages
 from django.utils.html import strip_tags
 from django.core.cache import cache
+from django.core import signing
+import time
 import logging
 from core.models import Pincode
 
@@ -34,6 +36,14 @@ def contact(request):
         if honeypot:
             # Bot detected, silently discard
             return redirect('contact')
+
+        # 2b. Time-based check — reject submissions faster than 3 seconds
+        try:
+            rendered_at = signing.loads(request.POST.get('_ts', ''), max_age=86400)
+            if time.time() - rendered_at < 3:
+                return redirect('contact')  # ponytail: too fast, likely bot
+        except (signing.BadSignature, signing.SignatureExpired):
+            return redirect('contact')  # missing or tampered token
             
         # 3. Extract and sanitize
         name = strip_tags(request.POST.get('name', '')).strip()
@@ -81,7 +91,7 @@ Message:
             messages.error(request, "An error occurred while sending your message. Please try again later.")
             return redirect('contact')
             
-    return render(request, 'core/contact.html')
+    return render(request, 'core/contact.html', {'_ts': signing.dumps(time.time())})
 
 
 def about(request):

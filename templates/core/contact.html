@@ -51,6 +51,7 @@
 
       <form class="contact-form" method="POST" action="{% url 'contact' %}">
         {% csrf_token %}
+        <input type="hidden" name="_ts" value="{{ _ts }}" />
         
         <!-- Anti-bot honeypot field (hidden) -->
         <div style="position: absolute; left: -5000px;" aria-hidden="true">
