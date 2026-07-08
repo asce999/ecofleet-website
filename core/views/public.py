@@ -20,10 +20,24 @@ def services(request):
     return render(request, 'core/services.html')
 
 
+def get_client_ip(request):
+    """
+    Railway (and most PaaS providers) sit behind a reverse proxy, so
+    REMOTE_ADDR is the proxy's internal IP, not the visitor's. The real
+    client IP is the first entry in X-Forwarded-For (leftmost = original
+    client; later entries are proxies it passed through).
+    Falls back to REMOTE_ADDR for local dev where no proxy is present.
+    """
+    forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if forwarded_for:
+        return forwarded_for.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR', 'unknown')
+
+
 def contact(request):
     if request.method == 'POST':
         # 1. IP Rate Limiting
-        client_ip = request.META.get('REMOTE_ADDR', 'unknown')
+        client_ip = get_client_ip(request)
         cache_key = f'contact_form_ip_{client_ip}'
         attempts = cache.get(cache_key, 0)
         
