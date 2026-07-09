@@ -40,7 +40,7 @@
       <i class="ti ti-calendar-event"></i>
       Book a Service Now
     </a>
-    <a href="{% url 'services' %}" class="{% if request.resolver_match.url_name == 'services' %}active{% endif %}"><button class="btn-secondary">Explore our services →</button></a>
+    <a href="{% url 'find_location' %}" class="{% if request.resolver_match.url_name == 'find_location' %}active{% endif %}"><button class="btn-secondary">Check if we deliver to you →</button></a>
   </div>
   <div class="stats-strip">
     <div class="stat-item">
