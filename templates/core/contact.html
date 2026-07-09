@@ -51,7 +51,7 @@
 
       <form class="contact-form" method="POST" action="{% url 'contact' %}">
         {% csrf_token %}
-        <input type="hidden" name="_ts" value="{{ _ts }}" />
+        <input type="hidden" name="form_timestamp" value="{{ form_timestamp }}" />
         
         <!-- Anti-bot honeypot field (hidden) -->
         <div style="position: absolute; left: -5000px;" aria-hidden="true">

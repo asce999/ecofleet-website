@@ -53,7 +53,7 @@ def contact(request):
 
         # 2b. Time-based check — reject submissions faster than 3 seconds
         try:
-            rendered_at = signing.loads(request.POST.get('_ts', ''), max_age=86400)
+            rendered_at = signing.loads(request.POST.get('form_timestamp', ''), max_age=86400)
             if time.time() - rendered_at < 3:
                 return redirect('contact')  # ponytail: too fast, likely bot
         except (signing.BadSignature, signing.SignatureExpired):
@@ -105,7 +105,7 @@ Message:
             messages.error(request, "An error occurred while sending your message. Please try again later.")
             return redirect('contact')
             
-    return render(request, 'core/contact.html', {'_ts': signing.dumps(time.time())})
+    return render(request, 'core/contact.html', {'form_timestamp': signing.dumps(time.time())})
 
 
 def about(request):
