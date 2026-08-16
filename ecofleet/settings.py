@@ -139,7 +139,7 @@ WSGI_APPLICATION = 'ecofleet.wsgi.application'
 DATABASES = {
     'default': dj_database_url.config(
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=600,
+        conn_max_age=0,  # Important for Vercel/serverless (use Supabase PgBouncer pooler instead)
         conn_health_checks=True,
     )
 }
@@ -234,7 +234,8 @@ COF_LOCK_PATH       = BASE_DIR / 'media' / 'cof' / '.cof.lock'
 
 # ── Logging Configuration ──
 LOGS_DIR = BASE_DIR / 'logs'
-LOGS_DIR.mkdir(exist_ok=True)
+if not os.environ.get('VERCEL'):
+    LOGS_DIR.mkdir(exist_ok=True)
 
 LOGGING = {
     'version': 1,
@@ -260,6 +261,49 @@ LOGGING = {
             'formatter': 'standard',
             'filters': ['request_id'],
         },
+        'mail_admins': {
+            'level': 'ERROR',
+            'filters': ['require_debug_false', 'request_id'],
+            'class': 'django.utils.log.AdminEmailHandler',
+            'include_html': True,
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django.request': {
+            'handlers': ['mail_admins'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django.security': {
+            'handlers': ['mail_admins'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'core': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'core.decorators': {
+            'handlers': ['mail_admins'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'core.views.portal_auth': {
+            'handlers': ['mail_admins'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
+if not os.environ.get('VERCEL'):
+    LOGGING['handlers'].update({
         'file_app': {
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'filename': LOGS_DIR / 'application.log',
@@ -290,46 +334,13 @@ LOGGING = {
             'level': 'INFO',
             'filters': ['request_id'],
         },
-        'mail_admins': {
-            'level': 'ERROR',
-            'filters': ['require_debug_false', 'request_id'],
-            'class': 'django.utils.log.AdminEmailHandler',
-            'include_html': True,
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console', 'file_app', 'file_error'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'django.request': {
-            'handlers': ['mail_admins', 'file_error'],
-            'level': 'ERROR',
-            'propagate': False,
-        },
-        'django.security': {
-            'handlers': ['file_security', 'mail_admins'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'core': {
-            'handlers': ['console', 'file_app', 'file_error'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'core.decorators': {
-            'handlers': ['file_security', 'mail_admins'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'core.views.portal_auth': {
-            'handlers': ['file_security', 'mail_admins'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-    },
-}
+    })
+    LOGGING['loggers']['django']['handlers'].extend(['file_app', 'file_error'])
+    LOGGING['loggers']['django.request']['handlers'].append('file_error')
+    LOGGING['loggers']['django.security']['handlers'].append('file_security')
+    LOGGING['loggers']['core']['handlers'].extend(['file_app', 'file_error'])
+    LOGGING['loggers']['core.decorators']['handlers'].append('file_security')
+    LOGGING['loggers']['core.views.portal_auth']['handlers'].append('file_security')
 
 if DEBUG:
     for logger_name, logger_dict in LOGGING['loggers'].items():
