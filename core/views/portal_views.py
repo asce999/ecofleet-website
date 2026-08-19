@@ -90,9 +90,9 @@ def dashboard(request):
     }
 
     # ── FTL metrics ──
-    ftl_wb_obj, ftl_file_path, ftl_sheet_name = get_active_ftl_workbook()
+    ftl_wb_obj, ftl_sheet_name = get_active_ftl_workbook()
     ftl_total, ftl_delivered, ftl_in_transit, ftl_vendors = ftl_logic.get_cached_ftl_metrics(
-        ftl_wb_obj, ftl_file_path, ftl_sheet_name
+        ftl_wb_obj, ftl_sheet_name
     )
 
     ctx = {
