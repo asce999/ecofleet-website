@@ -2,7 +2,7 @@ import datetime
 import openpyxl
 import os
 from dateutil.relativedelta import relativedelta
-from core.workbook.helpers import atomic_save_workbook
+from core.workbook.helpers import save_workbook_to_model
 from openpyxl.utils import get_column_letter, column_index_from_string
 
 HEADER_MAP = {
@@ -57,8 +57,9 @@ def find_totals_row(sheet, mapping):
             return r
     return sheet.max_row + 1
 
-def find_next_ftl_row(file_path, sheet_name='Sheet1'):
-    wb = openpyxl.load_workbook(file_path, read_only=True)
+def find_next_ftl_row(wb_obj, sheet_name='Sheet1'):
+    with wb_obj.file.open('rb') as f:
+        wb = openpyxl.load_workbook(f, read_only=True)
     if sheet_name not in wb.sheetnames:
         return None
     sheet = wb[sheet_name]
@@ -86,8 +87,9 @@ def derive_status(etd, delivery_date):
     else:
         return "Booked"
 
-def get_ftl_row_values(file_path, row, sheet_name='Sheet1'):
-    wb = openpyxl.load_workbook(file_path, read_only=True)
+def get_ftl_row_values(wb_obj, row, sheet_name='Sheet1'):
+    with wb_obj.file.open('rb') as f:
+        wb = openpyxl.load_workbook(f, read_only=True)
     sheet = wb[sheet_name]
     
     mapping = get_column_mapping(sheet)
@@ -112,8 +114,9 @@ def get_ftl_row_values(file_path, row, sheet_name='Sheet1'):
         'vendor': get_val('vendor'),
     }
 
-def add_ftl_shipment(file_path, row_data, sheet_name='Sheet1'):
-    wb = openpyxl.load_workbook(file_path)
+def add_ftl_shipment(wb_obj, row_data, sheet_name='Sheet1'):
+    with wb_obj.file.open('rb') as f:
+        wb = openpyxl.load_workbook(f)
     sheet = wb[sheet_name]
     row = row_data['row_num']
     
@@ -152,7 +155,7 @@ def add_ftl_shipment(file_path, row_data, sheet_name='Sheet1'):
         if current_serial is None or str(current_serial).strip() == "":
             sheet.cell(row=row, column=serial_col).value = row - 1
             
-    atomic_save_workbook(wb, file_path)
+    save_workbook_to_model(wb, wb_obj)
 
 def evaluate_cell(sheet, row, col, memo=None):
     if memo is None:
@@ -186,10 +189,11 @@ def evaluate_cell(sheet, row, col, memo=None):
     memo[cell_id] = val
     return val
 
-def get_ftl_preview(file_path, sheet_name='Sheet1', page=1, page_size=20, sheet=None, mapping=None, memo=None):
+def get_ftl_preview(wb_obj, sheet_name='Sheet1', page=1, page_size=20, sheet=None, mapping=None, memo=None):
     """Return paginated preview data."""
     if sheet is None:
-        wb = openpyxl.load_workbook(file_path, data_only=False)
+        with wb_obj.file.open('rb') as f:
+            wb = openpyxl.load_workbook(f, data_only=False)
         if sheet_name not in wb.sheetnames:
             return {'columns': [], 'rows': [], 'total_rows': 0, 'page': 1, 'page_size': page_size, 'total_pages': 0}
         sheet = wb[sheet_name]
@@ -249,8 +253,9 @@ def get_ftl_preview(file_path, sheet_name='Sheet1', page=1, page_size=20, sheet=
         'total_pages': total_pages,
     }
 
-def get_ftl_page_data(file_path, sheet_name='Sheet1', target_row=None, page=1, page_size=20):
-    wb = openpyxl.load_workbook(file_path, data_only=False)
+def get_ftl_page_data(wb_obj, sheet_name='Sheet1', target_row=None, page=1, page_size=20):
+    with wb_obj.file.open('rb') as f:
+        wb = openpyxl.load_workbook(f, data_only=False)
     if sheet_name not in wb.sheetnames:
         return None
 
@@ -305,7 +310,7 @@ def get_ftl_page_data(file_path, sheet_name='Sheet1', target_row=None, page=1, p
         }
 
     preview = get_ftl_preview(
-        file_path, sheet_name=sheet_name,
+        wb_obj, sheet_name=sheet_name,
         page=page, page_size=page_size,
         sheet=sheet, mapping=mapping, memo=memo
     )
@@ -318,8 +323,9 @@ def get_ftl_page_data(file_path, sheet_name='Sheet1', target_row=None, page=1, p
         'preview': preview,
     }
 
-def clear_ftl_row(file_path, row, sheet_name='Sheet1'):
-    wb = openpyxl.load_workbook(file_path)
+def clear_ftl_row(wb_obj, row, sheet_name='Sheet1'):
+    with wb_obj.file.open('rb') as f:
+        wb = openpyxl.load_workbook(f)
     sheet = wb[sheet_name]
     
     mapping = get_column_mapping(sheet)
@@ -328,12 +334,10 @@ def clear_ftl_row(file_path, row, sheet_name='Sheet1'):
         if key != 'serial':
             sheet.cell(row=row, column=col).value = None
             
-    atomic_save_workbook(wb, file_path)
+    save_workbook_to_model(wb, wb_obj)
 
-def get_cached_ftl_metrics(ftl_wb_obj, ftl_file_path, ftl_sheet_name):
-    import os
+def get_cached_ftl_metrics(ftl_wb_obj, ftl_sheet_name):
     from django.core.cache import cache
-    from pathlib import Path
     
     ftl_total = 0
     ftl_delivered = 0
@@ -341,18 +345,18 @@ def get_cached_ftl_metrics(ftl_wb_obj, ftl_file_path, ftl_sheet_name):
     ftl_vendors = 0
     
     cache_key = None
-    if ftl_wb_obj and ftl_file_path and Path(ftl_file_path).exists():
-        mtime = os.path.getmtime(ftl_file_path)
-        cache_key = f'ftl_metrics_active_{ftl_wb_obj.id}_{mtime}'
+    if ftl_wb_obj and ftl_wb_obj.file:
+        cache_key = f'ftl_metrics_active_{ftl_wb_obj.id}_{ftl_wb_obj.file.name}'
         
     cached_metrics = cache.get(cache_key) if cache_key else None
     if cached_metrics:
         return cached_metrics
         
-    if ftl_file_path and Path(ftl_file_path).exists():
+    if ftl_wb_obj and ftl_wb_obj.file:
         try:
             import openpyxl
-            wb_ftl = openpyxl.load_workbook(ftl_file_path, read_only=True)
+            with ftl_wb_obj.file.open('rb') as f:
+                wb_ftl = openpyxl.load_workbook(f, read_only=True)
             if ftl_sheet_name in wb_ftl.sheetnames:
                 sheet_ftl = wb_ftl[ftl_sheet_name]
                 mapping_ftl = get_column_mapping(sheet_ftl)

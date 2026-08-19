@@ -21,10 +21,9 @@ logger = logging.getLogger(__name__)
 @tool_permission_required('attendance')
 @never_cache
 def attendance_sheet(request):
-    from django.urls import reverse
-    wb_obj, file_path, sheet_name = attendance_logic.get_active_attendance_workbook()
+    wb_obj, sheet_name = attendance_logic.get_active_attendance_workbook()
     
-    if not file_path or not os.path.exists(file_path):
+    if not wb_obj:
         return render(request, 'core/portal/attendance_form.html', {
             'active': 'attendance',
             'no_sheet': True,
@@ -32,8 +31,8 @@ def attendance_sheet(request):
         
     if request.method == 'POST':
         try:
-            with workbook_lock(file_path):
-                modified = attendance_logic.save_attendance(file_path, sheet_name, request.POST)
+            with workbook_lock(wb_obj.id):
+                modified = attendance_logic.save_attendance(wb_obj, sheet_name, request.POST)
             if modified:
                 ToolRun.objects.create(
                     user=request.user,
@@ -55,7 +54,7 @@ def attendance_sheet(request):
     manual_month = request.POST.get('manual_month') or request.GET.get('manual_month')
     
     # Load sheet data
-    data = attendance_logic.get_attendance_data(file_path, sheet_name, manual_year, manual_month)
+    data = attendance_logic.get_attendance_data(wb_obj, sheet_name, manual_year, manual_month)
     if not data:
         return render(request, 'core/portal/attendance_form.html', {
             'active': 'attendance',
@@ -113,8 +112,7 @@ def attendance_sheet(request):
 @staff_required
 @tool_permission_required('attendance')
 def attendance_download(request):
-    from core.services.workbook_manager import WorkbookManager
-    wb_obj, file_path, sheet_name = attendance_logic.get_active_attendance_workbook()
+    wb_obj, sheet_name = attendance_logic.get_active_attendance_workbook()
     
     stream = WorkbookManager.get_file_stream(wb_obj, 'Attendance_Sheet.xlsx')
     if not stream:
@@ -131,11 +129,11 @@ def attendance_download(request):
 @tool_permission_required('attendance')
 def attendance_settings(request):
     """Manage active Attendance workbook and active sheet tab."""
-    wb_obj, file_path, current_sheet_name = attendance_logic.get_active_attendance_workbook()
+    wb_obj, current_sheet_name = attendance_logic.get_active_attendance_workbook()
     
-    # Read sheets from Excel if file_path exists
-    from core.services.sheet_parser import get_sheet_names
-    sheets = get_sheet_names(file_path)
+    # Read sheets from Excel if wb_obj exists
+    from core.attendance import get_sheet_names
+    sheets = get_sheet_names(wb_obj)
     if not sheets:
         sheets = ['JUNE 2026']
     else:
@@ -174,9 +172,9 @@ def attendance_settings(request):
                 wb_obj.file.name = file_name
                 wb_obj.save(update_fields=['file'])
             
-            from core.services.sheet_parser import get_sheet_names
+            from core.attendance import get_sheet_names
             if wb_obj.file:
-                sheetnames = get_sheet_names(wb_obj.file.path)
+                sheetnames = get_sheet_names(wb_obj)
                 if sheetnames:
                     wb_obj.active_sheet = sheetnames[-1]
                     wb_obj.save(update_fields=['active_sheet'])
@@ -221,9 +219,9 @@ def attendance_settings(request):
                         uploaded_by=request.user, is_active=False
                     )
                     
-                    from core.services.sheet_parser import get_sheet_names
+                    from core.attendance import get_sheet_names
                     if new_wb.file:
-                        sheetnames = get_sheet_names(new_wb.file.path)
+                        sheetnames = get_sheet_names(new_wb)
                         if sheetnames:
                             new_wb.active_sheet = sheetnames[-1]
                             new_wb.save(update_fields=['active_sheet'])
@@ -275,9 +273,9 @@ def salary_calculator(request):
     from core.models import EmployeeSalaryOverride, SalaryConfig
     from decimal import Decimal
 
-    wb_obj, file_path, sheet_name = attendance_logic.get_active_attendance_workbook()
+    wb_obj, sheet_name = attendance_logic.get_active_attendance_workbook()
     
-    if not file_path or not os.path.exists(file_path):
+    if not wb_obj:
         return render(request, 'core/portal/attendance_salary.html', {
             'active': 'attendance',
             'no_sheet': True,
@@ -286,7 +284,7 @@ def salary_calculator(request):
     manual_year = request.POST.get('manual_year') or request.GET.get('manual_year')
     manual_month = request.POST.get('manual_month') or request.GET.get('manual_month')
     
-    data = attendance_logic.get_attendance_data(file_path, sheet_name, manual_year, manual_month)
+    data = attendance_logic.get_attendance_data(wb_obj, sheet_name, manual_year, manual_month)
     if not data:
         return render(request, 'core/portal/attendance_salary.html', {
             'active': 'attendance',
@@ -370,15 +368,15 @@ def salary_calculator_export(request):
     from core.services.exports.attendance import generate_salary_export
     from pathlib import Path
 
-    wb_obj, file_path, sheet_name = attendance_logic.get_active_attendance_workbook()
-    if not file_path or not Path(file_path).exists():
+    wb_obj, sheet_name = attendance_logic.get_active_attendance_workbook()
+    if not wb_obj:
         messages.error(request, "Attendance workbook file not found.")
         return redirect('salary_calculator')
 
     manual_year = request.GET.get('manual_year')
     manual_month = request.GET.get('manual_month')
     
-    data = attendance_logic.get_attendance_data(file_path, sheet_name, manual_year, manual_month)
+    data = attendance_logic.get_attendance_data(wb_obj, sheet_name, manual_year, manual_month)
     if not data or data.get('requires_manual_date'):
         messages.error(request, "Cannot export: Invalid sheet date or data.")
         return redirect('salary_calculator')

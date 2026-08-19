@@ -5,7 +5,7 @@ import os
 from django.conf import settings
 from openpyxl.utils import get_column_letter
 import logging
-from core.workbook.helpers import atomic_save_workbook
+from core.workbook.helpers import save_workbook_to_model
 
 PAID_CODES = {'P', 'CL', 'SL', 'PL', 'WO', 'H'}
 HALF_DAY_CODES = {'HD'}
@@ -35,25 +35,17 @@ def get_active_attendance_workbook():
     if wb_count > 0:
         wb_obj = AttendanceWorkbook.active()
         if not wb_obj:
-            return None, None, None
-        return wb_obj, wb_obj.file.path, wb_obj.active_sheet
+            return None, None
+        return wb_obj, wb_obj.active_sheet
     else:
-        file_path = os.path.join(settings.BASE_DIR, 'core', 'templates_default', 'Attendance_Sheet.xlsx')
-        sheet_name = 'JUNE 2026'
-        if os.path.exists(file_path):
-            try:
-                wb = openpyxl.load_workbook(file_path, read_only=True)
-                if wb.sheetnames:
-                    sheet_name = wb.sheetnames[-1]
-            except Exception:
-                pass
-        return None, file_path, sheet_name
+        return None, 'JUNE 2026'
 
-def get_attendance_data(file_path, sheet_name, manual_year=None, manual_month=None):
-    if not os.path.exists(file_path):
+def get_attendance_data(wb_obj, sheet_name, manual_year=None, manual_month=None):
+    if not wb_obj or not wb_obj.file:
         return None
         
-    wb = openpyxl.load_workbook(file_path, data_only=True)
+    with wb_obj.file.open('rb') as f:
+        wb = openpyxl.load_workbook(f, data_only=True)
     if sheet_name not in wb.sheetnames:
         sheet_name = wb.sheetnames[-1] if wb.sheetnames else None
         if not sheet_name:
@@ -212,11 +204,12 @@ def get_attendance_data(file_path, sheet_name, manual_year=None, manual_month=No
         'sheet_names': wb.sheetnames
     }
 
-def save_attendance(file_path, sheet_name, post_data):
-    if not os.path.exists(file_path):
+def save_attendance(wb_obj, sheet_name, post_data):
+    if not wb_obj or not wb_obj.file:
         raise FileNotFoundError("Attendance sheet file not found.")
         
-    wb = openpyxl.load_workbook(file_path, data_only=False)
+    with wb_obj.file.open('rb') as f:
+        wb = openpyxl.load_workbook(f, data_only=False)
     if sheet_name not in wb.sheetnames:
         raise ValueError(f"Sheet tab '{sheet_name}' not found in workbook.")
         
@@ -231,7 +224,7 @@ def save_attendance(file_path, sheet_name, post_data):
             break
 
     # Get valid bounds for server-side validation
-    attendance_data = get_attendance_data(file_path, sheet_name)
+    attendance_data = get_attendance_data(wb_obj, sheet_name)
     if not attendance_data:
         return False
     valid_rows = {emp['row_idx'] for emp in attendance_data.get('employees', [])}
@@ -271,7 +264,7 @@ def save_attendance(file_path, sheet_name, post_data):
                     pass
                     
     if modified:
-        atomic_save_workbook(wb, file_path)
+        save_workbook_to_model(wb, wb_obj)
     return modified
 
 
@@ -480,13 +473,13 @@ def calculate_salary_data(attendance_data):
         'employees': results
     }
 
-def get_sheet_names(file_path):
-    from pathlib import Path
-    if file_path and Path(file_path).exists():
+def get_sheet_names(wb_obj):
+    if wb_obj and wb_obj.file:
         try:
             import openpyxl
-            wb = openpyxl.load_workbook(file_path, read_only=True)
-            return wb.sheetnames
+            with wb_obj.file.open('rb') as f:
+                wb = openpyxl.load_workbook(f, read_only=True)
+                return wb.sheetnames
         except Exception:
             pass
     return []

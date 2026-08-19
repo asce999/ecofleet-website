@@ -25,12 +25,10 @@ def get_active_ftl_workbook():
     if wb_count > 0:
         wb_obj = FtlWorkbook.active()
         if not wb_obj:
-            return None, None, None
-        return wb_obj, wb_obj.file.path, wb_obj.active_sheet
+            return None, None
+        return wb_obj, wb_obj.active_sheet
     else:
-        file_path = os.path.join(settings.BASE_DIR, 'core', 'templates_default', 'FTL_Shipment_Tracker.xlsx')
-        sheet_name = 'Sheet1'
-        return None, file_path, sheet_name
+        return None, 'Sheet1'
 
 
 def _get_db_ftl_page_data(page=1, page_size=20, target_row=None):
@@ -115,9 +113,9 @@ def _get_db_ftl_page_data(page=1, page_size=20, target_row=None):
 @never_cache
 def ftl_sheet(request):
     from django.urls import reverse
-    wb_obj, file_path, sheet_name = get_active_ftl_workbook()
+    wb_obj, sheet_name = get_active_ftl_workbook()
     
-    if not file_path or not os.path.exists(file_path):
+    if not wb_obj:
         return render(request, 'core/portal/ftl_form.html', {
             'active': 'ftl',
             'no_sheet': True,
@@ -130,7 +128,7 @@ def ftl_sheet(request):
         page_data = _get_db_ftl_page_data(page=page, page_size=20)
     else:
         page_data = ftl_logic.get_ftl_page_data(
-            file_path, sheet_name=sheet_name, page=page, page_size=20
+            wb_obj, sheet_name=sheet_name, page=page, page_size=20
         )
 
     if page_data is None:
@@ -161,8 +159,8 @@ def ftl_api(request):
     """JSON API endpoint for AJAX FTL operations."""
     from django.http import JsonResponse
 
-    wb_obj, file_path, sheet_name = get_active_ftl_workbook()
-    if not file_path or not os.path.exists(file_path):
+    wb_obj, sheet_name = get_active_ftl_workbook()
+    if not wb_obj:
         return JsonResponse({'error': 'No active workbook'}, status=404)
 
     action = request.GET.get('action') or request.POST.get('action', '')
@@ -180,7 +178,7 @@ def ftl_api(request):
             page_data = _get_db_ftl_page_data(page=1, page_size=1, target_row=row_num)
             row_data = page_data['row_values']
         else:
-            row_data = ftl_logic.get_ftl_row_values(file_path, row_num, sheet_name=sheet_name)
+            row_data = ftl_logic.get_ftl_row_values(wb_obj, row_num, sheet_name=sheet_name)
         for key in ['booking_date', 'etd', 'delivery_date']:
             val = row_data.get(key)
             if isinstance(val, (datetime.datetime, datetime.date)):
@@ -194,7 +192,7 @@ def ftl_api(request):
             page_data = _get_db_ftl_page_data(page=page, page_size=20)
             preview = page_data['preview']
         else:
-            preview = ftl_logic.get_ftl_preview(file_path, sheet_name=sheet_name, page=page, page_size=20)
+            preview = ftl_logic.get_ftl_preview(wb_obj, sheet_name=sheet_name, page=page, page_size=20)
         return JsonResponse({'preview': preview})
 
     # POST: save row
@@ -204,8 +202,8 @@ def ftl_api(request):
             row_data = form.cleaned_data
             target_row = row_data['row_num']
             try:
-                with workbook_lock(file_path):
-                    ftl_logic.add_ftl_shipment(file_path, row_data, sheet_name=sheet_name)
+                with workbook_lock(wb_obj.id):
+                    ftl_logic.add_ftl_shipment(wb_obj, row_data, sheet_name=sheet_name)
                 run = ToolRun.objects.create(
                     user=request.user,
                     tool=ToolRun.TOOL_FTL,
@@ -234,13 +232,13 @@ def ftl_api(request):
         if use_db:
             page_data = _get_db_ftl_page_data(page=1, page_size=1)
         else:
-            page_data = ftl_logic.get_ftl_page_data(file_path, sheet_name=sheet_name, page=1, page_size=1)
+            page_data = ftl_logic.get_ftl_page_data(wb_obj, sheet_name=sheet_name, page=1, page_size=1)
         totals_row = page_data['totals_row'] if page_data else 1000
         if row_num < 2 or row_num >= totals_row:
             return JsonResponse({'error': 'Invalid row number'}, status=400)
         try:
-            with workbook_lock(file_path):
-                ftl_logic.clear_ftl_row(file_path, row_num, sheet_name=sheet_name)
+            with workbook_lock(wb_obj.id):
+                ftl_logic.clear_ftl_row(wb_obj, row_num, sheet_name=sheet_name)
             ToolRun.objects.create(
                 user=request.user,
                 tool=ToolRun.TOOL_FTL,
@@ -257,7 +255,7 @@ def ftl_api(request):
         if use_db:
             next_row = Shipment.objects.filter(shipment_type='FTL').count() + 2
         else:
-            next_row = ftl_logic.find_next_ftl_row(file_path, sheet_name=sheet_name)
+            next_row = ftl_logic.find_next_ftl_row(wb_obj, sheet_name=sheet_name)
         return JsonResponse({'next_row': next_row})
 
     return JsonResponse({'error': 'Unknown action'}, status=400)
@@ -267,7 +265,7 @@ def ftl_api(request):
 @tool_permission_required('ftl')
 def ftl_download(request):
     from core.services.workbook_manager import WorkbookManager
-    wb_obj, file_path, sheet_name = get_active_ftl_workbook()
+    wb_obj, sheet_name = get_active_ftl_workbook()
     
     stream = WorkbookManager.get_file_stream(wb_obj, 'FTL_Shipment_Tracker.xlsx')
     if not stream:
@@ -284,10 +282,17 @@ def ftl_download(request):
 @tool_permission_required('ftl')
 def ftl_settings(request):
     """Manage active FTL shipment workbook and active sheet tab."""
-    wb_obj, file_path, current_sheet_name = get_active_ftl_workbook()
+    wb_obj, current_sheet_name = get_active_ftl_workbook()
     
-    from core.services.sheet_parser import get_sheet_names
-    sheets = get_sheet_names(file_path)
+    sheets = []
+    if wb_obj:
+        try:
+            import openpyxl
+            with wb_obj.file.open('rb') as f:
+                wbtemp = openpyxl.load_workbook(f, read_only=True)
+                sheets = wbtemp.sheetnames
+        except Exception:
+            pass
     if not sheets:
         sheets = ['Sheet1']
         
@@ -390,11 +395,17 @@ def ftl_settings(request):
                         file=upload, original_name=original_name,
                         uploaded_by=request.user, is_active=False
                     )
-                    from core.services.sheet_parser import get_sheet_names
+                    sheets_in_wb = []
                     if new_wb.file:
-                        sheetnames = get_sheet_names(new_wb.file.path)
-                        if sheetnames:
-                            new_wb.active_sheet = sheetnames[0]
+                        try:
+                            import openpyxl
+                            with new_wb.file.open('rb') as f:
+                                wbtemp = openpyxl.load_workbook(f, read_only=True)
+                                sheets_in_wb = wbtemp.sheetnames
+                        except Exception:
+                            pass
+                        if sheets_in_wb:
+                            new_wb.active_sheet = sheets_in_wb[0]
                             new_wb.save(update_fields=['active_sheet'])
                     
                     with transaction.atomic():
@@ -414,12 +425,12 @@ def ftl_settings(request):
                         )
                         if os.environ.get('CELERY_BROKER_URL'):
                             from core.tasks import process_ftl_import
-                            process_ftl_import.delay(import_job.id, new_wb.file.path)
+                            process_ftl_import.delay(import_job.id, new_wb.id)
                         else:
                             from core.importers.excel_importer import ExcelImporter
                             import threading
                             importer = ExcelImporter()
-                            thread = threading.Thread(target=importer.process_ftl_workbook, args=(import_job.id, new_wb.file.path))
+                            thread = threading.Thread(target=importer.process_ftl_workbook, args=(import_job.id, new_wb.id))
                             thread.start()
                     
                     logger.info(f"Workbook uploaded: FTL Tracker '{original_name}' by user '{request.user.username}'")

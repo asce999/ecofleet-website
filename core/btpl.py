@@ -4,7 +4,7 @@ import os
 import logging
 from openpyxl.utils import get_column_letter, column_index_from_string
 from django.core.cache import cache
-from core.workbook.helpers import atomic_save_workbook
+from core.workbook.helpers import save_workbook_to_model
 
 HEADER_MAP = {
     'lr_number': ['LR NUMBER', 'LR No.', 'LR NO'],
@@ -73,8 +73,9 @@ def find_totals_row(sheet, mapping):
                 return r
     return 64  # Default fallback if not found
 
-def find_next_btpl_row(file_path, sheet_name='JUN 26'):
-    wb = openpyxl.load_workbook(file_path, read_only=True)
+def find_next_btpl_row(wb_obj, sheet_name='JUN 26'):
+    with wb_obj.file.open('rb') as f:
+        wb = openpyxl.load_workbook(f, read_only=True)
     if sheet_name not in wb.sheetnames:
         return None
     sheet = wb[sheet_name]
@@ -89,8 +90,9 @@ def find_next_btpl_row(file_path, sheet_name='JUN 26'):
             return r
     return None
 
-def get_btpl_row_values(file_path, row, sheet_name='JUN 26'):
-    wb = openpyxl.load_workbook(file_path, read_only=True)
+def get_btpl_row_values(wb_obj, row, sheet_name='JUN 26'):
+    with wb_obj.file.open('rb') as f:
+        wb = openpyxl.load_workbook(f, read_only=True)
     sheet = wb[sheet_name]
     
     mapping = get_column_mapping(sheet)
@@ -128,8 +130,9 @@ def get_btpl_row_values(file_path, row, sheet_name='JUN 26'):
         'vendor_payment': get_val('vendor_payment'),
     }
 
-def add_btpl_shipment(file_path, row_data, sheet_name='JUN 26'):
-    wb = openpyxl.load_workbook(file_path)
+def add_btpl_shipment(wb_obj, row_data, sheet_name='JUN 26'):
+    with wb_obj.file.open('rb') as f:
+        wb = openpyxl.load_workbook(f)
     sheet = wb[sheet_name]
     row = row_data['row_num']
     
@@ -189,7 +192,7 @@ def add_btpl_shipment(file_path, row_data, sheet_name='JUN 26'):
     write_val('vendor_rate', row_data['vendor_rate'])
     write_val('vendor_payment', row_data['vendor_payment'])
     
-    atomic_save_workbook(wb, file_path)
+    save_workbook_to_model(wb, wb_obj)
 
 def get_cell_value_by_ref(sheet, ref, memo):
     col_letter = ""
@@ -321,22 +324,21 @@ def evaluate_cell(sheet, row, col, memo=None):
         memo[cell_id] = val
         return val
 
-def get_cached_btpl_raw_data(file_path, sheet_name):
-    import os
-    if not os.path.exists(file_path):
+def get_cached_btpl_raw_data(wb_obj, sheet_name):
+    if not wb_obj or not wb_obj.file:
         return None
-    mtime = os.path.getmtime(file_path)
     # Cache invalidation strategy:
-    # We include `os.path.getmtime()` in the key. When the workbook is saved/edited,
-    # the mtime changes, causing an immediate cache miss and re-evaluation.
+    # We use wb_obj.file.name in the key. When the workbook is saved/edited,
+    # it gets a new blob URL / filename, causing an immediate cache miss and re-evaluation.
     safe_sheet = sheet_name.replace(' ', '_')
-    cache_key = f"btpl_raw_data_{safe_sheet}_{mtime}"
+    cache_key = f"btpl_raw_data_{safe_sheet}_{wb_obj.file.name}"
     cached = cache.get(cache_key)
     
     if cached:
         return cached
 
-    wb = openpyxl.load_workbook(file_path, data_only=False)
+    with wb_obj.file.open('rb') as f:
+        wb = openpyxl.load_workbook(f, data_only=False)
     if sheet_name not in wb.sheetnames:
         return None
     sheet = wb[sheet_name]
@@ -430,9 +432,9 @@ def get_cached_btpl_raw_data(file_path, sheet_name):
     cache.set(cache_key, cached, timeout=3600)
     return cached
 
-def get_btpl_preview(file_path, sheet_name='JUN 26', page=1, page_size=20, sheet=None, mapping=None, memo=None):
+def get_btpl_preview(wb_obj, sheet_name='JUN 26', page=1, page_size=20, sheet=None, mapping=None, memo=None):
     """Return paginated preview data, reading from cache if possible."""
-    cached = get_cached_btpl_raw_data(file_path, sheet_name)
+    cached = get_cached_btpl_raw_data(wb_obj, sheet_name)
     if not cached:
         return {'columns': [], 'rows': [], 'total_rows': 0, 'page': 1, 'page_size': page_size, 'total_pages': 0}
         
@@ -456,12 +458,12 @@ def get_btpl_preview(file_path, sheet_name='JUN 26', page=1, page_size=20, sheet
         'total_pages': total_pages,
     }
 
-def get_btpl_page_data(file_path, sheet_name='JUN 26', target_row=None, page=1, page_size=20):
+def get_btpl_page_data(wb_obj, sheet_name='JUN 26', target_row=None, page=1, page_size=20):
     """
     Returns all data needed for the BTPL page (mapping, totals_row, next_row, row_values, preview).
     Reads instantly from cache to avoid openpyxl parsing.
     """
-    cached = get_cached_btpl_raw_data(file_path, sheet_name)
+    cached = get_cached_btpl_raw_data(wb_obj, sheet_name)
     if not cached:
         return None
         
@@ -478,7 +480,7 @@ def get_btpl_page_data(file_path, sheet_name='JUN 26', target_row=None, page=1, 
     if next_row:
         row_values = cached['row_values_map'].get(next_row, {})
         
-    preview = get_btpl_preview(file_path, sheet_name=sheet_name, page=page, page_size=page_size)
+    preview = get_btpl_preview(wb_obj, sheet_name=sheet_name, page=page, page_size=page_size)
     
     return {
         'mapping': mapping,
@@ -488,8 +490,9 @@ def get_btpl_page_data(file_path, sheet_name='JUN 26', target_row=None, page=1, 
         'preview': preview,
     }
 
-def clear_btpl_row(file_path, row, sheet_name='JUN 26'):
-    wb = openpyxl.load_workbook(file_path)
+def clear_btpl_row(wb_obj, row, sheet_name='JUN 26'):
+    with wb_obj.file.open('rb') as f:
+        wb = openpyxl.load_workbook(f)
     sheet = wb[sheet_name]
     
     mapping = get_column_mapping(sheet)
@@ -506,4 +509,4 @@ def clear_btpl_row(file_path, row, sheet_name='JUN 26'):
     if amount_col is not None:
         sheet.cell(row=row, column=amount_col).value = f"={rate_letter}{row}*{weight_letter}{row}"
         
-    atomic_save_workbook(wb, file_path)
+    save_workbook_to_model(wb, wb_obj)

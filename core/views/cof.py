@@ -25,10 +25,8 @@ def cof_generator(request):
     if not wb_obj:
         return redirect('cof_workbook')
 
-    wb_path = wb_obj.file.path
-
     try:
-        preview = cof_logic.get_next_cof_info(wb_path)
+        preview = cof_logic.get_next_cof_info(wb_obj)
         preview_error = None
     except Exception as e:
         preview, preview_error = None, str(e)
@@ -38,7 +36,7 @@ def cof_generator(request):
         if form.is_valid():
             data = form.to_cof_data()
             try:
-                result = cof_logic.generate_cof(data, wb_path)
+                result = cof_logic.generate_cof(data, wb_obj)
             except (cof_logic.COFLockTimeout, cof_logic.WorkbookInUse,
                     cof_logic.WorkbookInvalid, cof_logic.AssetMissing) as e:
                 logger.error(f"Workbook processing failure during COF generation by '{request.user.username}': {e}")
@@ -101,7 +99,7 @@ def cof_workbook(request):
                 file=upload, original_name=original_name,
                 uploaded_by=request.user, is_active=False)
             try:
-                cof_logic.validate_workbook(new.file.path)
+                cof_logic.validate_workbook(new)
             except cof_logic.WorkbookInvalid as e:
                 logger.error(f"Workbook validation failure: COF Tracker '{upload.name}' by user '{request.user.username}': {e}")
                 new.file.delete(save=False)
@@ -125,7 +123,7 @@ def cof_workbook(request):
     info = None
     if wb_obj:
         try:
-            info = cof_logic.get_next_cof_info(wb_obj.file.path)
+            info = cof_logic.get_next_cof_info(wb_obj)
         except Exception:
             info = None
     return render(request, 'core/portal/cof_workbook.html', {
@@ -148,7 +146,7 @@ def cof_history(request):
     q = request.GET.get('q', '').strip()
     rows = []
     if wb_obj:
-        rows = list(reversed(cof_logic.load_history(wb_obj.file.path)))
+        rows = list(reversed(cof_logic.load_history(wb_obj)))
         if q:
             ql = q.lower()
             rows = [r for r in rows if any(ql in str(v).lower() for v in r.values())]

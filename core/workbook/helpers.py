@@ -1,34 +1,31 @@
-import os
-import shutil
-import tempfile
+import io
 import logging
 from openpyxl import Workbook
-from pathlib import Path
+from django.core.files.base import ContentFile
+from django.db import models
 
 logger = logging.getLogger(__name__)
 
-def atomic_save_workbook(wb: Workbook, target_path: str):
+def save_workbook_to_model(wb: Workbook, model_instance: models.Model, field_name: str = 'file', filename: str = None):
     """
-    Saves an openpyxl Workbook to a temporary file first, then atomically 
-    replaces the target_path. This prevents corruption if the process dies 
-    mid-save.
+    Saves an openpyxl Workbook to an in-memory buffer, then assigns it directly 
+    to a Django model's FileField. This avoids relying on the local filesystem.
     """
-    target_path = Path(target_path)
-    target_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    fd, temp_path = tempfile.mkstemp(dir=target_path.parent, suffix='.xlsx', prefix='tmp_wb_')
-    os.close(fd)
-    
     try:
-        # Save to the temporary file
-        wb.save(temp_path)
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
         
-        # Atomically replace the target file
-        os.replace(temp_path, target_path)
+        file_field = getattr(model_instance, field_name)
+        
+        # Keep the original filename if one exists and none was provided
+        if not filename and file_field and file_field.name:
+            import os
+            filename = os.path.basename(file_field.name)
+        elif not filename:
+            filename = 'workbook.xlsx'
+            
+        file_field.save(filename, ContentFile(buffer.getvalue()), save=True)
     except Exception as e:
-        logger.error(f"Error during atomic save to {target_path}: {e}")
-        try:
-            os.remove(temp_path)
-        except OSError:
-            pass
+        logger.error(f"Error saving workbook to model {model_instance}: {e}")
         raise

@@ -27,13 +27,11 @@ def get_active_btpl_workbook():
     if wb_count > 0:
         wb_obj = BtplWorkbook.active()
         if not wb_obj:
-            return None, None, None
-        return wb_obj, wb_obj.file.path, wb_obj.active_sheet
+            return None, None
+        return wb_obj, wb_obj.active_sheet
     else:
         # Initial fresh state: fall back to default
-        file_path = os.path.join(settings.BASE_DIR, 'core', 'templates_default', 'BTPL_Shipments.xlsx')
-        sheet_name = 'JUN 26'
-        return None, file_path, sheet_name
+        return None, 'JUN 26'
 def _get_db_btpl_page_data(page=1, page_size=20):
     """Fallback reader that pulls BTPL data directly from the DB."""
     from core.models import Shipment
@@ -90,9 +88,9 @@ def _get_db_btpl_page_data(page=1, page_size=20):
 @never_cache
 def btpl_sheet(request):
     from django.urls import reverse
-    wb_obj, file_path, sheet_name = get_active_btpl_workbook()
+    wb_obj, sheet_name = get_active_btpl_workbook()
     
-    if not file_path:
+    if not wb_obj:
         return render(request, 'core/portal/btpl_form.html', {
             'active': 'btpl',
             'no_sheet': True,
@@ -106,7 +104,7 @@ def btpl_sheet(request):
         page_data = _get_db_btpl_page_data(page=page, page_size=20)
     else:
         page_data = btpl_logic.get_btpl_page_data(
-            file_path, sheet_name=sheet_name, page=page, page_size=20
+            wb_obj, sheet_name=sheet_name, page=page, page_size=20
         )
 
     if page_data is None:
@@ -138,8 +136,8 @@ def btpl_api(request):
     import json
     from django.http import JsonResponse
 
-    wb_obj, file_path, sheet_name = get_active_btpl_workbook()
-    if not file_path:
+    wb_obj, sheet_name = get_active_btpl_workbook()
+    if not wb_obj:
         return JsonResponse({'error': 'No active workbook'}, status=404)
 
     action = request.GET.get('action') or request.POST.get('action', '')
@@ -149,7 +147,7 @@ def btpl_api(request):
         row_num = safe_int(request.GET.get('row', 0), 0)
         if row_num < 2:
             return JsonResponse({'error': 'Invalid row'}, status=400)
-        row_data = btpl_logic.get_btpl_row_values(file_path, row_num, sheet_name=sheet_name)
+        row_data = btpl_logic.get_btpl_row_values(wb_obj, row_num, sheet_name=sheet_name)
         # Convert dates to strings for JSON
         for key in ['pickup_date', 'delivered_on']:
             val = row_data.get(key)
@@ -160,7 +158,7 @@ def btpl_api(request):
     # GET: paginated preview
     if action == 'preview':
         page = safe_int(request.GET.get('page', 1), 1)
-        preview = btpl_logic.get_btpl_preview(file_path, sheet_name=sheet_name, page=page, page_size=20)
+        preview = btpl_logic.get_btpl_preview(wb_obj, sheet_name=sheet_name, page=page, page_size=20)
         return JsonResponse({'preview': preview})
 
     # POST: save row
@@ -170,8 +168,8 @@ def btpl_api(request):
             row_data = form.cleaned_data
             target_row = row_data['row_num']
             try:
-                with workbook_lock(file_path):
-                    btpl_logic.add_btpl_shipment(file_path, row_data, sheet_name=sheet_name)
+                with workbook_lock(wb_obj.id):
+                    btpl_logic.add_btpl_shipment(wb_obj, row_data, sheet_name=sheet_name)
                 run = ToolRun.objects.create(
                     user=request.user,
                     tool=ToolRun.TOOL_BTPL,
@@ -198,13 +196,13 @@ def btpl_api(request):
     if action == 'delete' and request.method == 'POST':
         row_num = safe_int(request.POST.get('row', 0), 0)
         # Get totals_row to validate
-        page_data = btpl_logic.get_btpl_page_data(file_path, sheet_name=sheet_name, page=1, page_size=1)
+        page_data = btpl_logic.get_btpl_page_data(wb_obj, sheet_name=sheet_name, page=1, page_size=1)
         totals_row = page_data['totals_row'] if page_data else 64
         if row_num < 2 or row_num >= totals_row:
             return JsonResponse({'error': 'Invalid row number'}, status=400)
         try:
-            with workbook_lock(file_path):
-                btpl_logic.clear_btpl_row(file_path, row_num, sheet_name=sheet_name)
+            with workbook_lock(wb_obj.id):
+                btpl_logic.clear_btpl_row(wb_obj, row_num, sheet_name=sheet_name)
             ToolRun.objects.create(
                 user=request.user,
                 tool=ToolRun.TOOL_BTPL,
@@ -218,7 +216,7 @@ def btpl_api(request):
 
     # GET: next available row
     if action == 'next_row':
-        next_row = btpl_logic.find_next_btpl_row(file_path, sheet_name=sheet_name)
+        next_row = btpl_logic.find_next_btpl_row(wb_obj, sheet_name=sheet_name)
         return JsonResponse({'next_row': next_row})
 
     return JsonResponse({'error': 'Unknown action'}, status=400)
@@ -228,7 +226,7 @@ def btpl_api(request):
 @tool_permission_required('btpl')
 def btpl_download(request):
     from core.services.workbook_manager import WorkbookManager
-    wb_obj, file_path, sheet_name = get_active_btpl_workbook()
+    wb_obj, sheet_name = get_active_btpl_workbook()
     
     stream = WorkbookManager.get_file_stream(wb_obj, 'BTPL_Shipments.xlsx')
     if not stream:
@@ -245,11 +243,18 @@ def btpl_download(request):
 @tool_permission_required('btpl')
 def btpl_settings(request):
     """Manage active BTPL shipment workbook and active sheet tab."""
-    wb_obj, file_path, current_sheet_name = get_active_btpl_workbook()
+    wb_obj, current_sheet_name = get_active_btpl_workbook()
     
-    # Read sheets from Excel if file_path exists
-    from core.services.sheet_parser import get_sheet_names
-    sheets = get_sheet_names(file_path)
+    # Read sheets from Excel if wb_obj exists
+    sheets = []
+    if wb_obj:
+        try:
+            import openpyxl
+            with wb_obj.file.open('rb') as f:
+                wb = openpyxl.load_workbook(f, read_only=True)
+                sheets = wb.sheetnames
+        except Exception:
+            pass
     if not sheets:
         sheets = ['JUN 26']
         
@@ -331,11 +336,17 @@ def btpl_settings(request):
                     )
                     
                     # Read sheets from the uploaded workbook to set default active sheet
-                    from core.services.sheet_parser import get_sheet_names
+                    sheets_in_wb = []
                     if new_wb.file:
-                        sheetnames = get_sheet_names(new_wb.file.path)
-                        if sheetnames:
-                            new_wb.active_sheet = sheetnames[0]
+                        try:
+                            import openpyxl
+                            with new_wb.file.open('rb') as f:
+                                wbtemp = openpyxl.load_workbook(f, read_only=True)
+                                sheets_in_wb = wbtemp.sheetnames
+                        except Exception:
+                            pass
+                        if sheets_in_wb:
+                            new_wb.active_sheet = sheets_in_wb[0]
                             new_wb.save(update_fields=['active_sheet'])
                     
                     with transaction.atomic():
@@ -353,14 +364,15 @@ def btpl_settings(request):
                             status='PENDING',
                             uploaded_by=request.user
                         )
+                        # We pass the ID to the background tasks instead of the file path
                         if os.environ.get('CELERY_BROKER_URL'):
                             from core.tasks import process_btpl_import
-                            process_btpl_import.delay(import_job.id, new_wb.file.path)
+                            process_btpl_import.delay(import_job.id, new_wb.id)
                         else:
                             from core.importers.btpl_importer import BtplImporter
                             import threading
                             importer = BtplImporter()
-                            thread = threading.Thread(target=importer.process_btpl_workbook, args=(import_job.id, new_wb.file.path))
+                            thread = threading.Thread(target=importer.process_btpl_workbook, args=(import_job.id, new_wb.id))
                             thread.start()
                     
                     logger.info(f"Workbook uploaded: BTPL Tracker '{original_name}' by user '{request.user.username}'")

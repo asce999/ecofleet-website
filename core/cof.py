@@ -12,7 +12,8 @@ import re
 import time
 
 from django.conf import settings
-from core.workbook.helpers import atomic_save_workbook
+from core.workbook.helpers import save_workbook_to_model
+from core.workbook.locking import workbook_lock, LockTimeoutError
 
 from num2words import num2words
 from openpyxl import load_workbook
@@ -96,10 +97,11 @@ def build_cert_text(remark, loss, words):
 
 
 # ── Validation & numbering (work off a file path) ────────────────────
-def validate_workbook(path):
+def validate_workbook(wb_obj):
     """Raise WorkbookInvalid if the file isn't a usable tracking workbook."""
     try:
-        wb = load_workbook(path, read_only=True)
+        with wb_obj.file.open('rb') as f:
+            wb = load_workbook(f, read_only=True)
     except Exception as e:
         raise WorkbookInvalid(f"Couldn't open that file as an Excel workbook ({e}).")
     try:
@@ -114,9 +116,10 @@ def validate_workbook(path):
             "This doesn't look like the COF tracking workbook (its blank COF template sheet is missing).")
 
 
-def get_next_cof_info(path):
+def get_next_cof_info(wb_obj):
     try:
-        wb = load_workbook(path, read_only=True)
+        with wb_obj.file.open('rb') as f:
+            wb = load_workbook(f, read_only=True)
     except PermissionError:
         raise WorkbookInUse("The tracking workbook is open in Excel on the server. Close it and try again.")
     ws = wb[DATA_SHEET]
@@ -275,41 +278,13 @@ def build_word_doc(d):
 
 
 # ── Lock around read-number → mutate → save ──────────────────────────
-@contextlib.contextmanager
-def workbook_lock(timeout=20, poll=0.3, stale=120):
-    lock_path = str(settings.COF_LOCK_PATH)
-    os.makedirs(os.path.dirname(lock_path), exist_ok=True)
-    deadline = time.monotonic() + timeout
-    fd = None
-    while True:
-        try:
-            fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_RDWR)
-            break
-        except FileExistsError:
-            try:
-                if time.time() - os.path.getmtime(lock_path) > stale:
-                    os.remove(lock_path)
-                    continue
-            except OSError:
-                pass
-            if time.monotonic() >= deadline:
-                raise COFLockTimeout(
-                    "Another COF is being generated right now. Please try again in a moment.")
-            time.sleep(poll)
-    try:
-        yield
-    finally:
-        try:
-            os.close(fd)
-            os.remove(lock_path)
-        except OSError:
-            pass
+# (Using shared workbook_lock from core.workbook.locking)
 
 
 # ── Orchestrator ─────────────────────────────────────────────────────
-def generate_cof(d, workbook_path):
+def generate_cof(d, wb_obj):
     """
-    Validated data `d` + path to the stored active workbook.
+    Validated data `d` + active workbook model instance.
     Atomically assigns the next number, mutates the stored workbook in place,
     and builds the Word doc. Returns a result dict (docx in memory).
     """
@@ -318,24 +293,28 @@ def generate_cof(d, workbook_path):
             "COF letterhead template is missing on the server "
             "(core/cof_assets/COF_LetterHead.docx).")
 
-    with workbook_lock():
-        info = get_next_cof_info(workbook_path)
-        d = {**d,
-             "cof_number": info["cof_number"],
-             "claim_number": info["claim_number"],
-             "optlog": info["optlog"]}
-        try:
-            wb = load_workbook(workbook_path)
-        except PermissionError:
-            raise WorkbookInUse(
-                "The tracking workbook is open in Excel on the server. Close it and try again.")
-        sheet_name = create_cof_sheet(wb, d)
-        append_data_sheet(wb, d, info["serial"])
-        try:
-            atomic_save_workbook(wb, workbook_path)
-        except PermissionError:
-            raise WorkbookInUse(
-                "Couldn't save — the tracking workbook is open in Excel on the server.")
+    try:
+        with workbook_lock(wb_obj.id):
+            info = get_next_cof_info(wb_obj)
+            d = {**d,
+                 "cof_number": info["cof_number"],
+                 "claim_number": info["claim_number"],
+                 "optlog": info["optlog"]}
+            try:
+                with wb_obj.file.open('rb') as f:
+                    wb = load_workbook(f)
+            except PermissionError:
+                raise WorkbookInUse(
+                    "The tracking workbook is open in Excel on the server. Close it and try again.")
+            sheet_name = create_cof_sheet(wb, d)
+            append_data_sheet(wb, d, info["serial"])
+            try:
+                save_workbook_to_model(wb, wb_obj)
+            except PermissionError:
+                raise WorkbookInUse(
+                    "Couldn't save — the tracking workbook is open in Excel on the server.")
+    except LockTimeoutError:
+        raise COFLockTimeout("Another COF is being generated right now. Please try again in a moment.")
 
     docx = build_word_doc(d)
     safe = re.sub(r'[^\w\s\-]', '', d["consignee_name"])[:40].strip()
@@ -351,14 +330,15 @@ def generate_cof(d, workbook_path):
 
 
 # ── History (reads the stored Data Sheet) ────────────────────────────
-def load_history(workbook_path):
+def load_history(wb_obj):
     headers = ["#", "LR Number", "Pickup Date", "Invoice Number", "Remark",
                "Dealer", "State", "Claim Amount", "CN Amount", "Delhivery Doc",
                "Doc Date", "Status Delhivery", "Remarks", "COF Date",
                "Status Optlog", "Ref Delhivery"]
     rows = []
     try:
-        wb = load_workbook(workbook_path, read_only=True)
+        with wb_obj.file.open('rb') as f:
+            wb = load_workbook(f, read_only=True)
         ws = wb[DATA_SHEET]
         for row in ws.iter_rows(min_row=2, values_only=True):
             if row[0] and isinstance(row[0], (int, float)):
