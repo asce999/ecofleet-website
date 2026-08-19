@@ -11,15 +11,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterUniqueTogether(
-            name='attendancerecord',
-            unique_together={('driver', 'record_date')},
-        ),
-        migrations.AddField(
-            model_name='attendancerecord',
-            name='driver',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='attendance_records', to='core.driver'),
-        ),
         migrations.AlterField(
             model_name='attendanceworkbook',
             name='file',
@@ -49,9 +40,5 @@ class Migration(migrations.Migration):
             model_name='toolrunfile',
             name='file',
             field=models.FileField(max_length=500, upload_to='tool_outputs/%Y/%m/'),
-        ),
-        migrations.RemoveField(
-            model_name='attendancerecord',
-            name='employee',
         ),
     ]

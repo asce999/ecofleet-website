@@ -514,7 +514,7 @@ class AttendanceRecord(models.Model):
         ('HALF_DAY', 'Half Day'),
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='attendance_records', null=True, blank=True)
+    driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='attendance_records')
     record_date = models.DateField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES)
     
