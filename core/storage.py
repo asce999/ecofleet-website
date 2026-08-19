@@ -55,6 +55,21 @@ class VercelBlobStorage(Storage):
         """
         return name
 
+    def _open(self, name, mode='rb'):
+        """
+        Fetches the file from Vercel Blob into memory.
+        `name` is expected to be the full URL.
+        """
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "x-api-version": "7"
+        }
+        response = requests.get(name, headers=headers)
+        response.raise_for_status()
+        
+        from django.core.files.base import ContentFile
+        return ContentFile(response.content, name=name)
+
     def exists(self, name):
         return False
 

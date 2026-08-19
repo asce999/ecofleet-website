@@ -66,7 +66,7 @@ class ToolRun(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_SUCCESS)
     reference = models.CharField(max_length=120, blank=True)   # e.g. COF number
     detail = models.TextField(blank=True)
-    output_file = models.FileField(upload_to='tool_outputs/%Y/%m/', blank=True, null=True)
+    output_file = models.FileField(upload_to='tool_outputs/%Y/%m/', max_length=500, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = ToolRunQuerySet.as_manager()
@@ -85,7 +85,7 @@ class ToolRunFile(models.Model):
     """An output file produced by a ToolRun (a run can produce several)."""
     run = models.ForeignKey(ToolRun, on_delete=models.CASCADE, related_name='files')
     label = models.CharField(max_length=80)
-    file = models.FileField(upload_to='tool_outputs/%Y/%m/')
+    file = models.FileField(upload_to='tool_outputs/%Y/%m/', max_length=500)
     download_name = models.CharField(max_length=255, blank=True)  # user-facing filename
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -99,7 +99,7 @@ class ToolRunFile(models.Model):
 
 class CofWorkbook(models.Model):
     """The team's active COF tracking workbook (one current row at a time)."""
-    file = models.FileField(upload_to='cof/')
+    file = models.FileField(upload_to='cof/', max_length=500)
     original_name = models.CharField(max_length=255)
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
@@ -130,7 +130,7 @@ class CofWorkbook(models.Model):
 
 class BtplWorkbook(models.Model):
     """The team's active BTPL shipment workbook."""
-    file = models.FileField(upload_to='btpl/')
+    file = models.FileField(upload_to='btpl/', max_length=500)
     original_name = models.CharField(max_length=255)
     active_sheet = models.CharField(max_length=100, default='JUN 26')
     uploaded_by = models.ForeignKey(
@@ -162,7 +162,7 @@ class BtplWorkbook(models.Model):
 
 class AttendanceWorkbook(models.Model):
     """The team's active Attendance workbook."""
-    file = models.FileField(upload_to='attendance/')
+    file = models.FileField(upload_to='attendance/', max_length=500)
     original_name = models.CharField(max_length=255)
     active_sheet = models.CharField(max_length=100, default='JUNE 2026')
     uploaded_by = models.ForeignKey(
@@ -249,7 +249,7 @@ class EmployeeSalaryOverride(models.Model):
 
 class FtlWorkbook(models.Model):
     """The team's active FTL shipment workbook."""
-    file = models.FileField(upload_to='ftl/')
+    file = models.FileField(upload_to='ftl/', max_length=500)
     original_name = models.CharField(max_length=255)
     active_sheet = models.CharField(max_length=100, default='Sheet1')
     uploaded_by = models.ForeignKey(
@@ -514,7 +514,7 @@ class AttendanceRecord(models.Model):
         ('HALF_DAY', 'Half Day'),
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='attendance_records')
+    driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='attendance_records', null=True, blank=True)
     record_date = models.DateField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES)
     
